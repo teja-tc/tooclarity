@@ -44,6 +44,18 @@ const instituteAdminSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Institution',
     },
+    isPhoneVerified: {
+        type: Boolean,
+        default: false,
+    },
+    phoneOtp: {
+        type: String,
+        select: false,
+    },
+    phoneOtpExpires: {
+        type: Date,
+        select: false,
+    }
 }, { timestamps: true});
 
 instituteAdminSchema.pre('save', async function(next) {

@@ -21,17 +21,14 @@ const institutionSchema = new mongoose.Schema({
     },
     establishmentDate: Date,
     approvedBy: String,
-    contactInfo: String,
-    headquartersAddress: String,
-    locationUrl: String,
 
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'InstituteAdmin',
         required: true,
-        unique: true,
+        index: true, 
     }
-}, { timestamps: true })
+}, { timestamps: true });
 
 const Institution = mongoose.model('Institution', institutionSchema);
 
