@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import Footer from "@/components/ui/footer";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,18 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 const features = [
   {
@@ -45,9 +58,6 @@ const steps = [
   },
 ];
 
-
-
-
 const faqs = [
   {
     q: "How long does registration take?",
@@ -71,6 +81,7 @@ const faqs = [
   },
 ];
 
+
 export default function LandingPage() {
   return (
     <main className="font-montserrat text-gray-800 animate-fadeIn bg-[#FBF9F5]">
@@ -81,16 +92,17 @@ export default function LandingPage() {
         </div>
         <div className="flex gap-6 mr-0">
           <Button variant="login" size="lg">Log In</Button>
-          <Button variant="signup" size="lg">Sign Up</Button>   
+          <Button variant="signup" size="lg">Sign Up</Button>
+
+
+          
         </div>
       </nav>
 
       {/* Hero */}
       <section className="text-center pt-40 pb-16 px-4 animate-fadeIn">
         <h1 className="font-sora font-semibold text-[48px]">
-          Unlock Your {" "}
-          <span className="text-blue-700">Institution&apos;s</span>
-          <br />
+          Unlock Your <span className="text-blue-700">Institution&apos;s</span> <br />
           <span className="text-blue-700 text-[45px]">Global Reach</span>
         </h1>
         <p className="font-montserrat font-medium text-[16px] leading-[24px] tracking-[1px] text-[#697282] w-[659px] mx-auto opacity-90 mt-6">
@@ -145,41 +157,31 @@ export default function LandingPage() {
         </div>
       </section>
 
-{/* FAQ */}
-{/* FAQ */}
-<section className="max-w-3xl mx-auto py-16 px-4">
-  <h1 className="font-sora font-semibold text-center text-[48px] mb-8">
-    Frequently Asked <span className="text-blue-700">Questions</span>
-  </h1>
-  <Accordion
-    type="single"
-    collapsible
-    className="w-full flex flex-col items-center space-y-4 font-montserrat"
-  >
-    {faqs.map((item, idx) => (
-      <AccordionItem
-        key={idx}
-        value={`item-${idx + 1}`}
-        className="relative w-[630px] rounded-[30px] bg-[#F5F4F4] border shadow-[inset_0px_6px_6px_0px_#68686808,inset_0px_3px_3px_0px_#68686803,inset_0px_9px_9px_0px_#00000008]"
-      >
-        {/* Gradient border wrapper */}
-        <div className="absolute inset-0 rounded-[30px] p-[1px] bg-[linear-gradient(180deg,rgba(245,244,244,0.05)_0%,rgba(231,230,230,0.0550481)_10.1%,rgba(213,212,212,0.0612981)_22.6%,rgba(198,197,197,0.0668269)_33.65%,rgba(185,185,185,0.0711538)_42.31%,rgba(169,169,169,0.0769231)_53.85%,rgba(148,148,148,0.084375)_68.75%,rgba(124,124,124,0.0929487)_86.38%,rgba(104,104,104,0.1)_100%)]">
-          <div className="w-full h-full rounded-[30px] bg-[#F5F4F4]" />
-        </div>
-
-        {/* Accordion Trigger */}
-        <AccordionTrigger className="relative z-10 flex w-full items-center justify-between px-3 py-4 font-medium rounded-[30px] transition-colors hover:no-underline data-[state=closed]:hover:bg-blue-700 data-[state=closed]:hover:text-white">
-          <span className="flex-1 text-left">{item.q}</span>
-        </AccordionTrigger>
-
-        {/* Accordion Content */}
-        <AccordionContent className="relative z-10 w-full px-3 pb-4 pt-2 text-gray-600">
-          {item.a}
-        </AccordionContent>
-      </AccordionItem>
-    ))}
-  </Accordion>
-</section>
+      {/* FAQ */}
+      <section className="max-w-3xl mx-auto py-16 px-4">
+        <h1 className="font-sora font-semibold text-center text-[48px] mb-8">
+          Frequently Asked <span className="text-blue-700">Questions</span>
+        </h1>
+        <Accordion type="single" collapsible className="w-full flex flex-col items-center space-y-4 font-montserrat">
+          {faqs.map((item, idx) => (
+            <AccordionItem
+              key={idx}
+              value={`item-${idx + 1}`}
+              className="relative w-[630px] rounded-[30px] bg-[#F5F4F4] border shadow-[inset_0px_6px_6px_0px_#68686808,inset_0px_3px_3px_0px_#68686803,inset_0px_9px_9px_0px_#00000008]"
+            >
+              <div className="absolute inset-0 rounded-[30px] p-[1px] bg-[linear-gradient(180deg,rgba(245,244,244,0.05)_0%,rgba(231,230,230,0.0550481)_10.1%,rgba(213,212,212,0.0612981)_22.6%,rgba(198,197,197,0.0668269)_33.65%,rgba(185,185,185,0.0711538)_42.31%,rgba(169,169,169,0.0769231)_53.85%,rgba(148,148,148,0.084375)_68.75%,rgba(124,124,124,0.0929487)_86.38%,rgba(104,104,104,0.1)_100%)]">
+                <div className="w-full h-full rounded-[30px] bg-[#F5F4F4]" />
+              </div>
+              <AccordionTrigger className="relative z-10 flex w-full items-center justify-between px-3 py-4 font-medium rounded-[30px] transition-colors hover:no-underline data-[state=closed]:hover:bg-blue-700 data-[state=closed]:hover:text-white">
+                <span className="flex-1 text-left">{item.q}</span>
+              </AccordionTrigger>
+              <AccordionContent className="relative z-10 w-full px-3 pb-4 pt-2 text-gray-600">
+                {item.a}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </section>
 
       {/* Footer */}
       <Footer />
