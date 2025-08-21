@@ -5,8 +5,8 @@ import React from "react";
 
 const Footer = () => {
   return (
-    <footer className="bg-[#FBF9F5] w-full max-w-[1280px] h-[286px] mx-auto py-8 px-8 font-montserrat">
-      <div className="flex justify-between w-full h-[238px]">
+    <footer className="bg-[#FBF9F5] w-full h-[286px] font-montserrat">
+      <div className="max-w-[1280px] mx-auto py-8 px-8 flex justify-between">
         {/* Left Section: Logo + Tagline + Social Icons */}
         <div className="flex flex-col justify-start">
           <div>
@@ -100,13 +100,12 @@ const Footer = () => {
       </div>
 
       {/* Copyright */}
-      <div className="w-full bg-[#FBF9F5] mt-4 flex justify-between items-center text-[14px] leading-[24px] text-[#6B7280]">
-        <p>
-          Copyright © {new Date().getFullYear()} Too Clarity. All rights
-          reserved.
-        </p>
-        <p>Empowering Educational Growth.</p>
-      </div>
+   <div className="w-full bg-[#FBF9F5] flex justify-between items-center text-[14px] leading-[24px] text-[#6B7280] px-8">
+    <p>
+      Copyright © {new Date().getFullYear()} Too Clarity. All rights reserved.
+    </p>
+    <p>Empowering Educational Growth.</p>
+  </div>
     </footer>
   );
 };
