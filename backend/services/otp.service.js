@@ -1,6 +1,6 @@
 const twilio = require('twilio');
 const logger = require('../config/logger');
-const AppError = require('../utils/appError');
+const AppError = require('../utils/AppError');
 
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;

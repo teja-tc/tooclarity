@@ -1,5 +1,5 @@
 const multer = require('multer');
-const AppError = require('../utils/appError');
+const AppError = require('../utils/AppError');
 
 const storage = multer.memoryStorage();
 

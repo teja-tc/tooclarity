@@ -188,4 +188,42 @@ const studyHallSchema = new mongoose.Schema({
 
 const StudyHall = Institution.discriminator('Study halls', studyHallSchema);
 
-module.exports = { Institution, Kindergarten, CoachingCenter, StudyHall };
+const schoolAndIntermediateSchema = new mongoose.Schema({
+    schoolType: { type: String, required: true, enum: ['Co-ed', 'Boys Only', 'Girls Only'] },
+    schoolCategory: { type: String, required: true, enum: ['Public', 'Private', 'Charter', 'International'] },
+    curriculumType: { type: String, required: true, enum: ['State Board', 'CBSE', 'ICSE', 'IB', 'IGCSE'] },
+    operationalDays: { type: [String], required: true, enum: ['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun'] },
+    otherActivities: { type: String, trim: true, maxlength: [500, 'Activities description cannot exceed 500 characters.'] },
+    hostelFacility: { type: Boolean, required: true, default: false },
+    playground: { type: Boolean, required: true, default: false },
+    busService: { type: Boolean, required: true, default: false }
+});
+
+const School = Institution.discriminator('School', schoolAndIntermediateSchema);
+const IntermediateCollege = Institution.discriminator('Intermediate college(K12)', schoolAndIntermediateSchema);
+
+const ugPgUniversitySchema = new mongoose.Schema({
+    ownershipType: { type: String, required: true, enum: ['Government', 'Private', 'Public-Private Partnership'] },
+    collegeCategory: { type: String, required: true, enum: ['Engineering', 'Medical', 'Arts & Science', 'Management', 'Law'] },
+    affiliationType: { type: String, required: true, trim: true, maxlength: 100 },
+    placements: {
+        placementDrives: { type: Boolean, default: false },
+        mockInterviews: { type: Boolean, default: false },
+        resumeBuilding: { type: Boolean, default: false },
+        linkedinOptimization: { type: Boolean, default: false },
+        exclusiveJobPortal: { type: Boolean, default: false },
+        certification: { type: Boolean, default: false }
+    }
+});
+const UgPgUniversity = Institution.discriminator('UG / PG University', ugPgUniversitySchema);
+
+
+module.exports = { 
+    Institution, 
+    Kindergarten, 
+    CoachingCenter, 
+    StudyHall,
+    School,
+    IntermediateCollege,
+    UgPgUniversity 
+};

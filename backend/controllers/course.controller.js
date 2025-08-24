@@ -1,6 +1,6 @@
 const Course = require('../models/Course');
 const Institution = require('../models/Institution');
-const AppError = require('../utils/appError');
+const AppError = require('../utils/AppError');
 const asyncHandler = require('express-async-handler');
 const { uploadStream } = require('../services/upload.service');
 
