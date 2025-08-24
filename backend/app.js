@@ -2,7 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 // const rateLimit = require('express-rate-limit');
-const pino = require('pino-http')();
+const pinoHttp = require('pino-http');
+const logger = require('./config/logger');
 
 const authRoutes = require('./routes/auth.routes');
 const institutionRoutes = require('./routes/institution.routes');
@@ -12,7 +13,8 @@ const courseRoutes = require('./routes/course.routes');
 const app = express();
 
 app.use(helmet());
-app.use(pino);
+const pinoMiddleware = pinoHttp({ logger: logger });
+app.use(pinoMiddleware);
 
 const corsOptions = {
     origin: process.env.CLIENT_ORIGIN,
@@ -41,13 +43,13 @@ app.use('/api/v1/institutions/:institutionId/courses', courseRoutes);
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 app.use((err, req, res, next) => {
-    req.log.error(err);
-    err.statusCode = err.statusCode || 500;
-    err.status = err.status || 'error';
+    req.log.error(err, 'An unhandled error occured');
+    const statusCode = err.statusCode || 500;
+    const message = statusCode === 500 ? 'An internal server error occured.' : err.message;
 
     res.status(err.statusCode).json({
-        status: err.status,
-        message: err.message,
+        status: 'error',
+        message: (err.isOperational || process.env.NODE_ENV !== 'production') ? err.message : 'Something went very wrong!',
     });
 });
 
