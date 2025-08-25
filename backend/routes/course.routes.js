@@ -1,12 +1,9 @@
 const express = require('express');
 const courseController = require('../controllers/course.controller');
-const { protect } = require('../middleware/auth.middleware');
 const { validateCourseCreation, validateCourseUpdate } = require('../middleware/validators');
 const { uploadCourseFiles } = require('../middleware/fileUpload.middleware'); 
 
 const router = express.Router({ mergeParams: true });
-
-router.use(protect);
 
 router.route('/')
     .post(
