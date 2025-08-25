@@ -10,6 +10,10 @@ const institutionRoutes = require('./routes/institution.routes');
 const branchRoutes = require('./routes/branch.routes');
 const courseRoutes = require('./routes/course.routes');
 
+// import global auth middleware
+const globalAuthMiddleware = require('./middleware/globalAuth.middleware');
+
+
 const app = express();
 
 app.use(helmet());
@@ -18,6 +22,7 @@ app.use(pinoMiddleware);
 
 const corsOptions = {
     origin: process.env.CLIENT_ORIGIN,
+    credentials: true, 
     optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
@@ -35,6 +40,10 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10kb' }));
 
 app.use('/api/v1/auth', authRoutes);
+
+// 🚨 Apply Global Auth Middleware (for all routes below this line)
+app.use(globalAuthMiddleware);
+
 app.use('/api/v1/institutions', institutionRoutes);
 
 app.use('/api/v1/institutions/:institutionId/branches', branchRoutes);

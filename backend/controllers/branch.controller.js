@@ -1,6 +1,6 @@
 const Branch = require('../models/Branch');
 const Institution = require('../models/Institution');
-const AppError = require('../utils/AppError');
+const AppError = require('../utils/appError');
 const asyncHandler = require('express-async-handler');
 
 const checkOwnership = async (institutionId, userId) => {
