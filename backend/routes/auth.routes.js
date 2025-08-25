@@ -6,18 +6,30 @@ const { otpLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
-router.post('/login', validateLogin, authController.login)
+router.post('/login', validateLogin, authController.login);
 
-router.use(['/register', '/verify-otp'], otpLimiter);
-
-router.post(
-    '/register', validateRegistration, authController.register);
+router.use(['/register', '/verify-otp', '/verify-email'], otpLimiter);
 
 router.post(
-    '/verify-otp',
-    body('contactNumber').isMobilePhone('any', { strictMode: true }),
+    '/register',
+    validateRegistration,
+    authController.register
+);
+
+// 📱 Phone OTP verification
+// router.post(
+//     '/verify-otp',
+//     body('contactNumber').isMobilePhone('any', { strictMode: true }),
+//     body('otp').isString().isLength({ min: 6, max: 6 }).trim(),
+//     authController.verifyPhoneOtp
+// );
+
+// 📧 Email OTP verification
+router.post(
+    '/verify-email',
+    body('email').isEmail().normalizeEmail(),
     body('otp').isString().isLength({ min: 6, max: 6 }).trim(),
-    authController.verifyPhoneOtp
+    authController.verifyEmailOtp
 );
 
 module.exports = router;
