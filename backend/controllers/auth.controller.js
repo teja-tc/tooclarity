@@ -1,6 +1,6 @@
 const InstituteAdmin = require('../models/InstituteAdmin');
 const jwt = require('jsonwebtoken');
-const otpService = require('../services/otpService')
+const otpService = require('../services/otp.service');
 
 const signToken = id => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -26,14 +26,8 @@ exports.register = async (req, res, next) => {
             linkedinUrl,
         });
 
-        // Generate, hash, and save the OTP
-        const otp = otpService.generateOtp();
-        newInstituteAdmin.phoneOtp = await bcrypt.hash(otp, 10);
-        newInstituteAdmin.phoneOtpExpires = Date.now() + (parseInt(process.env.OTP_EXPIRY_MINUTES, 10) * 60 * 1000);
-        await newInstituteAdmin.save();
-
         // Send the OTP via SMS
-        await otpService.sendOtpSms(newInstituteAdmin.contactNumber, otp);
+        await otpService.sendVerificationToken(contactNumber);
 
         res.status(201).json({
             status: 'success',
@@ -47,27 +41,20 @@ exports.register = async (req, res, next) => {
 exports.verifyPhoneOtp = async (req, res, next) => {
     try {
         const { contactNumber, otp } = req.body;
-
-        const user = await InstituteAdmin.findOne({ contactNumber }).select('+phoneOtp +phoneOtpExpires');
-
-        if (!user) {
-            return res.status(404).json({ status: 'fail', message: 'User with this contact number not found.' });
-        }
-
-        // Check if OTP exists is not expired and matches
-        const isOtpValid = user.phoneOtp && user.phoneOtpExpires && user.phoneOtpExpires > new Date();
+        const isOtpValid = await otpService.checkVerificationToken(contactNumber, otp);
         if (!isOtpValid) {
-            return res.status(400).json({ status: 'fail', message: 'OTP is invalid or has expired. Please request a new one.' });
+            return res.status(400).json({ status: 'fail', message: 'Incorrect or expired OTP.' });
         }
 
-        const isMatch = await bcrypt.compare(otp, user.phoneOtp);
-        if (!isMatch) {
-            return res.status(400).json({ status: 'fail', message: 'Incorrect OTP.' });
+        const user = await InstituteAdmin.findOne({ contactNumber });
+        if (!user) {
+            return res.status(404).json({ status: 'fail', message: 'User not found' });
+        }
+        if (user.isPhoneVerified) {
+            return res.status(400).json({ status: 'fail', message: 'Phone number is already verified.' });
         }
 
         user.isPhoneVerified = true;
-        user.phoneOtp = undefined;
-        user.phoneOtpExpires = undefined;
         await user.save();
         
         const token = signToken(user._id);

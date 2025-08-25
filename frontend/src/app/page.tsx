@@ -9,18 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import SignUpDialog from "@/components/auth/SignUpDialog";
 
 const features = [
   {
@@ -92,7 +81,7 @@ export default function LandingPage() {
         </div>
         <div className="flex gap-6 mr-0">
           <Button variant="login" size="lg">Log In</Button>
-          <Button variant="signup" size="lg">Sign Up</Button>
+          <SignUpDialog />
 
 
           
