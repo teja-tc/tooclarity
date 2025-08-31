@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,16 +13,26 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-// import VerifyDialog from "./VerifyDialog";
+import InputField from "@/components/ui/InputField";
+import { authAPI } from "../../lib/api";
+import OtpDialogBox from "./OtpDialogBox";
 
-export default function SignUpDialog() {
+interface SignUpDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export default function SignUpDialog({
+  open: externalOpen,
+  onOpenChange,
+}: SignUpDialogProps = {}) {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [showRePassword, setShowRePassword] = useState(false);
   const [formData, setFormData] = useState({
-    admin: "",
+    name: "",
     email: "",
-    phone: "",
+    contactNumber: "",
     designation: "",
     linkedin: "",
     password: "",
@@ -29,7 +40,13 @@ export default function SignUpDialog() {
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [openVerify, setOpenVerify] = useState(false);
+
+  // Use external open state if provided, otherwise use internal state
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
 
   // Password strength regex
   const passwordRegex =
@@ -38,28 +55,37 @@ export default function SignUpDialog() {
   const validateForm = () => {
     let newErrors: { [key: string]: string } = {};
 
-    if (!formData.admin.trim()) {
-      newErrors.admin = "Admin Name is required.";
+    if (!formData.name.trim()) {
+      newErrors.name = "Admin Name is required.";
     }
-    if (!formData.email.endsWith("@gmail.com")) {
-      newErrors.email = "Email must be a valid Gmail address.";
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required.";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address.";
     }
-    if (!/^\d{10}$/.test(formData.phone)) {
-      newErrors.phone = "Phone number must be exactly 10 digits.";
+
+    if (!/^\d{10}$/.test(formData.contactNumber)) {
+      newErrors.contactNumber = "Phone number must be exactly 10 digits.";
     }
+
     if (!formData.designation.trim()) {
       newErrors.designation = "Designation is required.";
     }
+
     if (!formData.linkedin.trim()) {
       newErrors.linkedin = "LinkedIn profile is required.";
     }
+
     if (!passwordRegex.test(formData.password)) {
       newErrors.password =
         "Password must be at least 8 characters long, include uppercase, lowercase, number and special character.";
     }
+
     if (formData.password !== formData.repassword) {
       newErrors.repassword = "Passwords do not match.";
     }
+
     if (!acceptTerms) {
       newErrors.terms = "You must accept the terms & conditions.";
     }
@@ -68,194 +94,263 @@ export default function SignUpDialog() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (validateForm()) {
-      setOpenVerify(true);
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    setErrors({});
+
+    try {
+      // Prepare data for API (exclude repassword)
+      const { repassword, ...signUpData } = formData;
+
+      const response = await authAPI.signUp(signUpData);
+
+      // Check for successful registration
+      if (response.success) {
+        // Close signup dialog and open OTP dialog
+        setOpen(false);
+        setOpenVerify(true);
+      } else {
+        setErrors({
+          general: response.message || "Sign up failed. Please try again.",
+        });
+      }
+    } catch (error) {
+      setErrors({ general: "Network error. Please try again." });
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleVerificationSuccess = () => {
+    // Handle successful verification
+    alert("Account verified successfully! Welcome to Too Clarity!");
+
+    // Reset form
+    setFormData({
+      name: "",
+      email: "",
+      contactNumber: "",
+      designation: "",
+      linkedin: "",
+      password: "",
+      repassword: "",
+    });
+    setAcceptTerms(false);
+
+    // Redirect to /signup page
+    router.push('/signup');
+  };
+
+  const handleGoogleSignUp = async () => {
+    alert("Google sign up integration would go here");
   };
 
   return (
     <>
-      <Dialog>
-        <form>
-          <DialogTrigger asChild>
-            <Button variant="signup" size="lg">
-              Sign Up
-            </Button>
-          </DialogTrigger>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="signup" size="lg">
+            Sign Up
+          </Button>
+        </DialogTrigger>
 
-          <DialogContent
-            className="fixed top-16 left-1/2 transform -translate-x-1/2 w-[552px] max-h-[90vh] rounded-[24px] p-6 bg-white flex flex-col justify-between overflow-y-auto scrollbar-hide"
-            style={{ opacity: 1 }}
-          >
-            <DialogHeader className="flex flex-col items-center gap-2">
-              <DialogTitle className="w-[235px] font-montserrat font-bold text-[24px] leading-[29px] text-center">
-                Welcome Aboard!
-              </DialogTitle>
-              <DialogDescription className="w-[235px] font-montserrat font-normal text-[14px] leading-[17px] text-center">
-                Let's finalize your details.
-              </DialogDescription>
-            </DialogHeader>
+        <DialogContent 
+          className="max-w-lg flex flex-col justify-between scrollbar-hide"
+          overlayClassName="bg-black/50"
+        >
+          <DialogHeader className="flex flex-col items-center gap-2">
+            <DialogTitle className="max-w-xs font-montserrat font-bold text-xl sm:text-[24px] leading-tight text-center">
+              Welcome Aboard!
+            </DialogTitle>
+            <DialogDescription className="max-w-xs font-montserrat font-normal text-sm sm:text-[14px] leading-relaxed text-center">
+              Let's finalize your details.
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="grid gap-6 flex-1">
-              {[
-                { label: "Admin Name", id: "admin" },
-                { label: "Mail ID", id: "email", type: "email" },
-                { label: "Contact Number", id: "phone", type: "tel" },
-                { label: "Designation", id: "designation" },
-                { label: "LinkedIn", id: "linkedin" },
-              ].map((f) => (
-                <div className="grid gap-2" key={f.id}>
-                  <Label
-                    htmlFor={f.id}
-                    className="block font-medium text-[18px] text-gray-900 font-montserrat"
-                  >
-                    {f.label}
-                    <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  {f.id === "phone" ? (
-                    <div className="relative w-[504px]">
+          <div className="grid gap-6 flex-1">
+            {/* General Error */}
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-600 text-sm text-center">
+                  {errors.general}
+                </p>
+              </div>
+            )}
+
+            {[
+              { label: "Admin Name", id: "name", formKey: "name" },
+              {
+                label: "Mail ID",
+                id: "email",
+                formKey: "email",
+                type: "email",
+              },
+              {
+                label: "Phone Number",
+                id: "phone",
+                formKey: "contactNumber",
+                type: "tel",
+              },
+              {
+                label: "Designation",
+                id: "designation",
+                formKey: "designation",
+              },
+              { label: "LinkedIn", id: "linkedin", formKey: "linkedin" },
+            ].map((f) => (
+              <div key={f.id}>
+                {f.id === "phone" ? (
+                  <InputField
+                    label={f.label}
+                    name={f.formKey}
+                    type="tel"
+                    placeholder="+91 0000000000"
+                    value={formData.contactNumber}
+                    numericOnly
+                    pattern="[0-9]*"
+                    maxLength={10}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        contactNumber: e.target.value,
+                      })
+                    }
+                    required={true}
+                    error={errors[f.formKey]}
+                    icon={
                       <img
                         src="/India-flag.png"
                         alt="India Flag"
-                        className="absolute left-3 top-1/2 -translate-y-1/2 w-6 h-4 object-cover rounded-sm"
+                        className="w-6 h-4 object-cover rounded-sm"
                       />
-                      <Input
-                        id="phone"
-                        type="tel"
-                        placeholder="+91 0000000000"
-                        value={formData.phone}
-                        onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
-                        }
-                        className="w-[504px] h-[48px] pl-12 pr-4 py-3 rounded-[12px] border border-[#DADADD] bg-[#F5F6F9]"
-                      />
-                    </div>
-                  ) : (
-                    <Input
-                      id={f.id}
-                      type={f.type || "text"}
-                      placeholder={`Enter your ${f.label}`}
-                      value={formData[f.id as keyof typeof formData]}
-                      onChange={(e) =>
-                        setFormData({ ...formData, [f.id]: e.target.value })
-                      }
-                      className="w-[504px] h-[48px] px-4 py-3 rounded-[12px] border border-[#DADADD] bg-[#F5F6F9]"
-                    />
-                  )}
-                  {errors[f.id] && (
-                    <p className="text-red-500 text-sm">{errors[f.id]}</p>
-                  )}
-                </div>
-              ))}
-
-              <div className="grid grid-cols-2 gap-4">
-                {/* Password */}
-                <div className="grid gap-2">
-                  <Label htmlFor="password">Password*</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                      placeholder="Enter your Password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                  {errors.password && (
-                    <p className="text-red-500 text-sm">{errors.password}</p>
-                  )}
-                </div>
-
-                {/* Re-enter Password */}
-                <div className="grid gap-2">
-                  <Label htmlFor="repassword">Re-enter Password*</Label>
-                  <div className="relative">
-                    <Input
-                      id="repassword"
-                      type={showRePassword ? "text" : "password"}
-                      value={formData.repassword}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          repassword: e.target.value,
-                        })
-                      }
-                      placeholder="Re-enter your Password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowRePassword(!showRePassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-                    >
-                      {showRePassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                  {errors.repassword && (
-                    <p className="text-red-500 text-sm">{errors.repassword}</p>
-                  )}
-                </div>
+                    }
+                  />
+                ) : (
+                  <InputField
+                    label={f.label}
+                    name={f.formKey}
+                    type={f.type || "text"}
+                    placeholder={`Enter your ${f.label}`}
+                    value={formData[f.formKey as keyof typeof formData]}
+                    onChange={(e) =>
+                      setFormData({ ...formData, [f.formKey]: e.target.value })
+                    }
+                    required={true}
+                    error={errors[f.formKey]}
+                  />
+                )}
               </div>
+            ))}
 
-              {/* Accept Terms */}
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={acceptTerms}
-                  onChange={(e) => setAcceptTerms(e.target.checked)}
-                  id="terms"
-                  className="w-4 h-4"
-                />
-                <label htmlFor="terms" className="text-sm">
-                  Accept terms & conditions*
-                </label>
-              </div>
-              {errors.terms && (
-                <p className="text-red-500 text-sm">{errors.terms}</p>
-              )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Password */}
+              <InputField
+                label="Password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your Password"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                required={true}
+                error={errors.password}
+                icon={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                }
+              />
+
+              {/* Re-enter Password */}
+              <InputField
+                label="Re-enter Password"
+                name="repassword"
+                type={showRePassword ? "text" : "password"}
+                placeholder="Re-enter your Password"
+                value={formData.repassword}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    repassword: e.target.value,
+                  })
+                }
+                required={true}
+                error={errors.repassword}
+                icon={
+                  <button
+                    type="button"
+                    onClick={() => setShowRePassword(!showRePassword)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    {showRePassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                }
+              />
             </div>
 
-            <div className="flex flex-col items-center gap-4 mt-4">
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                className={`w-[500px] h-[48px] rounded-[12px] px-4 py-3 gap-2 font-semibold ${
-                  acceptTerms
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-400 text-white"
-                }`}
+            {/* Accept Terms */}
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+                id="terms"
+                className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 accent-blue-600"
+              />
+              <label
+                htmlFor="terms"
+                className="text-sm sm:text-base leading-relaxed cursor-pointer"
               >
-                Submit
-              </Button>
-
-                    <div className="text-center text-gray-500 mt-2">or</div>
-
-      <button
-        type="button"
-        className="w-full border border-gray-300 rounded py-2 flex items-center justify-center gap-2 hover:bg-gray-100 transition"
-      >
-        <img src="/google.png" alt="Google" className="w-5 h-5" />
-        Sign in with Google
-      </button>
+                Accept terms & conditions*
+              </label>
             </div>
-          </DialogContent>
-        </form>
+            {errors.terms && (
+              <p className="text-red-500 text-sm">{errors.terms}</p>
+            )}
+          </div>
+
+          <div className="flex flex-col items-center gap-4 mt-4">
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading || !acceptTerms}
+              className={`w-full h-12 sm:h-[48px] rounded-[12px] px-4 py-3 gap-2 font-semibold ${
+                acceptTerms && !loading
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-gray-400 text-white"
+              }`}
+            >
+              {loading ? "Creating Account..." : "Submit"}
+            </Button>
+
+            <div className="text-center text-gray-500 mt-2">or</div>
+
+            <button
+              type="button"
+              onClick={handleGoogleSignUp}
+              className="w-full border border-gray-300 rounded py-2 flex items-center justify-center gap-2 hover:bg-gray-100 transition"
+            >
+              <img src="/google.png" alt="Google" className="w-5 h-5" />
+              Sign up with Google
+            </button>
+          </div>
+        </DialogContent>
       </Dialog>
-{/* 
-      <VerifyDialog
+
+      {/* OTP Verification Dialog */}
+      <OtpDialogBox
         open={openVerify}
         setOpen={setOpenVerify}
-        phone={formData.phone}
-      /> */}
+        email={formData.email}
+        onVerificationSuccess={handleVerificationSuccess}
+      />
     </>
   );
 }

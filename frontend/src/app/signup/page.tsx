@@ -1,205 +1,74 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
+import L1DialogBox from "@/components/auth/L1DialogBox";
+import L2DialogBox from "@/components/auth/L2DialogBox";
+import L3DialogBox from "@/components/auth/L3DialogBox";
 
 export default function SignupPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    designation: "",
-    linkedin: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [l1DialogOpen, setL1DialogOpen] = useState(false);
+  const [l2DialogOpen, setL2DialogOpen] = useState(false);
+  const [l3DialogOpen, setL3DialogOpen] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  // Automatically open L1 dialog when component mounts
+  useEffect(() => {
+    setL1DialogOpen(true);
+  }, []);
+
+  // Handle L1 success - open L2 dialog
+  const handleL1Success = () => {
+    setL2DialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
-      return;
-    }
-    console.log("Form submitted:", formData);
+  // Handle L2 success - open L3 dialog (Study Halls and Tution Centers redirect directly to dashboard from L2)
+  const handleL2Success = () => {
+    setL3DialogOpen(true);
+  };
+
+  // Handle L3 success - complete the flow
+  const handleL3Success = () => {
+    console.log("Signup completed!");
   };
 
   return (
-    <div className="relative min-h-screen">
-      {/* Fixed Background overlay */}
-      <div
-        className="fixed inset-0 z-0"
-        style={{
-          backgroundColor: "#1D1C1AB2",
-          backdropFilter: "blur(3.4px)",
-        }}
-      ></div>
-
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#FBF9F5]">
       {/* Top navigation bar */}
-      <div className="w-full h-[80px] flex justify-between items-center px-20 bg-[#FBF9F5] z-10 relative">
-        <img src="/Too%20Clarity.png" alt="Too Clarity Logo" className="h-7 w-auto" />
+      <div className="w-full h-auto sm:h-[64px] md:h-[80px] flex flex-col sm:flex-row justify-between items-center px-4 sm:px-6 md:px-20 z-10 fixed top-0 left-0 py-3 sm:py-0">
+        <img
+          src="/Too%20Clarity.png"
+          alt="Too Clarity Logo"
+          className="h-6 sm:h-7 w-auto mb-2 sm:mb-0"
+        />
         <a
           href="tel:+919391160205"
-          className="text-sm text-blue-700 flex items-center gap-1"
+          className="text-xs sm:text-sm text-blue-700 flex items-center gap-1 hover:underline transition-all duration-200"
         >
-          Need help? Call +91 9391160205
+          <span className="hidden sm:inline">Need help? Call</span>
+          <span className="sm:hidden">Call</span>
+          +91 9391160205
         </a>
       </div>
 
-      {/* Form container */}
-      <div
-        className="absolute z-20 flex flex-col gap-8 rounded-[24px]"
-        style={{
-          width: "552px",
-          height: "884px",
-          top: "70px",
-          left: "444px",
-          padding: "24px",
-          backgroundColor: "#FFFFFF",
-        }}
-      >
-        <div className="flex flex-col items-center mb-1">
-          <h2 className="w-[235px] h-[29px] text-[24px] font-bold text-[#060B13] leading-[100%] tracking-[0%] font-montserrat text-center">
-            Welcome Aboard!
-          </h2>
-          <p className="text-[14px] font-normal text-[#697282] leading-[100%] tracking-[0%] font-montserrat text-center mt-1">
-            Let's finalize your details.
-          </p>
-        </div>
+      {/* L1 Dialog Box - Opens automatically */}
+      <L1DialogBox 
+        open={l1DialogOpen}
+        onOpenChange={setL1DialogOpen}
+        onSuccess={handleL1Success}
+      />
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 flex-1">
-          {/* Name */}
-          <div className="flex flex-col gap-[12px]">
-            <label className="block font-medium text-[18px] leading-[100%] text-gray-900 font-montserrat">
-              Admin Name *
-            </label>
-            <input
-              type="text"
-              name="name"
-              placeholder="Enter your name"
-              required
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full h-[48px] px-4 py-3 rounded-[12px] border border-[#DADADD] bg-[#F5F6F9] focus:outline-none focus:ring-2 focus:ring-gray-300"
-            />
-          </div>
+      {/* L2 Dialog Box - Opens after L1 success */}
+      <L2DialogBox 
+        open={l2DialogOpen}
+        onOpenChange={setL2DialogOpen}
+        onSuccess={handleL2Success}
+      />
 
-          {/* Email */}
-          <div className="flex flex-col gap-[12px]">
-            <label className="block font-medium text-[18px] leading-[100%] text-gray-900 font-montserrat">
-              Mail id *
-            </label>
-            <input
-              type="email"
-              name="email"
-              placeholder="Enter your mail id"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full h-[48px] px-4 py-3 rounded-[12px] border border-[#DADADD] bg-[#F5F6F9] focus:outline-none focus:ring-2 focus:ring-gray-300"
-            />
-          </div>
-
-          {/* Phone */}
-          <div className="flex flex-col gap-[12px]">
-            <label className="block font-medium text-[18px] leading-[100%] text-gray-900 font-montserrat">
-              Contact Number *
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              placeholder="+91 00000 00000"
-              required
-              value={formData.phone}
-              onChange={handleChange}
-              className="w-full h-[48px] px-4 py-3 rounded-[12px] border border-[#DADADD] bg-[#F5F6F9] focus:outline-none focus:ring-2 focus:ring-gray-300"
-            />
-          </div>
-
-          {/* Designation */}
-          <div className="flex flex-col gap-[12px]">
-            <label className="block font-medium text-[18px] leading-[100%] text-gray-900 font-montserrat">
-              Designation *
-            </label>
-            <input
-              type="text"
-              name="designation"
-              placeholder="e.g. Admissions Director, Marketing Head"
-              required
-              value={formData.designation}
-              onChange={handleChange}
-              className="w-full h-[48px] px-4 py-3 rounded-[12px] border border-[#DADADD] bg-[#F5F6F9] focus:outline-none focus:ring-2 focus:ring-gray-300"
-            />
-          </div>
-
-          {/* LinkedIn */}
-          <div className="flex flex-col gap-[12px]">
-            <label className="block font-medium text-[18px] leading-[100%] text-gray-900 font-montserrat">
-              LinkedIn *
-            </label>
-            <input
-              type="url"
-              name="linkedin"
-              placeholder="Paste your LinkedIn URL"
-              required
-              value={formData.linkedin}
-              onChange={handleChange}
-              className="w-full h-[48px] px-4 py-3 rounded-[12px] border border-[#DADADD] bg-[#F5F6F9] focus:outline-none focus:ring-2 focus:ring-gray-300"
-            />
-          </div>
-
-          {/* Passwords */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="flex flex-col gap-[12px]">
-              <label className="block text-[18px] font-medium text-black font-montserrat leading-[100%] tracking-[0%]">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                placeholder="Enter your Password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full h-[48px] px-4 py-3 border border-[#DADADD] rounded-[12px] bg-[#F5F6F9] focus:outline-none focus:ring-2 focus:ring-blue-300"
-              />
-            </div>
-            <div className="flex flex-col gap-[12px]">
-              <label className="block text-[18px] font-medium text-black font-montserrat leading-[100%] tracking-[0%]">
-                Re-enter Password
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Re-enter your Password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full h-[48px] px-4 py-3 border border-[#DADADD] rounded-[12px] bg-[#F5F6F9] focus:outline-none focus:ring-2 focus:ring-blue-300"
-              />
-            </div>
-          </div>
-
-          {/* Buttons */}
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition mt-4"
-          >
-            Submit
-          </button>
-
-          <div className="text-center text-gray-500 mt-2">or</div>
-
-          <button
-            type="button"
-            className="w-full border border-gray-300 rounded py-2 flex items-center justify-center gap-2 hover:bg-gray-100 transition"
-          >
-            <img src="/google.png" alt="Google" className="w-5 h-5" />
-            Sign in with Google
-          </button>
-        </form>
-      </div>
+      {/* L3 Dialog Box - Opens after L2 success */}
+      <L3DialogBox 
+        open={l3DialogOpen}
+        onOpenChange={setL3DialogOpen}
+        onSuccess={handleL3Success}
+      />
     </div>
   );
 }

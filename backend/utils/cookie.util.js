@@ -1,11 +1,19 @@
 const { decodeToken } = require("./jwt.util");
 
 class CookieUtil {
+  // static defaultOptions = {
+  //   httpOnly: true,
+  //   secure: process.env.NODE_ENV === "production",
+  //   sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+  //   path: "/", // default root path
+  // };
+
   static defaultOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/", // default root path
+    secure: false, // because you're on http://localhost
+    sameSite: "lax", // required for cross-origin (3000 -> 3001)
+    path: "/",
+    maxAge: 15 * 60 * 1000,
   };
 
   /**
@@ -15,11 +23,22 @@ class CookieUtil {
    * @param {string} value - Cookie value
    * @param {Object} options - Extra cookie options (e.g. maxAge, expires, path)
    */
+  // static setCookie(res, name, value, options = {}) {
+  //   res.cookie(name, value, {
+  //     ...this.defaultOptions,
+  //     ...options,
+  //   });
+  // }
+
   static setCookie(res, name, value, options = {}) {
-    res.cookie(name, value, {
-      ...this.defaultOptions,
-      ...options,
-    });
+    const finalOptions = { ...this.defaultOptions, ...options };
+
+    // If user passes `maxAge`, make sure `expires` syncs too
+    if (finalOptions.maxAge && !finalOptions.expires) {
+      finalOptions.expires = new Date(Date.now() + finalOptions.maxAge);
+    }
+
+    res.cookie(name, value, finalOptions);
   }
 
   /**
@@ -51,9 +70,18 @@ class CookieUtil {
    * @param {Object} cookies - { name: value, ... }
    * @param {Object} options - Options applied to all cookies
    */
-  static setCookies(res, cookies = {}, options = {}) {
-    Object.entries(cookies).forEach(([name, value]) => {
-      this.setCookie(res, name, value, options);
+  // static setCookies(res, cookies = {}, options = {}) {
+  //   Object.entries(cookies).forEach(([name, value]) => {
+  //     this.setCookie(res, name, value, options);
+  //   });
+  // }
+
+  static setCookies(res, name, value, options = {}) {
+    res.cookie(name, value, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      ...options,
     });
   }
 

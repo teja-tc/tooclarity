@@ -38,7 +38,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50",
         className
       )}
       {...props}
@@ -50,32 +50,28 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  overlayClassName,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  overlayClassName?: string
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
+      <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed z-50",
+          "fixed z-50 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]",
+          "w-[95vw] sm:w-[90vw] md:w-[552px]",
+          "max-h-[95vh] sm:max-h-[90vh]",
+          "rounded-[24px] p-4 sm:p-6 bg-white",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "overflow-y-auto",
           className
         )}
-        style={{
-          width: "552px",
-          height: "884px",
-          top: "70px",
-          left: "444px",
-          gap: "32px",
-          transform: "none", // removes default translate centering
-          borderRadius: "24px",
-          padding: "24px",
-          background: "#FFFFFF",
-          opacity: 1,
-          rotate: "0deg",
-        }}
         {...props}
       >
         {children}
