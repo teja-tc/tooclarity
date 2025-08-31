@@ -8,7 +8,7 @@ const router = express.Router({ mergeParams: true });
 router.route('/')
     .post(
         uploadCourseFiles, // 1. Handle file uploads first
-        validateCourseCreation, // 2. Then validate the rest of the body
+        // validateCourseCreation, // 2. Then validate the rest of the body
         courseController.createCourse
     )
     .get(courseController.getAllCoursesForInstitution);

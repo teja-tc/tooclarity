@@ -5,7 +5,7 @@ const { validateBranchCreation, validateBranchUpdate } = require('../middleware/
 const router = express.Router({ mergeParams: true });
 
 router.route('/')
-    .post(validateBranchCreation, branchController.createBranch)
+    .post(branchController.createBranch)
     .get(branchController.getAllBranchesForInstitution);
 
 router.route('/:branchId')

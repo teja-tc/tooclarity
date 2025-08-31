@@ -8,18 +8,10 @@ const branchSchema = new mongoose.Schema({
         maxlength: [100, 'Branch name cannot exceed 100 characters.']
     },
     contactInfo: {
-        countryCode: {
-            type: String,
-            required: true,
-            trim: true,
-            default: '+91'
-        },
-        number: {
-            type: String,
-            required: [true, 'Contact number is required.'],
-            trim: true,
-            match: [/^\d{10}$/, 'Please provide a valid contact number.']
-        }
+        type: String,
+        required: [true, 'Contact number is required.'],
+        trim: true,
+        match: [/^\d{10}$/, 'Please provide a valid contact number.']
     },
     branchAddress: {
         type: String,
@@ -30,7 +22,7 @@ const branchSchema = new mongoose.Schema({
     locationUrl: {
         type: String,
         trim: true,
-        match: [/^https?:\/\/.+/, 'Please provide a valid URL.']
+        // match: [/^https?:\/\/.+/, 'Please provide a valid URL.']
     },
     institution: {
         type: mongoose.Schema.Types.ObjectId,
