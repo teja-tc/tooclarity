@@ -46,6 +46,7 @@ exports.validateL1Creation = [
     body('instituteName').notEmpty().withMessage('Institution name is required').trim().isLength({ max: 150 }).escape(),
     body('instituteType').isIn([
         'Kindergarten/childcare center', "School's", 'Intermediate college(K12)', 'Under Graduation/Post Graduation', 'Coaching centers',"Tution Center's", 'Study Halls', 'Study Abroad'
+
     ]).withMessage('A valid institute type is required.'),
     // body('establishmentDate').optional({ checkFalsy: true }).isISO8601().toDate().withMessage('Establishment date must be a valid date.'),
     body('approvedBy').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).escape(),
@@ -107,6 +108,7 @@ exports.validateL2Update = async (req, res, next) => {
             case 'Coaching centers': return next();
             case "Tution Center's" : return next();
             case 'Study Halls': return next();
+
             default:
                 logger.error({ userId: req.userId, instituteType: institution.instituteType }, 'Unsupported institution type for L2 update.');
                 return res.status(400).json({ status: 'fail', message: 'Unsupported institution type for L2 update.' });
