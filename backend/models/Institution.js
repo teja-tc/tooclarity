@@ -143,78 +143,6 @@ const CoachingCenter = Institution.discriminator(
   coachingCenterSchema
 );
 
-const studyHallSchema = new mongoose.Schema({
-      hallName: {
-        type: String,
-        required: true,
-        trim: true,
-        default: "Hall 1",
-      },
-      seatingOption: {
-        type: String,
-        required: true,
-        enum: ["Dedicated Desk", "Hot Desk", "Private Cabin"],
-        default: "",
-      },
-      totalSeats: {
-        type: Number,
-        required: true,
-        min: 1,
-        default: "",
-      },
-      availableSeats: {
-        type: Number,
-        required: true,
-        min: 0,
-        validate: {
-          validator: function (value) {
-            return value <= this.totalSeats;
-          },
-          message: "Available seats cannot exceed total seats.",
-        },
-        default: "",
-      },
-      operationalDays: {
-        type: [String],
-        required: true,
-        enum: ["Mon", "Tues", "Wed", "Thur", "Fri", "Sat"],
-        default: [],
-      },
-      // operationalTimes: {
-      //   opening: {
-      //     type: String,
-      //     required: true,
-      //     match: /^([01]\d|2[0-3]):([0-5]\d)$/,
-      //   },
-      //   closing: {
-      //     type: String,
-      //     required: true,
-      //     match: /^([01]\d|2[0-3]):([0-5]\d)$/,
-      //   },
-      // },
-      closingTime: { type: String, default: "" },
-      openingTime: { type: String, default: "" },
-      priceOfSeat: {
-        type: Number,
-        required: true,
-        min: 0,
-        default: "",
-      },
-      image: {
-        type: String,
-        required: true,
-        default: "",
-      },
-      amenities: {
-        wifi: { type: Boolean, default: false },
-        chargingPoints: { type: Boolean, default: false },
-        ac: { type: Boolean, default: false },
-        personalLockers: { type: Boolean, default: false },
-      },
-    },
-  );
-
-const StudyHall = Institution.discriminator("Study Halls", studyHallSchema);
 
 const schoolAndIntermediateSchema = new mongoose.Schema({
   schoolType: {
@@ -295,12 +223,31 @@ const UgPgUniversity = Institution.discriminator(
   ugPgUniversitySchema
 );
 
+const StudyHalls = Institution.discriminator(
+  "Study Halls",
+  new mongoose.Schema({}, baseOptions)
+);
+
+const TutionCenters = Institution.discriminator(
+  "Tution Center's",
+  new mongoose.Schema({}, baseOptions)
+);
+
+const StudyAbroad = Institution.discriminator(
+  "Study Abroad",
+  new mongoose.Schema({}, baseOptions)
+);
+
+
 module.exports = {
   Institution,
   Kindergarten,
   CoachingCenter,
-  StudyHall,
+  // StudyHall,
   School,
   IntermediateCollege,
   UgPgUniversity,
+  StudyHalls,
+  TutionCenters,
+  StudyAbroad
 };
