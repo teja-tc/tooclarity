@@ -24,7 +24,11 @@ exports.validateRegistration = [
     body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
     body('name').notEmpty().withMessage('Name is required').trim().escape(),
     body('password').isStrongPassword(strongPasswordOptions).withMessage('Password must be at least 8 characters long and contain an uppercase letter, a lowercase letter, a number, and a symbol.'),
-    body('contactNumber').isMobilePhone('any', { strictMode: true }).withMessage('A valid 10-digit contact number is required.'),
+    // body('contactNumber').isMobilePhone('any', { strictMode: true }).withMessage('A valid 10-digit contact number is required.'),
+    body('contactNumber')
+  .matches(/^[0-9]{10}$/)
+  .withMessage('A valid 10-digit contact number is required.'),
+
     body('designation').notEmpty().withMessage('Designation is required').trim().escape(),
     body('linkedinUrl').optional({ checkFalsy: true }).isURL().withMessage('Invalid LinkedIn URL').trim(),
     handleValidationErrors,
@@ -39,11 +43,11 @@ exports.validateLogin = [
 
 // --- L1 INSTITUTION VALIDATOR ---
 exports.validateL1Creation = [
-    body('name').notEmpty().withMessage('Institution name is required').trim().isLength({ max: 150 }).escape(),
+    body('instituteName').notEmpty().withMessage('Institution name is required').trim().isLength({ max: 150 }).escape(),
     body('instituteType').isIn([
-        'Kindergarten/childcare center', 'School', 'Intermediate college(K12)', 'UG / PG University', 'Coaching centers', 'Study halls', 'Study Abroad'
+        'Kindergarten/childcare center', "School's", 'Intermediate college(K12)', 'Under Graduation/Post Graduation', 'Coaching centers',"Tution Center's", 'Study Halls', 'Study Abroad'
     ]).withMessage('A valid institute type is required.'),
-    body('establishmentDate').optional({ checkFalsy: true }).isISO8601().toDate().withMessage('Establishment date must be a valid date.'),
+    // body('establishmentDate').optional({ checkFalsy: true }).isISO8601().toDate().withMessage('Establishment date must be a valid date.'),
     body('approvedBy').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).escape(),
     handleValidationErrors,
 ];
@@ -53,13 +57,13 @@ exports.validateL1Creation = [
 const kindergartenL2Rules = [
     body('schoolType').isIn(['Public', 'Private (For-profit)', 'Private (Non-profit)', 'International', 'Home - based']).withMessage('Invalid school type.'),
     body('curriculumType').trim().notEmpty().withMessage('Curriculum type is required.').isLength({ max: 100 }).escape(),
-    body('operationalTimes.opening').matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage('Opening time must be in HH:MM format.'),
-    body('operationalTimes.closing').matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage('Closing time must be in HH:MM format.'),
+    // body('operationalTimes.opening').matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage('Opening time must be in HH:MM format.'),
+    // body('operationalTimes.closing').matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage('Closing time must be in HH:MM format.'),
     body('operationalDays').isArray({ min: 1 }).withMessage('At least one operational day is required.'),
     body('operationalDays.*').isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat']),
-    body('extendedCare').isBoolean().withMessage('Extended care must be true or false.'),
-    body('mealsProvided').isBoolean().withMessage('Meals provided must be true or false.'),
-    body('outdoorPlayArea').isBoolean().withMessage('Outdoor play area must be true or false.'),
+    // body('extendedCare').isBoolean().withMessage('Extended care must be true or false.'),
+    // body('mealsProvided').isBoolean().withMessage('Meals provided must be true or false.'),
+    // body('outdoorPlayArea').isBoolean().withMessage('Outdoor play area must be true or false.'),
 ];
 
 const schoolAndIntermediateL2Rules = [
@@ -85,21 +89,26 @@ const ugPgUniversityL2Rules = [
 
 exports.validateL2Update = async (req, res, next) => {
     try {
-        const institution = await Institution.findById(req.user.institution);
+        const userId = req.userId;
+        // const institution = await Institution.findById(req.user.institution);
+        const institution = await Institution.findOne({ owner: userId });
         if (!institution) {
-            logger.warn({ userId: req.user.id }, 'Attempted L2 update for a non-existent institution.');
+            logger.warn({ userId: req.userId }, 'Attempted L2 update for a non-existent institution.');
             return res.status(404).json({ status: 'fail', message: 'Institution not found for the logged-in user.' });
         }
 
         let validationChain = [];
         switch (institution.instituteType) {
             case 'Kindergarten/childcare center': validationChain = kindergartenL2Rules; break;
-            case 'School':
+            case "School's": return next(); break;
             case 'Intermediate college(K12)': validationChain = schoolAndIntermediateL2Rules; break;
             case 'UG / PG University': validationChain = ugPgUniversityL2Rules; break;
             case 'Study Abroad': return next();
+            case 'Coaching centers': return next();
+            case "Tution Center's" : return next();
+            case 'Study Halls': return next();
             default:
-                logger.error({ userId: req.user.id, instituteType: institution.instituteType }, 'Unsupported institution type for L2 update.');
+                logger.error({ userId: req.userId, instituteType: institution.instituteType }, 'Unsupported institution type for L2 update.');
                 return res.status(400).json({ status: 'fail', message: 'Unsupported institution type for L2 update.' });
         }
 

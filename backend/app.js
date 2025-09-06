@@ -4,11 +4,13 @@ const helmet = require('helmet');
 // const rateLimit = require('express-rate-limit');
 const pinoHttp = require('pino-http');
 const logger = require('./config/logger');
+const cookieParser = require('cookie-parser');
 
 const authRoutes = require('./routes/auth.routes');
 const institutionRoutes = require('./routes/institution.routes');
 const branchRoutes = require('./routes/branch.routes');
 const courseRoutes = require('./routes/course.routes');
+const profileRoutes = require('./routes/profile.routes');
 
 // import global auth middleware
 const globalAuthMiddleware = require('./middleware/globalAuth.middleware');
@@ -26,6 +28,7 @@ const corsOptions = {
     optionsSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
+app.use(cookieParser());
 
 // The limiter middleware has been commented out as requested.
 // const limiter = rateLimit({
@@ -43,6 +46,8 @@ app.use('/api/v1/auth', authRoutes);
 
 // 🚨 Apply Global Auth Middleware (for all routes below this line)
 app.use(globalAuthMiddleware);
+
+app.use("/api/v1/", profileRoutes)
 
 app.use('/api/v1/institutions', institutionRoutes);
 

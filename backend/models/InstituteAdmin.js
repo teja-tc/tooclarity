@@ -44,6 +44,10 @@ const instituteAdminSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Institution',
     },
+    isEmailVerified:{
+        type:Boolean,
+        default:false,
+    },
     isPhoneVerified: {
         type: Boolean,
         default: false,

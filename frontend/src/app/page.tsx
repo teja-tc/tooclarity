@@ -10,6 +10,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import SignUpDialog from "@/components/auth/SignUpDialog";
+import LoginDialogBox from "@/components/auth/LoginDialogBox";
+import { useAuth } from "../lib/auth-context";
+import { useState } from "react";
 
 const features = [
   {
@@ -72,33 +75,64 @@ const faqs = [
 
 
 export default function LandingPage() {
+  const { isAuthenticated, user, logout } = useAuth();
+  const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
+  const handleDashboard = () => {
+    window.location.href = '/dashboard';
+  };
+
+  const handleGetStarted = () => {
+    setSignUpDialogOpen(true);
+  };
+
   return (
-    <main className="font-montserrat text-gray-800 animate-fadeIn bg-[#FBF9F5]">
+    <main className="font-montserrat text-gray-800 animate-fadeIn bg-[#FBF9F5] min-h-screen">
       {/* Navbar */}
-      <nav className="fixed top-0 left-1/2 -translate-x-1/2 flex justify-between items-center bg-[#FBF9F5] z-50 w-[1440px] h-[80px] px-5">
+      <nav className="fixed top-0 left-0 right-0 flex justify-between items-center bg-[#FBF9F5] z-50 h-[80px] px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="transition-transform duration-300">
-          <img src="/Too%20Clarity.png" alt="Too Clarity Logo" className="h-7 w-auto" />
+          <img src="/Too%20Clarity.png" alt="Too Clarity Logo" className="h-6 sm:h-7 w-auto" />
         </div>
-        <div className="flex gap-6 mr-0">
-          <Button variant="login" size="lg">Log In</Button>
-          <SignUpDialog />
-
-
-          
+        <div className="flex gap-2 sm:gap-4 lg:gap-6">
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2 sm:gap-4">
+              <span className="text-xs sm:text-sm text-gray-600 hidden sm:block">
+                Welcome, {user?.admin}
+              </span>
+              <Button onClick={handleDashboard} variant="signup" className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2">
+                Dashboard
+              </Button>
+              <Button onClick={handleLogout} variant="login" className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2">
+                Logout
+              </Button>
+            </div>
+          ) : (
+            <>
+              <LoginDialogBox/>
+              <SignUpDialog open={signUpDialogOpen} onOpenChange={setSignUpDialogOpen} />
+            </>
+          )}
         </div>
       </nav>
 
       {/* Hero */}
-      <section className="text-center pt-40 pb-16 px-4 animate-fadeIn">
-        <h1 className="font-sora font-semibold text-[48px]">
-          Unlock Your <span className="text-blue-700">Institution&apos;s</span> <br />
-          <span className="text-blue-700 text-[45px]">Global Reach</span>
+      <section className="text-center pt-32 sm:pt-40 pb-16 px-4 animate-fadeIn">
+        <h1 className="font-sora font-semibold text-2xl sm:text-3xl md:text-4xl lg:text-[48px] leading-tight">
+          Unlock Your <span className="text-blue-700">Institution&apos;s</span> <br className="hidden sm:block" />
+          <span className="text-blue-700">Global Reach</span>
         </h1>
-        <p className="font-montserrat font-medium text-[16px] leading-[24px] tracking-[1px] text-[#697282] w-[659px] mx-auto opacity-90 mt-6">
+        <p className="font-montserrat font-medium text-sm sm:text-base leading-6 tracking-wide text-[#697282] max-w-2xl mx-auto opacity-90 mt-6">
           Connect directly with students actively seeking quality education with a verified and transparent marketplace.
         </p>
         <div className="flex justify-center mt-6">
-          <button className="relative w-[160px] h-[48px] rounded-[12px] bg-blue-700 text-white font-montserrat font-medium text-[18px] flex items-center justify-center overflow-hidden">
+          <button 
+            onClick={handleGetStarted}
+            className="relative w-40 sm:w-[160px] h-12 sm:h-[48px] rounded-[12px] bg-blue-700 text-white font-montserrat font-medium text-base sm:text-[18px] flex items-center justify-center overflow-hidden hover:bg-blue-800 transition-colors cursor-pointer"
+          >
             <span className="relative z-10">Get Started</span>
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/70 to-transparent opacity-50 animate-shimmer"></span>
           </button>
@@ -115,16 +149,16 @@ export default function LandingPage() {
 
       {/* Why Partner */}
       <section className="text-center py-10 px-4">
-        <h1 className="font-sora font-semibold text-[48px] mb-6">
-          Why should you partner with <br />
+        <h1 className="font-sora font-semibold text-2xl sm:text-3xl md:text-4xl lg:text-[48px] mb-6 leading-tight">
+          Why should you partner with <br className="hidden sm:block" />
           <span className="text-blue-700">Too Clarity?</span>
         </h1>
-        <div className="flex justify-between max-w-[1162px] mx-auto py-10 px-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto py-10 px-4">
           {features.map((item, idx) => (
-            <div key={idx} className="flex flex-col items-center w-[350px] h-[194px] gap-4 p-3">
-              <img src={item.logo} alt={item.title} className="w-[70px] h-[70px] object-contain" />
-              <h3 className="font-semibold text-[20px]">{item.title}</h3>
-              <p className="text-[#697282] text-[14px] leading-[24px]">{item.desc}</p>
+            <div key={idx} className="flex flex-col items-center gap-4 p-3">
+              <img src={item.logo} alt={item.title} className="w-16 h-16 sm:w-[70px] sm:h-[70px] object-contain" />
+              <h3 className="font-semibold text-lg sm:text-[20px]">{item.title}</h3>
+              <p className="text-[#697282] text-sm sm:text-[14px] leading-6">{item.desc}</p>
             </div>
           ))}
         </div>
@@ -132,23 +166,23 @@ export default function LandingPage() {
 
       {/* How Simple */}
       <section className="text-center py-16 px-4 bg-[#FBF9F5]">
-        <h1 className="font-sora font-semibold text-[48px] mb-12">
+        <h1 className="font-sora font-semibold text-2xl sm:text-3xl md:text-4xl lg:text-[48px] mb-12 leading-tight">
           How simple is it to <span className="text-blue-700">connect</span>
         </h1>
-        <div className="flex justify-between max-w-[1162px] mx-auto py-10 px-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto py-10 px-4">
           {steps.map((item, idx) => (
-            <div key={idx} className="flex flex-col items-center w-[350px] h-[194px] gap-4 p-3">
-              <img src={item.logo} alt={item.title} className="w-[70px] h-[70px] object-contain" />
-              <h3 className="font-semibold text-[20px]">{item.title}</h3>
-              <p className="text-[#697282] text-[14px] leading-[24px]">{item.desc}</p>
+            <div key={idx} className="flex flex-col items-center gap-4 p-3">
+              <img src={item.logo} alt={item.title} className="w-16 h-16 sm:w-[70px] sm:h-[70px] object-contain" />
+              <h3 className="font-semibold text-lg sm:text-[20px]">{item.title}</h3>
+              <p className="text-[#697282] text-sm sm:text-[14px] leading-6">{item.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="max-w-3xl mx-auto py-16 px-4">
-        <h1 className="font-sora font-semibold text-center text-[48px] mb-8">
+      <section className="max-w-4xl mx-auto py-16 px-4">
+        <h1 className="font-sora font-semibold text-center text-2xl sm:text-3xl md:text-4xl lg:text-[48px] mb-8 leading-tight">
           Frequently Asked <span className="text-blue-700">Questions</span>
         </h1>
         <Accordion type="single" collapsible className="w-full flex flex-col items-center space-y-4 font-montserrat">
@@ -156,15 +190,15 @@ export default function LandingPage() {
             <AccordionItem
               key={idx}
               value={`item-${idx + 1}`}
-              className="relative w-[630px] rounded-[30px] bg-[#F5F4F4] border shadow-[inset_0px_6px_6px_0px_#68686808,inset_0px_3px_3px_0px_#68686803,inset_0px_9px_9px_0px_#00000008]"
+              className="relative w-full max-w-2xl rounded-[30px] bg-[#F5F4F4] border shadow-[inset_0px_6px_6px_0px_#68686808,inset_0px_3px_3px_0px_#68686803,inset_0px_9px_9px_0px_#00000008]"
             >
               <div className="absolute inset-0 rounded-[30px] p-[1px] bg-[linear-gradient(180deg,rgba(245,244,244,0.05)_0%,rgba(231,230,230,0.0550481)_10.1%,rgba(213,212,212,0.0612981)_22.6%,rgba(198,197,197,0.0668269)_33.65%,rgba(185,185,185,0.0711538)_42.31%,rgba(169,169,169,0.0769231)_53.85%,rgba(148,148,148,0.084375)_68.75%,rgba(124,124,124,0.0929487)_86.38%,rgba(104,104,104,0.1)_100%)]">
                 <div className="w-full h-full rounded-[30px] bg-[#F5F4F4]" />
               </div>
-              <AccordionTrigger className="relative z-10 flex w-full items-center justify-between px-3 py-4 font-medium rounded-[30px] transition-colors hover:no-underline data-[state=closed]:hover:bg-blue-700 data-[state=closed]:hover:text-white">
+              <AccordionTrigger className="relative z-10 flex w-full items-center justify-between px-4 sm:px-6 py-4 font-medium rounded-[30px] transition-colors hover:no-underline data-[state=closed]:hover:bg-blue-700 data-[state=closed]:hover:text-white text-sm sm:text-base">
                 <span className="flex-1 text-left">{item.q}</span>
               </AccordionTrigger>
-              <AccordionContent className="relative z-10 w-full px-3 pb-4 pt-2 text-gray-600">
+              <AccordionContent className="relative z-10 w-full px-4 sm:px-6 pb-4 pt-2 text-gray-600 text-sm sm:text-base">
                 {item.a}
               </AccordionContent>
             </AccordionItem>

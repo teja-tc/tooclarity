@@ -6,10 +6,14 @@ const CookieUtil = require("../utils/cookie.util");
 const RedisUtil = require("../utils/redis.util");
 
 // helper to send tokens
-const sendTokens = async (userId, res, message) => {
+const sendTokens = async (user, res, message) => {
+
+  const userId = user._id;
+  const username = user.name;
+
   // 1. generate tokens
-  const accessToken = JwtUtil.generateToken(userId, "access");
-  const refreshToken = JwtUtil.generateToken(userId, "refresh");
+  const accessToken = JwtUtil.generateToken(userId, username, "access");
+  const refreshToken = JwtUtil.generateToken(userId, username, "refresh");
 
   // 2. decode refresh to calculate expiry
   const decodedRefresh = JwtUtil.decodeToken(refreshToken);
@@ -19,7 +23,8 @@ const sendTokens = async (userId, res, message) => {
   await RedisUtil.saveRefreshToken(userId, refreshToken, ttlSeconds);
 
   // 4. send access token in cookie (expiry handled by CookieUtil.updateCookie)
-  CookieUtil.updateCookie(res, "access_token", accessToken);
+  CookieUtil.setCookie(res, "access_token", accessToken);
+  CookieUtil.setCookie(res, "username", username, { maxAge: 7 * 24 * 60 * 60 * 1000 });
 
   // 5. respond
   return res.status(200).json({
@@ -136,7 +141,7 @@ exports.verifyEmailOtp = async (req, res, next) => {
     await user.save();
 
     // 5. Issue tokens (login user immediately after verification)
-    return await sendTokens(user._id, res, "Email verified successfully.");
+    return await sendTokens(user, res, "Email verified successfully.");
   } catch (error) {
     next(error);
   }
@@ -156,19 +161,11 @@ exports.login = async (req, res, next) => {
     if (!user.isEmailVerified) {
       return res.status(403).json({
         status: "fail",
-        message: "Account not verified. Please verify your phone number first.",
+        message: "Account not verified. Please verify your Email first.",
       });
     }
 
-    if (user.institution) {
-      return res.status(401).json({
-        status: "fail",
-        message: "This account has already set up an institution.",
-      });
-    }
-
-    // issue tokens
-    return await sendTokens(user._id, res, "Login successful.");
+    return await sendTokens(user, res, "Login successful.");
   } catch (error) {
     next(error);
   }

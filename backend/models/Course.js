@@ -1,56 +1,84 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const courseSchema = new mongoose.Schema({
+const courseSchema = new mongoose.Schema(
+  {
+    // Common Fields
     courseName: {
-        type: String,
-        required: [true, 'Course name is required.'],
-        trim: true,
-        maxlength: [150, 'Course name cannot exceed 150 characters.']
+      type: String,
+      trim: true,
+      maxlength: 150,
     },
     aboutCourse: {
-        type: String,
-        required: [true, 'About course information is required.'],
-        trim: true,
-        maxlength: [2000, 'About course cannot exceed 2000 characters.']
+      type: String,
+      trim: true,
+      maxlength: 2000,
     },
     courseDuration: {
-        type: String,
-        required: [true, 'Course duration is required.'],
-        trim: true,
-        maxlength: [50, 'Course duration cannot exceed 50 characters.']
+      type: String,
+      trim: true,
+      maxlength: 50,
     },
     mode: {
-        type: String,
-        required: true,
-        enum: ['Offline', 'Online', 'Hybrid'],
+      type: String,
+      enum: ["Offline", "Online", "Hybrid"],
     },
     priceOfCourse: {
-        type: Number,
-        required: [true, 'Price of course is required.'],
-        min: [0, 'Price cannot be negative.']
+      type: Number,
+      min: 0,
     },
     location: {
-        type: String,
-        required: [true, 'Location is required.'],
-        trim: true,
-        maxlength: [100, 'Location cannot exceed 100 characters.']
+      type: String,
+      trim: true,
+      maxlength: 100,
     },
     image: {
-        type: String, 
-        required: [true, 'Course image is required.']
+      type: String, // file path / URL
     },
     brochure: {
-        type: String,
-        required: [true, 'Course brochure is required.']
+      type: String, // file path / URL
     },
-    institution: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Institution',
-        required: true,
-        index: true,
-    }
-}, { timestamps: true });
 
-const Course = mongoose.model('Course', courseSchema);
+    // Additional fields for Under Graduate / Post Graduate
+    graduationType: { type: String },
+    streamType: { type: String },
+    selectBranch: { type: String },
+    aboutBranch: { type: String },
+    educationType: { type: String },
+    classSize: { type: String },
+
+    // Additional fields for Coaching Centers
+    categoriesType: { type: String },
+    domainType: { type: String },
+
+    // Additional fields for Study Hall
+    seatingOption: { type: String },
+    openingTime: { type: String },
+    closingTime: { type: String },
+    operationalDays: [{ type: String }],
+    totalSeats: { type: String },
+    availableSeats: { type: String },
+    pricePerSeat: { type: String },
+    hasWifi: { type: Boolean },
+    hasChargingPoints: { type: Boolean },
+    hasAC: { type: Boolean },
+    hasPersonalLocker: { type: Boolean },
+
+    // Additional fields for Tuition Centers
+    tuitionType: { type: String },
+    instructorProfile: { type: String },
+    subject: { type: String },
+
+    // Relation
+    institution: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Institution",
+      required: true, // keep required since course must belong to an institution
+      index: true,
+    },
+  },
+  { timestamps: true }
+);
+
+const Course = mongoose.model("Course", courseSchema);
 
 module.exports = Course;

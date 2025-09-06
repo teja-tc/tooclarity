@@ -10,6 +10,7 @@ class RedisUtil {
   static async saveRefreshToken(userId, token, ttlSeconds) {
     const key = `refresh:${userId}`;
     await redis.set(key, token, "EX", ttlSeconds);
+    console.log(`Saved refresh token for user ${userId} with TTL ${ttlSeconds} seconds`);
   }
 
   /**
