@@ -238,6 +238,7 @@ const StudyAbroad = Institution.discriminator(
   new mongoose.Schema({}, baseOptions)
 );
 
+
 module.exports = {
   Institution,
   Kindergarten,
