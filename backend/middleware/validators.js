@@ -67,8 +67,25 @@ const kindergartenL2Rules = [
     // body('outdoorPlayArea').isBoolean().withMessage('Outdoor play area must be true or false.'),
 ];
 
+// const schoolAndIntermediateL2Rules = [
+//     body('schoolType').isIn(['Co-ed', 'Boys Only', 'Girls Only']).withMessage('Invalid school type.'),
+//     body('schoolCategory').isIn(['Public', 'Private', 'Charter', 'International']).withMessage('Invalid school category.'),
+//     body('curriculumType').isIn(['State Board', 'CBSE', 'ICSE', 'IB', 'IGCSE']).withMessage('Invalid curriculum type.'),
+//     body('operationalDays').isArray({ min: 1 }).withMessage('At least one operational day is required.'),
+//     body('operationalDays.*').isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun']),
+//     body('otherActivities').optional({ checkFalsy: true }).trim().isLength({ max: 500 }).escape(),
+//     body('hostelFacility').isBoolean().withMessage('Hostel facility must be true or false.'),
+//     body('playground').isBoolean().withMessage('Playground must be true or false.'),
+//     body('busService').isBoolean().withMessage('Bus service must be true or false.'),
+// ];
 const schoolAndIntermediateL2Rules = [
-    body('schoolType').isIn(['Co-ed', 'Boys Only', 'Girls Only']).withMessage('Invalid school type.'),
+    // body('schoolType').trim().toLowerCase().isIn(['co-ed', 'boys only', 'girls only']).withMessage('Invalid school type.'),
+body('schoolType')
+  .trim()
+  .isIn(['Co-ed', 'Boys Only', 'Girls Only'])
+  .withMessage('Invalid school type.'),
+   
+   // body('schoolType').trim().isIn(['Co-ed', 'Boys Only', 'Girls Only']).withMessage('Invalid school type.'),
     body('schoolCategory').isIn(['Public', 'Private', 'Charter', 'International']).withMessage('Invalid school category.'),
     body('curriculumType').isIn(['State Board', 'CBSE', 'ICSE', 'IB', 'IGCSE']).withMessage('Invalid curriculum type.'),
     body('operationalDays').isArray({ min: 1 }).withMessage('At least one operational day is required.'),
