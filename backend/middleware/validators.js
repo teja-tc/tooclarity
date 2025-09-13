@@ -58,33 +58,13 @@ exports.validateL1Creation = [
 const kindergartenL2Rules = [
     body('schoolType').isIn(['Public', 'Private (For-profit)', 'Private (Non-profit)', 'International', 'Home - based']).withMessage('Invalid school type.'),
     body('curriculumType').trim().notEmpty().withMessage('Curriculum type is required.').isLength({ max: 100 }).escape(),
-    // body('operationalTimes.opening').matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage('Opening time must be in HH:MM format.'),
-    // body('operationalTimes.closing').matches(/^([01]\d|2[0-3]):([0-5]\d)$/).withMessage('Closing time must be in HH:MM format.'),
     body('operationalDays').isArray({ min: 1 }).withMessage('At least one operational day is required.'),
     body('operationalDays.*').isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat']),
-    // body('extendedCare').isBoolean().withMessage('Extended care must be true or false.'),
-    // body('mealsProvided').isBoolean().withMessage('Meals provided must be true or false.'),
-    // body('outdoorPlayArea').isBoolean().withMessage('Outdoor play area must be true or false.'),
 ];
 
-// const schoolAndIntermediateL2Rules = [
-//     body('schoolType').isIn(['Co-ed', 'Boys Only', 'Girls Only']).withMessage('Invalid school type.'),
-//     body('schoolCategory').isIn(['Public', 'Private', 'Charter', 'International']).withMessage('Invalid school category.'),
-//     body('curriculumType').isIn(['State Board', 'CBSE', 'ICSE', 'IB', 'IGCSE']).withMessage('Invalid curriculum type.'),
-//     body('operationalDays').isArray({ min: 1 }).withMessage('At least one operational day is required.'),
-//     body('operationalDays.*').isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun']),
-//     body('otherActivities').optional({ checkFalsy: true }).trim().isLength({ max: 500 }).escape(),
-//     body('hostelFacility').isBoolean().withMessage('Hostel facility must be true or false.'),
-//     body('playground').isBoolean().withMessage('Playground must be true or false.'),
-//     body('busService').isBoolean().withMessage('Bus service must be true or false.'),
-// ];
-const schoolAndIntermediateL2Rules = [
+const schoolRules = [
     // body('schoolType').trim().toLowerCase().isIn(['co-ed', 'boys only', 'girls only']).withMessage('Invalid school type.'),
-body('schoolType')
-  .trim()
-  .isIn(['Co-ed', 'Boys Only', 'Girls Only'])
-  .withMessage('Invalid school type.'),
-   
+    body('schoolType').trim().isIn(['Co-ed', 'Boys Only', 'Girls Only']).withMessage('Invalid school type.'),   
    // body('schoolType').trim().isIn(['Co-ed', 'Boys Only', 'Girls Only']).withMessage('Invalid school type.'),
     body('schoolCategory').isIn(['Public', 'Private', 'Charter', 'International']).withMessage('Invalid school category.'),
     body('curriculumType').isIn(['State Board', 'CBSE', 'ICSE', 'IB', 'IGCSE']).withMessage('Invalid curriculum type.'),
@@ -96,6 +76,48 @@ body('schoolType')
     body('busService').isBoolean().withMessage('Bus service must be true or false.'),
 ];
 
+const intermediateCollegeL2Rules = [
+  body('collegeType')
+    .isIn(['Junior College', 'Senior Secondary', 'Higher Secondary', 'Intermediate', 'Pre-University'])
+    .withMessage('Invalid college type.'),
+
+  body('collegeCategory')
+    .isIn(['Government', 'Semi-Government', 'Private', 'Aided', 'Unaided'])
+    .withMessage('Invalid college category.'),
+
+  body('curriculumType')
+    .isIn(['State Board', 'CBSE', 'ICSE', 'IB', 'Cambridge', 'Other'])
+    .withMessage('Invalid curriculum type.'),
+
+  body('operationalDays')
+    .isArray({ min: 1 })
+    .withMessage('At least one operational day is required.'),
+
+  body('operationalDays.*')
+    .isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat'])
+    .withMessage('Invalid operational day.'),
+
+  body('otherActivities')
+    .trim()
+    .notEmpty()
+    .withMessage('Other activities are required.')
+    .isLength({ max: 500 })
+    .escape(),
+
+  body('hostelFacility')
+    .isBoolean()
+    .withMessage('Hostel facility must be true or false.'),
+
+  body('playground')
+    .isBoolean()
+    .withMessage('Playground must be true or false.'),
+
+  body('busService')
+    .isBoolean()
+    .withMessage('Bus service must be true or false.'),
+];
+
+
 const ugPgUniversityL2Rules = [
     body('ownershipType').isIn(['Government', 'Private', 'Public-Private Partnership']).withMessage('Invalid ownership type.'),
     body('collegeCategory').isIn(['Engineering', 'Medical', 'Arts & Science', 'Management', 'Law']).withMessage('Invalid college category.'),
@@ -105,8 +127,37 @@ const ugPgUniversityL2Rules = [
     body('placements.resumeBuilding').optional().isBoolean(),
 ];
 
+
+const coachingCenterL2Rules = [
+  body('placementDrives')
+    .notEmpty().withMessage('placementDrives is required')
+    .isBoolean().withMessage('placementDrives must be true or false'),
+
+  body('mockInterviews')
+    .notEmpty().withMessage('mockInterviews is required')
+    .isBoolean().withMessage('mockInterviews must be true or false'),
+
+  body('resumeBuilding')
+    .notEmpty().withMessage('resumeBuilding is required')
+    .isBoolean().withMessage('resumeBuilding must be true or false'),
+
+  body('linkedinOptimization')
+    .notEmpty().withMessage('linkedinOptimization is required')
+    .isBoolean().withMessage('linkedinOptimization must be true or false'),
+
+  body('exclusiveJobPortal')
+    .notEmpty().withMessage('exclusiveJobPortal is required')
+    .isBoolean().withMessage('exclusiveJobPortal must be true or false'),
+
+  body('certification')
+    .notEmpty().withMessage('certification is required')
+    .isBoolean().withMessage('certification must be true or false'),
+];
+
+
 exports.validateL2Update = async (req, res, next) => {
     try {
+        console.log("in l2UpdateValidators")
         const userId = req.userId;
         // const institution = await Institution.findById(req.user.institution);
         const institution = await Institution.findOne({ owner: userId });
@@ -116,13 +167,14 @@ exports.validateL2Update = async (req, res, next) => {
         }
 
         let validationChain = [];
+        console.log("for type of "+institution.instituteType)
         switch (institution.instituteType) {
             case 'Kindergarten/childcare center': validationChain = kindergartenL2Rules; break;
-            case "School's": return next(); break;
-            case 'Intermediate college(K12)': validationChain = schoolAndIntermediateL2Rules; break;
-            case 'UG / PG University': validationChain = ugPgUniversityL2Rules; break;
+            case "School's": validationChain=schoolRules; break;
+            case 'Intermediate college(K12)': validationChain = intermediateCollegeL2Rules; break;
+            case 'Under Graduation/Post Graduation': validationChain = ugPgUniversityL2Rules; break;
             case 'Study Abroad': return next();
-            case 'Coaching centers': return next();
+            case 'Coaching centers': validationChain = coachingCenterL2Rules;break;
             case "Tution Center's" : return next();
             case 'Study Halls': return next();
 

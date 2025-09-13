@@ -411,7 +411,9 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#FBF9F5]">
+    // <div className="min-h-screen flex flex-col items-center justify-center bg-[#FBF9F5]">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FBF9F5] pt-[104px]">
+
       {/* Top navigation bar */}
       <div className="w-full h-auto sm:h-[64px] md:h-[80px] flex flex-col sm:flex-row justify-between items-center px-4 sm:px-6 md:px-20 z-10 fixed top-0 left-0 py-3 sm:py-0">
         <img
@@ -429,17 +431,17 @@ export default function SignupPage() {
         </a>
       </div>
 
-      {/* Stepper fixed between navbar and dialogs */}
-      <div className="fixed top-[64px] md:top-[80px] left-0 right-0 z-40">
-        <div className="w-full px-4 sm:px-6 md:px-8">
-          <div className="w-full max-w-full sm:max-w-4xl mx-auto rounded-xl bg-[#FBF9F5]/95 backdrop-blur-sm">
-            <Stepper steps={steps} currentStep={currentStep} />
-          </div>
-        </div>
-      </div>
+      <div className="fixed top-[56px] md:top-[72px] left-0 right-0 z-40">
+  <div className="w-full px-4 sm:px-6 md:px-8">
+    <div className="mt-[8px] sm:mt-[12px]">
+      <Stepper currentStep={currentStep} steps={steps} />
+    </div>
+  </div>
+</div>
+
 
       {/* L1 Dialog Box */}
-      <L1DialogBox
+      <L1DialogBox 
         open={l1DialogOpen}
         onOpenChange={setL1DialogOpen}
         onSuccess={handleL1Success}

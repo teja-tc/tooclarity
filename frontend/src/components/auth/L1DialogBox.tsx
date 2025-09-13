@@ -27,6 +27,8 @@ import { institutionAPI, clearInstitutionData } from "@/lib/api";
 import { L1Schema } from "@/lib/validations/L1Schema";
 
 
+import ToastProvider from "../ui/ToastProvider";
+import { toast } from "react-toastify";
 
 
 
@@ -108,6 +110,21 @@ export default function L1DialogBox({
 ) => {
   const { name, value } = e.target;
 
+   // 🔔 Special case: block Study Abroad
+  if (name === "instituteType" && value === "Study Abroad") {
+    toast.warning(
+      "⚠️ Please select another type, as we are not providing services for Study Abroad yet.",
+      {
+        position: "top-center",
+        autoClose: 4000,
+        theme: "colored",
+      }
+    );
+    // Reset the field instead of saving "Study Abroad"
+    setFormData((prev) => ({ ...prev, [name]: "" }));
+    return; // stop here
+  }
+
   // update formData
   setFormData((prev) => ({ ...prev, [name]: value }));
 
@@ -169,10 +186,10 @@ const handleCountrySelect = (field: "contact" | "additional", country: CountryOp
 const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
   e.preventDefault();
   setSubmitted(true);
-
+ console.log("in handle submit of l1")
   // ✅ Validate with Joi
   const { error } = activeSchema.validate(formData, { abortEarly: false });
-
+  // console.log(error)
   if (error) {
     const validationErrors: Errors = {};
     error.details.forEach((err) => {
@@ -496,43 +513,6 @@ const [isDropdownOpenAdditional, setIsDropdownOpenAdditional] = useState(false);
     <p className="text-red-500 text-sm mt-1">{errors.additionalContactInfo}</p>
   )}
 </div>
-
-
-
-          {/* <div>
-            <InputField
-              label="Contact Info"
-              name="contactInfo"
-              value={formData.contactInfo}
-              onChange={handleChange}
-              placeholder="10-digit phone number"
-              type="tel"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={10}
-              numericOnly
-              icon={<img src="/India-flag.png" alt="India" className="w-6 h-6 rounded-sm" />}
-              required
-              error={submitted || errors.contactInfo ? errors.contactInfo : ""}
-            />
-          </div> */}
-
-          {/* <div>
-            <InputField
-              label="Additional Contact Info"
-              name="additionalContactInfo"
-              value={formData.additionalContactInfo}
-              onChange={handleChange}
-              placeholder="10-digit phone number"
-              type="tel"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={10}
-              numericOnly
-              icon={<img src="/India-flag.png" alt="India" className="w-6 h-6 rounded-sm" />}
-              error={submitted || errors.additionalContactInfo ? errors.additionalContactInfo : ""}
-            />
-          </div> */}
 
           <div>
             <InputField

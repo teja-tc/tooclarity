@@ -41,18 +41,23 @@ export const L1Schema = Joi.object({
         "Institute Name must start with a letter and can only contain letters, numbers, spaces, . & ' -",
     }),
 
-  approvedBy: Joi.string()
-    .min(2)
-    .max(100)
-    .pattern(/^[A-Za-z][A-Za-z\s.&'-]*$/)
-    .required()
-    .messages({
-      "string.empty": "Approved By is required",
-      "string.min": "Approved By must be at least 2 characters",
-      "string.max": "Approved By must be at most 100 characters",
-      "string.pattern.base":
-        "Approved By must start with a letter and can only contain letters, spaces, . & ' -",
-    }),
+   // ✅ Conditional approvedBy
+  approvedBy: Joi.when("instituteType", {
+    is: "Study Halls",
+    then: Joi.string().allow("").optional(),
+    otherwise: Joi.string()
+      .min(2)
+      .max(100)
+      .pattern(/^[A-Za-z][A-Za-z\s.&'-]*$/)
+      .required()
+      .messages({
+        "string.empty": "Approved By is required",
+        "string.min": "Approved By must be at least 2 characters",
+        "string.max": "Approved By must be at most 100 characters",
+        "string.pattern.base":
+          "Approved By must start with a letter and can only contain letters, spaces, . & ' -",
+      }),
+  }),
 
   establishmentDate: Joi.when("instituteType", {
     is: "Study Halls",

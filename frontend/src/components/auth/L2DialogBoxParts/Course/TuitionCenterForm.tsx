@@ -4,19 +4,6 @@ import InputField from "@/components/ui/InputField";
 import { Upload } from "lucide-react";
 import type { Course } from "../../L2DialogBox";
 
-// interface Course {
-//   id: number;
-//   tuitionType: string;
-//   instructorProfile: string;
-//   subject: string;
-//   totalSeats: string;
-//   availableSeats: string;
-//   operationalDays: string[];
-//   openingTime: string;
-//   closingTime: string;
-//   pricePerSeat: string;
-//   image: File | null;
-// }
 
 interface TuitionCenterFormProps {
   currentCourse: Course;
