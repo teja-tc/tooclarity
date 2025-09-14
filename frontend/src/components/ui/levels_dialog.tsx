@@ -45,40 +45,44 @@ function DialogOverlay({
     />
   )
 }
-
 function DialogContent({
   className,
   children,
-  showCloseButton = true,
-  overlayClassName,
+  showCloseButton = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
-  overlayClassName?: string
 }) {
   return (
-    <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay className={overlayClassName} />
+    <DialogPortal>
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed z-50 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]",
-          "w-[95vw] sm:w-[90vw]",
-          "max-h-[95vh] sm:max-h-[90vh]",
-          "rounded-[24px] p-4 sm:p-6 bg-white",
-          "data-[state=open]:animate-in data-[state=closed]:animate-out",
-          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          // Position: below the stepper with gap
+          "fixed z-50 left-1/2 top-[calc(80px+64px+40px)] -translate-x-1/2",
+          // Explanation: 
+          // 80px = navbar height (md)
+          // 64px = stepper height
+          // 40px = gap
+          // Sizing
+          "w-[95vw] sm:w-[90vw] md:w-[552px]",
+          "max-h-[75vh]", // restrict height
+          // Scroll
           "overflow-y-auto",
+          // Style
+          "rounded-[24px] p-4 sm:p-6 bg-white shadow-xl",
+          "data-[state=open]:animate-in data-[state=closed]:animate-out",
+          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           className
         )}
         {...props}
       >
         {children}
+
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="absolute top-4 right-4 opacity-70 hover:opacity-100"
           >
             <XIcon />
             <span className="sr-only">Close</span>
