@@ -10,7 +10,9 @@ const authRoutes = require('./routes/auth.routes');
 const institutionRoutes = require('./routes/institution.routes');
 const branchRoutes = require('./routes/branch.routes');
 const courseRoutes = require('./routes/course.routes');
+const enquiriesRoutes = require('./routes/enquiries.routes');
 const profileRoutes = require('./routes/profile.routes');
+const notificationRoutes = require('./routes/notification.routes');
 
 // import global auth middleware
 const globalAuthMiddleware = require('./middleware/globalAuth.middleware');
@@ -49,10 +51,14 @@ app.use(globalAuthMiddleware);
 
 app.use("/api/v1/", profileRoutes)
 
+app.use("/api/v1/enquiries", enquiriesRoutes);
+
 app.use('/api/v1/institutions', institutionRoutes);
 
 app.use('/api/v1/institutions/:institutionId/branches', branchRoutes);
 app.use('/api/v1/institutions/:institutionId/courses', courseRoutes);
+
+app.use('/api/v1/notifications', notificationRoutes);
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
@@ -61,7 +67,7 @@ app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     const message = statusCode === 500 ? 'An internal server error occured.' : err.message;
 
-    res.status(err.statusCode).json({
+    res.status(statusCode).json({
         status: 'error',
         message: (err.isOperational || process.env.NODE_ENV !== 'production') ? err.message : 'Something went very wrong!',
     });

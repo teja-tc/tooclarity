@@ -22,4 +22,7 @@ router.route('/:courseId')
     )
     .delete(courseController.deleteCourse);
 
+// Unified metric increment (views | comparisons)
+router.post('/:courseId/metrics', courseController.incrementMetricUnified);
+
 module.exports = router;

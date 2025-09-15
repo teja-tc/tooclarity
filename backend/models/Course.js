@@ -3,6 +3,28 @@ const mongoose = require("mongoose");
 const courseSchema = new mongoose.Schema(
   {
     // Common Fields
+    courseViews: { type: Number, default: 0 },
+    viewsRollups: [
+      {
+        day: { type: String, trim: true },
+        count: { type: Number, default: 0 },
+      },
+    ],
+    comparisons: { type: Number, default: 0 },
+    comparisonRollups: [
+      {
+        day: { type: String, trim: true },
+        count: { type: Number, default: 0 },
+      }
+    ],
+    // Add leads generated rollups
+    leadsGenerated: { type: Number, default: 0 },
+    leadsRollups: [
+      {
+        day: { type: String, trim: true },
+        count: { type: Number, default: 0 },
+      }
+    ],
     courseName: {
       type: String,
       trim: true,
@@ -68,7 +90,7 @@ const courseSchema = new mongoose.Schema(
     instructorProfile: { type: String },
     subject: { type: String },
 
-    // Relation
+    // Reference to Institution
     institution: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Institution",

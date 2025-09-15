@@ -67,6 +67,22 @@ const institutionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+
+    // Optional aggregated totals and daily rollups for enquiry types
+    callbackLeadsTotal: { type: Number, default: 0 },
+    demoLeadsTotal: { type: Number, default: 0 },
+    callbackRollups: [
+      {
+        day: { type: String, trim: true }, // YYYY-MM-DD
+        count: { type: Number, default: 0 },
+      }
+    ],
+    demoRollups: [
+      {
+        day: { type: String, trim: true }, // YYYY-MM-DD
+        count: { type: Number, default: 0 },
+      }
+    ],
   },
   baseOptions
 );

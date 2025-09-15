@@ -15,6 +15,7 @@ exports.getProfile = async (req, res, next) => {
       success: true,
       message: "Profile fetched successfully",
       data: {
+        id: user._id,
         name: user.name,
         email: user.email,
         contactNumber: user.contactNumber,

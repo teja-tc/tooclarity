@@ -447,7 +447,7 @@ export const courseAPI = {
   updateCourse: async (
     courseId: number,
     courseData: Partial<CourseData>
-  ): Promise<ApiResponse> => {
+  ): Promise<ApiResponse> => {  
     const formData = new FormData();
 
     Object.entries(courseData).forEach(([key, value]) => {
@@ -593,4 +593,182 @@ export const institutionDetailsAPI = {
       method: "GET",
     });
   },
+};
+
+// Dashboard data helpers (non-destructive additions)
+export const getMyInstitution = async (): Promise<any> => {
+  const res = await apiRequest<any>("/v1/institutions/me", { method: "GET" });
+  return (res as any).data;
+};
+
+export const getInstitutionBranches = async (
+  institutionId: string
+): Promise<any[]> => {
+  const res = await apiRequest<any>(
+    `/v1/institutions/${institutionId}/branches`,
+    { method: "GET" }
+  );
+  const payload = (res as any);
+  // Support both {success, data} and raw array responses
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
+
+export const getInstitutionCourses = async (
+  institutionId: string
+): Promise<any[]> => {
+  const res = await apiRequest<any>(
+    `/v1/institutions/${institutionId}/courses`,
+    { method: "GET" }
+  );
+  const payload = (res as any);
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
+
+// Analytics API helpers
+export type TimeRangeParam = "weekly" | "monthly" | "yearly";
+
+export const analyticsAPI = {
+  getSummary: async (range: TimeRangeParam = "weekly"): Promise<ApiResponse> => {
+    return apiRequest(`/v1/analytics/summary?range=${range}`, { method: "GET" });
+  },
+  getCoursePerformance: async (range: TimeRangeParam = "weekly"): Promise<ApiResponse> => {
+    return apiRequest(`/v1/analytics/course-performance?range=${range}`, { method: "GET" });
+  },
+  getLeadTypes: async (range: TimeRangeParam = "weekly"): Promise<ApiResponse> => {
+    return apiRequest(`/v1/analytics/lead-types?range=${range}`, { method: "GET" });
+  },
+  getSummaryPrevious: async (range: TimeRangeParam = "weekly"): Promise<ApiResponse> => {
+    return apiRequest(`/v1/analytics/summary?range=${range}&compare=prev`, { method: "GET" });
+  }
+};
+
+// Course views helpers (real-time and initial summary)
+export const courseViewsAPI = {
+  incrementView: async (institutionId: string, courseId: string): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/${institutionId}/courses/${courseId}/views`, { method: "POST" });
+  },
+  getInstitutionViewsSummary: async (institutionId: string): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/${institutionId}/courses/summary/views`, { method: "GET" });
+  },
+  getOwnerViewsSummary: async (): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/summary/views/owner`, { method: "GET" });
+  },
+  getOwnerViewsByRange: async (range: 'weekly' | 'monthly' | 'yearly'): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/summary/views/owner/range?range=${range}`, { method: "GET" });
+  }
+};
+
+// Comparisons helpers
+export const comparisonsAPI = {
+  increment: async (institutionId: string, courseId: string): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/${institutionId}/courses/${courseId}/comparisons`, { method: "POST" });
+  },
+  getOwnerSummary: async (): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/summary/comparisons/owner`, { method: "GET" });
+  },
+  getOwnerByRange: async (range: 'weekly' | 'monthly' | 'yearly'): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/summary/comparisons/owner/range?range=${range}`, { method: "GET" });
+  }
+};
+
+// Unified metrics (views or comparisons)
+export const metricsAPI = {
+  increment: async (institutionId: string, courseId: string, metric: 'views'|'comparisons'): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/${institutionId}/courses/${courseId}/metrics?metric=${metric}`, { method: "POST" });
+  },
+  getOwnerSummary: async (metric: 'views'|'comparisons'): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/summary/metrics/owner?metric=${metric}`, { method: "GET" });
+  },
+  getOwnerByRange: async (metric: 'views'|'comparisons'|'leads', range: 'weekly'|'monthly'|'yearly'): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/summary/metrics/owner/range?metric=${metric}&range=${range}`, { method: "GET" });
+  },
+  getOwnerSeries: async (metric: 'views'|'comparisons'|'leads', year?: number): Promise<ApiResponse> => {
+    const q = [`metric=${metric}`];
+    if (year) q.push(`year=${year}`);
+    return apiRequest(`/v1/institutions/summary/metrics/owner/series?${q.join('&')}`, { method: "GET" });
+  }
+};
+
+
+// Enquiries API helpers (leads generated and recent enquiries)
+export const enquiriesAPI = {
+  getLeadsSummary: async (): Promise<ApiResponse> => {
+    return apiRequest(`/v1/enquiries/summary/leads`, { method: "GET" });
+  },
+  getEnquiriesForChart: async (year?: number): Promise<ApiResponse> => {
+    const yearParam = year ? `?year=${year}` : "";
+    return apiRequest(`/v1/enquiries/chart${yearParam}`, { method: "GET" });
+  },
+  getRecentEnquiries: async (): Promise<ApiResponse> => {
+    return apiRequest(`/v1/enquiries/recent`, { method: "GET" });
+  },
+  getTypeSummary: async (range: 'weekly'|'monthly'|'yearly'): Promise<ApiResponse> => {
+    return apiRequest(`/v1/enquiries/summary/types?range=${range}`, { method: "GET" });
+  },
+  getTypeSummaryRollups: async (range: 'weekly'|'monthly'|'yearly', type?: 'callback'|'demo'): Promise<ApiResponse> => {
+    const q = [`range=${range}`];
+    if (type) q.push(`type=${type}`);
+    return apiRequest(`/v1/institutions/summary/enquiries/owner/range?${q.join('&')}`, { method: "GET" });
+  },
+  createEnquiry: async (enquiryData: {
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    institution: string;
+    programInterest: string;
+    enquiryType: string;
+  }): Promise<ApiResponse> => {
+    return apiRequest(`/v1/enquiries`, { 
+      method: "POST",
+      body: JSON.stringify(enquiryData)
+    });
+  }
+};
+
+// Notifications API helpers
+export const notificationsAPI = {
+  list: async (params: {
+    scope?: 'customer'|'institution'|'branch'|'admin';
+    customerId?: string;
+    institutionId?: string;
+    branchId?: string;
+    ownerId?: string;
+    page?: number;
+    limit?: number;
+    unread?: boolean;
+    category?: string;
+  } = {}): Promise<ApiResponse> => {
+    const q: string[] = [];
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) q.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+    });
+    const qs = q.length ? `?${q.join('&')}` : '';
+    return apiRequest(`/v1/notifications${qs}`, { method: 'GET' });
+  },
+  create: async (payload: {
+    title: string;
+    description?: string;
+    category?: string;
+    recipientType: 'CUSTOMER'|'INSTITUTION'|'BRANCH'|'ADMIN'|'SYSTEM';
+    customer?: string;
+    institution?: string;
+    branch?: string;
+    owner?: string;
+    metadata?: any;
+  }): Promise<ApiResponse> => {
+    return apiRequest(`/v1/notifications`, { method: 'POST', body: JSON.stringify(payload) });
+  },
+  markRead: async (ids: string[]): Promise<ApiResponse> => {
+    return apiRequest(`/v1/notifications/read`, { method: 'POST', body: JSON.stringify({ ids }) });
+  },
+  markUnread: async (ids: string[]): Promise<ApiResponse> => {
+    return apiRequest(`/v1/notifications/unread`, { method: 'POST', body: JSON.stringify({ ids }) });
+  },
+  remove: async (ids: string[]): Promise<ApiResponse> => {
+    return apiRequest(`/v1/notifications`, { method: 'DELETE', body: JSON.stringify({ ids }) });
+  }
 };

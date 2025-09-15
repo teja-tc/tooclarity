@@ -4,7 +4,8 @@
   "description": "",
   "main": "demoserver.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit"
+    "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit",
+    "seed": "node seed/sampleDashboardData.js"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +32,8 @@
     "nodemailer": "^7.0.5",
     "pino": "^9.8.0",
     "pino-http": "^10.5.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "twilio": "^5.8.0"
   },
   "devDependencies": {

@@ -97,7 +97,7 @@ exports.createBranch = asyncHandler(async (req, res, next) => {
 exports.getAllBranchesForInstitution = asyncHandler(async (req, res, next) => {
   const { institutionId } = req.params;
 
-  await checkOwnership(institutionId, req.useId);
+  await checkOwnership(institutionId, req.userId);
 
   const branches = await Branch.find({ institution: institutionId });
 
