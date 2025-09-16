@@ -1,17 +1,8 @@
 import Joi from "joi";
 import { alphaNumericNameRule } from "./ValidationRules";
 import {
-  phoneRule,
-  pincodeRule,
   urlRule,
   nameRule,
-  stateRule,
-} from "./ValidationRules";
-import {
-  branchNameRule,
-  branchPhoneRule,
-  branchUrlRule,
-  addressRule,
 } from "./ValidationRules";
 
 // ✅ Common base
@@ -113,35 +104,6 @@ export const branchSchema = Joi.object({
     "string.uri": "Must be a valid URL (e.g., https://...)",
   }),
 });
-
-// export const BranchSchema = Joi.object({
-//   branchName: alphaNumericNameRule.messages({
-//     "string.empty": "Branch Name is required",
-//     "string.pattern.base":
-//       "Branch Name must start with a letter or number, contain at least one letter, and can only include letters, numbers, spaces, . & ' -",
-//   }),
-//   branchAddress: addressRule.required().messages({
-//     "any.required": "Branch Address is required",
-//     "string.empty": "Branch Address cannot be empty",
-//   }),
-//   contactInfo: branchPhoneRule.required().messages({
-//     "any.required": "Contact number is required",
-//     "string.empty": "Contact number cannot be empty",
-//     "string.pattern.base": "Contact number must be 10 digits",
-//   }),
-//   contactCountryCode: Joi.string().required().messages({
-//     "any.required": "Country code is required",
-//     "string.empty": "Country code cannot be empty",
-//   }),
-//   locationUrl: branchUrlRule.required().messages({
-//     "any.required": "Location URL is required",
-//     "string.empty": "Location URL cannot be empty",
-//     "string.uri": "Location URL must be valid",
-//   }),
-// }).strict();
-
-// ✅ Export all schemas in one place
-
 
 // L2Schema.tsx
 export const L2Schemas: Record<string, Joi.ObjectSchema> = {

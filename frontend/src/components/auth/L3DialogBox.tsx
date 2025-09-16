@@ -154,7 +154,11 @@ export default function L3DialogBox({
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const institutionType = localStorage.getItem("institutionType");
+  let institutionType: string | null = null;
+  // const institutionType = localStorage.getItem("institutionType");
+  if (typeof window !== "undefined") {
+    institutionType = localStorage.getItem("institutionType");
+  }
   // Check institution types - default to kindergarten if no type is set
   const isKindergarten =
     institutionType === "Kindergarten/childcare center" ||
@@ -459,18 +463,18 @@ export default function L3DialogBox({
 
       // 3) Success → close dialog & reset form
       setDialogOpen(false);
-        // setSubmitted(false);
+      // setSubmitted(false);
       setSchoolFormErrors({});
-        setSchoolFormData({
-          schoolType: "",
-          schoolCategory: "",
-          curriculumType: "",
-          operationalDays: [],
-          otherActivities: "",
-          hostelFacility: "",
-          playground: "",
-          busService: "",
-        });
+      setSchoolFormData({
+        schoolType: "",
+        schoolCategory: "",
+        curriculumType: "",
+        operationalDays: [],
+        otherActivities: "",
+        hostelFacility: "",
+        playground: "",
+        busService: "",
+      });
 
       //   router.push("/dashboard");
       const uploadResponse = await exportInstitutionAndCoursesToFile();
