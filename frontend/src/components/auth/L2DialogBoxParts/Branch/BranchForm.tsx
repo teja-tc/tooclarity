@@ -28,7 +28,6 @@ interface BranchFormProps {
   deleteBranch: (branchId: number) => void;
   addNewBranch: () => void;
   isLoading: boolean;
-  onPrevious?: () => void;
 }
 
 export default function BranchForm({

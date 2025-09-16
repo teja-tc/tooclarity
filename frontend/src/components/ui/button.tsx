@@ -20,14 +20,9 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
-        login:
-          "w-25 h-12 p-4 bg-[#FBF9F5] border border-[#0222D7] text-black rounded-md transition-colors duration-200 cursor-pointer font-semibold text-[18px] tracking-[0%] flex items-center justify-center",
-        signup:
-          "w-25 h-12 p-4 bg-[#0222D7] text-white rounded-md transition-colors duration-200 cursor-pointer font-semibold text-[18px] leading-[100%] tracking-[0%] flex items-center justify-center",
-        course:
-          "w-[250px] h-[44px] rounded-[8px] font-semibold text-base bg-[#0222D7] hover:bg-[#1D4ED8] text-white flex items-center justify-center gap-2",
-        branch:
-          "w-[250px] h-[44px] rounded-[8px] font-semibold text-base bg-[#0222D7] hover:bg-[#1D4ED8] text-white flex items-center justify-center gap-2",
+login: "w-25 h-12 p-4 bg-[#FBF9F5] border border-[#0222D7] text-black rounded-md transition-colors duration-200 cursor-pointer font-semibold text-[18px] tracking-[0%] flex items-center justify-center",
+signup: "w-25 h-12 p-4 bg-[#0222D7] text-white rounded-md transition-colors duration-200 cursor-pointer font-semibold text-[18px] leading-[100%] tracking-[0%] flex items-center justify-center",
+
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

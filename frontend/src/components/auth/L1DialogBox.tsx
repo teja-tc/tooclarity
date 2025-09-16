@@ -25,6 +25,11 @@ import InputField from "@/components/ui/InputField";
 // import { institutionAPI, clearInstitutionData } from "@/lib/api";
 import { L1Schema } from "@/lib/validations/L1Schema";
 
+
+
+
+
+
 interface FormData {
   instituteType: string;
   instituteName: string;
@@ -133,11 +138,9 @@ export default function L1DialogBox({
   }, [dialogOpen]);
 
   const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    const { name, value } = e.target;
+  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+) => {
+  const { name, value } = e.target;
 
     // update formData
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -203,22 +206,25 @@ export default function L1DialogBox({
     }
   }, [formData.instituteType]);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setSubmitted(true);
+  
+const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setSubmitted(true);
 
-    // ✅ Validate with Joi
-    const { error } = activeSchema.validate(formData, { abortEarly: false });
+  // ✅ Validate with Joi
+  const { error } = activeSchema.validate(formData, { abortEarly: false });
 
-    if (error) {
-      const validationErrors: Errors = {};
-      error.details.forEach((err) => {
-        const fieldName = err.path[0] as string;
-        validationErrors[fieldName] = err.message.replace('"value"', fieldName);
-      });
-      setErrors(validationErrors);
-      return;
-    }
+  if (error) {
+    const validationErrors: Errors = {};
+    error.details.forEach((err) => {
+      const fieldName = err.path[0] as string;
+      // Ensure friendly messages
+      validationErrors[fieldName] = err.message.replace('"value"', fieldName);
+    });
+    setErrors(validationErrors);
+    return; // stop if errors
+  }
+  
 
     // ✅ No errors → proceed
     setErrors({});
@@ -577,12 +583,47 @@ export default function L1DialogBox({
                   />
                 </div>
 
-                {errors.additionalContactInfo && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.additionalContactInfo}
-                  </p>
-                )}
-              </div>
+  {errors.additionalContactInfo && (
+    <p className="text-red-500 text-sm mt-1">{errors.additionalContactInfo}</p>
+  )}
+</div>
+
+
+
+          {/* <div>
+            <InputField
+              label="Contact Info"
+              name="contactInfo"
+              value={formData.contactInfo}
+              onChange={handleChange}
+              placeholder="10-digit phone number"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
+              numericOnly
+              icon={<img src="/India-flag.png" alt="India" className="w-6 h-6 rounded-sm" />}
+              required
+              error={submitted || errors.contactInfo ? errors.contactInfo : ""}
+            />
+          </div> */}
+
+          {/* <div>
+            <InputField
+              label="Additional Contact Info"
+              name="additionalContactInfo"
+              value={formData.additionalContactInfo}
+              onChange={handleChange}
+              placeholder="10-digit phone number"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
+              numericOnly
+              icon={<img src="/India-flag.png" alt="India" className="w-6 h-6 rounded-sm" />}
+              error={submitted || errors.additionalContactInfo ? errors.additionalContactInfo : ""}
+            />
+          </div> */}
 
               <div>
                 <InputField
