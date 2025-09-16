@@ -604,3 +604,95 @@ export const institutionDetailsAPI = {
     });
   },
 };
+
+// Payment API methods
+export interface PaymentInitPayload {
+  amount: number; // Payable amount in INR
+  planType?: string; // e.g., "yearly" | "monthly"
+  coupon?: string | null;
+  // institutionId: string;
+}
+
+export interface PaymentVerifyPayload {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+  planType?: string;
+  coupon?: string | null;
+  amount?: number;
+}
+
+export const paymentAPI = {
+  /**
+   * Initiate a payment on the backend
+   * - Sends the payable amount and optional context to create an order/session
+   */
+  initiatePayment: async (
+    payload: PaymentInitPayload
+  ): Promise<ApiResponse> => {
+    return apiRequest("/v1/payment/create-order", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Apply coupon to get discount amount from backend
+   */
+  applyCoupon: async (coupon: string): Promise<ApiResponse<{ discountAmount: number }>> => {
+    return apiRequest("/v1/payment/apply-coupon", {
+      method: "POST",
+      body: JSON.stringify({ coupon }),
+    });
+  },
+
+  /**
+   * Verify Razorpay payment on backend
+   */
+  verifyPayment: async (payload: PaymentVerifyPayload): Promise<ApiResponse> => {
+    return apiRequest("/v1/payment/verify", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Build receipt URL for opening/downloading receipt
+   */
+  getReceiptUrl: (q: { transactionId?: string | null; paymentId?: string | null; orderId?: string | null }): string => {
+    const params = new URLSearchParams({
+      ...(q.paymentId ? { paymentId: q.paymentId } : {}),
+      ...(q.orderId ? { orderId: q.orderId } : {}),
+      ...(q.transactionId ? { transactionId: q.transactionId } : {}),
+    }).toString();
+    return `${API_BASE_URL}/v1/payment/receipt?${params}`;
+  },
+
+  /**
+   * Optional helper to programmatically download receipt as file
+   */
+  downloadReceiptFile: async (
+    q: { transactionId?: string | null; paymentId?: string | null; orderId?: string | null },
+    filename = "receipt.pdf"
+  ): Promise<ApiResponse> => {
+    try {
+      const url = paymentAPI.getReceiptUrl(q);
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) {
+        return { success: false, message: `Failed to download receipt (${res.status})` };
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+      return { success: true, message: "Receipt downloaded" };
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : "Download failed" };
+    }
+  },
+};

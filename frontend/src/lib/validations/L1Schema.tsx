@@ -3,9 +3,6 @@ import Joi from "joi";
 import {
   phoneRule,
   pincodeRule,
-  urlRule,
-  nameRule,
-  stateRule,
   addressRule,
 } from "./ValidationRules";
 
