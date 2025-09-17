@@ -181,32 +181,40 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
               amount: payable,
             });
 
-            if (!verifyRes.success) {
-              console.error("Payment verification failed:", verifyRes.message);
-              setPaymentFailed({
-                paymentId: response.razorpay_payment_id ?? null,
-                orderId: response.razorpay_order_id ?? null,
-              });
-              // Notify parent
-              onFailure?.({
-                paymentId: response.razorpay_payment_id ?? null,
-                orderId: response.razorpay_order_id ?? null,
-              });
-              setPaymentProcessing(null);
-            } else {
+            const status = (verifyRes.message || "").toLowerCase();
+
+            if (status === "active") {
+              // Success
               const txnId = (verifyRes.data as any)?.transactionId || null;
               setPaymentVerified({
                 transactionId: txnId,
                 paymentId: response.razorpay_payment_id,
                 orderId: response.razorpay_order_id,
               });
-              // Notify parent
               onSuccess?.({
                 transactionId: txnId,
                 paymentId: response.razorpay_payment_id,
                 orderId: response.razorpay_order_id,
               });
               setPaymentProcessing(null);
+            } else if (status === "expired" || status === "verification_timeout" || !verifyRes.success) {
+              // Failed
+              console.error("Payment verification failed:", verifyRes.message);
+              setPaymentFailed({
+                paymentId: response.razorpay_payment_id ?? null,
+                orderId: response.razorpay_order_id ?? null,
+              });
+              onFailure?.({
+                paymentId: response.razorpay_payment_id ?? null,
+                orderId: response.razorpay_order_id ?? null,
+              });
+              setPaymentProcessing(null);
+            } else {
+              // Fallback: keep processing if backend returned unexpected intermediate state
+              setPaymentProcessing({
+                paymentId: response.razorpay_payment_id ?? null,
+                orderId: response.razorpay_order_id ?? null,
+              });
             }
           } catch (err) {
             console.error("Payment verification error:", err);
