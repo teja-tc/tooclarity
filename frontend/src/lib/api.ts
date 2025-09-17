@@ -647,13 +647,52 @@ export const paymentAPI = {
   },
 
   /**
-   * Verify Razorpay payment on backend
+   * Verify Razorpay payment on backend with polling until status is final
+   * - Polls the backend until message is "active" or "expired"
+   * - Treats intermediate "pending" as continue polling
    */
-  verifyPayment: async (payload: PaymentVerifyPayload): Promise<ApiResponse> => {
-    return apiRequest("/v1/payment/verify", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+  verifyPayment: async (
+    payload: PaymentVerifyPayload,
+    options?: { intervalMs?: number; timeoutMs?: number }
+  ): Promise<ApiResponse> => {
+    const intervalMs = options?.intervalMs ?? 2000; // 2s poll interval
+    const timeoutMs = options?.timeoutMs ?? 120000; // 2 min timeout
+    const start = Date.now();
+    let lastRes: ApiResponse | null = null;
+
+    while (Date.now() - start < timeoutMs) {
+      // Build query string for GET verification (preserves original method)
+      const qs = new URLSearchParams({
+        orderId: payload.orderId,
+        paymentId: payload.paymentId,
+        signature: payload.signature,
+        ...(payload.planType ? { planType: payload.planType } : {}),
+        ...(payload.coupon ? { coupon: String(payload.coupon) } : {}),
+        ...(typeof payload.amount !== "undefined" ? { amount: String(payload.amount) } : {}),
+      }).toString();
+      const endpoint = `/v1/payment/verify-payment?${qs}`;
+
+      lastRes = await apiRequest(endpoint, {
+        method: "GET",
+      });
+
+      const statusMsg = (lastRes.message || "").toLowerCase();
+
+      // Break on final states
+      if (statusMsg === "active" || statusMsg === "expired") {
+        return lastRes;
+      }
+
+      // Continue polling on pending/unknown states
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+
+    // Timed out waiting for final status
+    return {
+      success: false,
+      message: "verification_timeout",
+      data: lastRes?.data,
+    };
   },
 
   /**
