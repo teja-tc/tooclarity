@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/levels_dialog";
 import {
   Card,
   CardHeader,
@@ -21,15 +21,72 @@ import {
 } from "@/components/ui/card";
 import InputField from "@/components/ui/InputField";
 import { Upload, Plus, MoreVertical } from "lucide-react";
-import SlidingIndicator from "@/components/ui/SlidingIndicator";
-import CourseOrBranchSelectionDialog from "./CourseOrBranchSelectionDialog";
-import { courseAPI, branchAPI } from "@/lib/api";
+import { courseAPI } from "@/lib/api";
+import { addBranchesToDB, getAllBranchesFromDB, updateBranchInDB, addCoursesGroupToDB, getCoursesGroupsByBranchName, updateCoursesGroupInDB } from "@/lib/localDb";
+//import CoachingCourseForm from "./L2DialogBoxParts/Course/CoachingCourseForm";
+
+// ✅ New imports for split forms
+import CoachingCourseForm from "./L2DialogBoxParts/Course/CoachingCourseForm";
+import StudyHallForm from "./L2DialogBoxParts/Course/StudyHallForm";
+import TuitionCenterForm from "./L2DialogBoxParts/Course/TuitionCenterForm";
+import UnderPostGraduateForm from "./L2DialogBoxParts/Course/UnderPostGraduateForm";
+import BasicCourseForm from "./L2DialogBoxParts/Course/BasicCourseForm";
+import FallbackCourseForm from "./L2DialogBoxParts/Course/FallbackCourseForm";
+import BranchForm from "./L2DialogBoxParts/Branch/BranchForm";
+import { error } from "console";
+import { exportAndUploadInstitutionAndCourses, exportInstitutionAndCoursesToFile } from "@/lib/utility"
 
 interface L2DialogBoxProps {
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onSuccess?: () => void;
+  onPrevious?: () => void;
+  initialSection?: "course" | "branch";
+}
+export interface Course {
+  id: number;
+  courseName: string;
+  aboutCourse: string;
+  courseDuration: string;
+  mode: string;
+  priceOfCourse: string;
+  location: string;
+  image: File | null;
+  brochure: File | null;
+  graduationType: string;
+  streamType: string;
+  selectBranch: string;
+  aboutBranch: string;
+  educationType: string;
+  classSize: string;
+  categoriesType: string;
+  domainType: string;
+  seatingOption: string;
+  openingTime: string;
+  closingTime: string;
+  operationalDays: string[];
+  totalSeats: string;
+  availableSeats: string;
+  pricePerSeat: string;
+  hasWifi: boolean;
+  hasChargingPoints: boolean;
+  hasAC: boolean;
+  hasPersonalLocker: boolean;
+  tuitionType: string;
+  instructorProfile: string;
+  subject: string;
+  createdBranch: string;
+}
+
+// Branch shape used locally in this component; dbId tracks IndexedDB id
+interface Branch {
+  id: number; // local UI id
+  branchName: string;
+  branchAddress: string;
+  contactInfo: string;
+  locationUrl: string;
+  dbId?: number; // IndexedDB generated id when persisted
 }
 
 export default function L2DialogBox({
@@ -37,18 +94,20 @@ export default function L2DialogBox({
   open,
   onOpenChange,
   onSuccess,
+  onPrevious,
+  initialSection: initialSectionProp,
 }: L2DialogBoxProps) {
   const router = useRouter();
-  // const [institutionType, setInstitutionType] = useState<string | null>(null);
+  const [isCoursrOrBranch, setIsCourseOrBranch] = useState<string | null>(null);
+  const [institutionType, setInstitutionType] = useState<string | null>(null);
+  // const isCoursrOrBranch = localStorage.getItem("selected");
+  // const institutionType = localStorage.getItem("institutionType");
 
-  // useEffect(() => {
-  //   if (typeof window !== "undefined") {
-  //     const storedType = localStorage.getItem("institutionType");
-  //     setInstitutionType(storedType);
-  //   }
-  // }, []);
-
-  const institutionType = localStorage.getItem("institutionType");
+  useEffect(() => {
+    // runs only in browser
+    setIsCourseOrBranch(localStorage.getItem("selected"));
+    setInstitutionType(localStorage.getItem("institutionType"));
+  }, []);
   const isUnderPostGraduate =
     institutionType === "Under Graduation/Post Graduation";
   const isCoachingCenter = institutionType === "Coaching centers";
@@ -65,12 +124,24 @@ export default function L2DialogBox({
   const shouldSkipL3 = isStudyHall || isTutionCenter;
 
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "course" | "branch" | "Study Halls" | "Tuition Hall"
-  >(isStudyHall ? "Study Halls" : isTutionCenter ? "Tuition Hall" : "course");
+  // Remove tab state; we will decide via parent selection
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState(1);
-  const [showSelectionDialog, setShowSelectionDialog] = useState(false);
+  const [showCourseAfterBranch, setShowCourseAfterBranch] = useState(false);
+  const [branchOptions, setBranchOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+
+    (async () => {
+      try {
+        const all = await getAllBranchesFromDB();
+        setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
+      } catch (err) {
+        console.error("Failed to load branches from IndexedDB", err);
+      }
+    })();
+  }, []);
 
   // Get institution type from localStorage
   const [courses, setCourses] = useState([
@@ -110,6 +181,7 @@ export default function L2DialogBox({
       tuitionType: "",
       instructorProfile: "",
       subject: "",
+      createdBranch: "",
     },
   ]);
 
@@ -117,32 +189,32 @@ export default function L2DialogBox({
   const dialogOpen = open !== undefined ? open : isOpen;
   const setDialogOpen = onOpenChange || setIsOpen;
 
-  // Show selection dialog when L2DialogBox opens (for all institution types)
-  useEffect(() => {
-    if (dialogOpen) {
-      setShowSelectionDialog(true);
-    }
-  }, [dialogOpen]);
-
   // Get current course
   const currentCourse =
     courses.find((c) => c.id === selectedCourseId) || courses[0];
 
   // Branch state
   const [selectedBranchId, setSelectedBranchId] = useState(1);
-  const [branches, setBranches] = useState([
+  const [branches, setBranches] = useState<Branch[]>([
     {
       id: 1,
       branchName: "",
       branchAddress: "",
       contactInfo: "",
       locationUrl: "",
+      dbId: undefined,
     },
   ]);
 
   // Get current branch
   const currentBranch =
     branches.find((b) => b.id === selectedBranchId) || branches[0];
+
+  // Which section to show: "course" or "branch"; prioritize localStorage 'selected', fallback to prop, then 'course'
+  const initialSection: "course" | "branch" =
+    isCoursrOrBranch === "course" || isCoursrOrBranch === "branch"
+      ? (isCoursrOrBranch as "course" | "branch")
+      : initialSectionProp || "course";
 
   type UploadField = {
     label: string;
@@ -171,11 +243,10 @@ export default function L2DialogBox({
   const handleBranchChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
-    setBranches(
-      branches.map((branch) =>
-        branch.id === selectedBranchId
-          ? { ...branch, [e.target.name]: e.target.value }
-          : branch
+    const { name, value } = e.target;
+    setBranches((prev) =>
+      prev.map((branch) =>
+        branch.id === selectedBranchId ? { ...branch, [name]: value } : branch
       )
     );
   };
@@ -209,16 +280,6 @@ export default function L2DialogBox({
           : course
       )
     );
-  };
-
-  const handleSelectionDialogChoice = (selection: "course" | "branch") => {
-    if (selection === "branch") {
-      setActiveTab("branch");
-    } else {
-      setActiveTab(
-        isStudyHall ? "Study Halls" : isTutionCenter ? "Tuition Hall" : "course"
-      );
-    }
   };
 
   const addNewCourse = () => {
@@ -259,6 +320,7 @@ export default function L2DialogBox({
       tuitionType: "",
       instructorProfile: "",
       subject: "",
+      createdBranch: "",
     };
     setCourses([...courses, newCourse]);
     setSelectedCourseId(newId);
@@ -275,26 +337,31 @@ export default function L2DialogBox({
   };
 
   const addNewBranch = () => {
-    const newId = Math.max(...branches.map((b) => b.id)) + 1;
-    const newBranch = {
-      id: newId,
-      branchName: "",
-      branchAddress: "",
-      contactInfo: "",
-      locationUrl: "",
-    };
-    setBranches([...branches, newBranch]);
-    setSelectedBranchId(newId);
+    setBranches((prev) => {
+      const newId = prev.length > 0 ? Math.max(...prev.map((b) => b.id)) + 1 : 1;
+      const newBranch: Branch = {
+        id: newId,
+        branchName: "",
+        branchAddress: "",
+        contactInfo: "",
+        locationUrl: "",
+        dbId: undefined,
+      };
+      // Select the newly added branch
+      setSelectedBranchId(newId);
+      return [...prev, newBranch];
+    });
   };
 
   const deleteBranch = (branchId: number) => {
-    if (branches.length > 1) {
-      const updatedBranches = branches.filter((b) => b.id !== branchId);
-      setBranches(updatedBranches);
+    setBranches((prev) => {
+      if (prev.length <= 1) return prev; // keep at least one branch
+      const updated = prev.filter((b) => b.id !== branchId);
       if (selectedBranchId === branchId) {
-        setSelectedBranchId(updatedBranches[0].id);
+        setSelectedBranchId(updated[0].id);
       }
-    }
+      return updated;
+    });
   };
 
   const validateCourses = () => {
@@ -324,13 +391,13 @@ export default function L2DialogBox({
           !course.streamType ||
           !course.selectBranch
         ) {
-          return `Please fill in all graduation details for course: ${course.courseName}`;
+          return; //Please fill in all graduation details for course: ${course.courseName};
         }
       }
 
       if (isCoachingCenter) {
         if (!course.categoriesType || !course.domainType) {
-          return `Please fill in all coaching details for course: ${course.courseName}`;
+          return; //Please fill in all coaching details for course: ${course.courseName};
         }
       }
 
@@ -341,7 +408,7 @@ export default function L2DialogBox({
           !course.totalSeats ||
           !course.availableSeats
         ) {
-          return `Please fill in all study hall details for: ${course.courseName}`;
+          return; // Please fill in all study hall details for: ${course.courseName};
         }
       }
 
@@ -355,7 +422,7 @@ export default function L2DialogBox({
           !course.totalSeats ||
           !course.availableSeats
         ) {
-          return `Please fill in all tuition center details for: ${course.courseName}`;
+          return; // Please fill in all tuition center details for: ${course.courseName};
         }
       }
 
@@ -366,107 +433,192 @@ export default function L2DialogBox({
     return null;
   };
 
-  const handleCourseSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
 
-    // Validate courses before submission
-    const validationError = validateCourses();
-    if (validationError) {
-      alert(validationError);
+  const handleCourseSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+
+  // ✅ Validate courses before submission
+  const validationError = validateCourses();
+  if (validationError) {
+    alert(validationError);
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    // ✅ Get all existing branches from IndexedDB
+    const allBranches = await getAllBranchesFromDB();
+
+    // Map of branchName -> branch object with courses[] (deduplication anchor)
+    const branchMap = new Map(
+      allBranches.map((b) => [
+        b.branchName.trim().toLowerCase(),
+        { ...b, courses: [] as typeof courses },
+      ])
+    );
+
+    // --- Helpers ---
+    const sanitizeBranch = (branch: any) => {
+      const { createdAt, id, ...rest } = branch; // strip unwanted fields
+      return rest;
+    };
+
+    const sanitizeCourse = (course: any) => {
+      const cleaned: Record<string, any> = {};
+      Object.entries(course).forEach(([key, value]) => {
+        if (
+          value !== null &&
+          value !== "" &&
+          !(Array.isArray(value) && value.length === 0) &&
+          value !== false
+        ) {
+          cleaned[key] = value;
+        }
+      });
+      return cleaned;
+    };
+
+    // --- Attach courses to their branches ---
+    const unassignedCourses: any[] = [];
+
+    courses.forEach((c) => {
+      const key = (c.createdBranch || "").trim().toLowerCase();
+
+      if (!key || !branchMap.has(key)) {
+        // no matching branch → unassigned
+        unassignedCourses.push(sanitizeCourse(c));
+      } else {
+        branchMap
+          .get(key)!
+          .courses.push(sanitizeCourse(c) as (typeof courses)[number]);
+      }
+    });
+
+    // --- Prepare final payload (deduplicated) ---
+    const sanitizedPayload = [
+      ...Array.from(branchMap.values())
+        .filter((b) => b.courses.length > 0)
+        .map(sanitizeBranch),
+    ];
+
+    if (unassignedCourses.length > 0) {
+      sanitizedPayload.push({
+        // no branchName → "unassigned" bucket
+        courses: unassignedCourses,
+      } as any);
+    }
+
+    if (!sanitizedPayload.length) {
+      alert("No valid courses found. Please select a branch or fill valid details.");
+      setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    console.log("Deduplicated payload to save:", sanitizedPayload);
 
-    try {
-      // Send all courses to the backend
-      console.log("Sending courses data:", courses);
-
-      const response = await courseAPI.createCourses(courses);
-
-      if (response.success) {
-        console.log("Courses created successfully:", response.data);
-
-        // Always switch to branch tab after submission
-        setActiveTab("branch");
-
-        // Reset course form
-        setCourses([
-          {
-            id: 1,
-            courseName: "",
-            aboutCourse: "",
-            courseDuration: "",
-            mode: "Offline",
-            priceOfCourse: "",
-            location: "",
-            image: null,
-            brochure: null,
-            graduationType: "",
-            streamType: "",
-            selectBranch: "",
-            aboutBranch: "",
-            educationType: "Full time",
-            classSize: "",
-            categoriesType: "",
-            domainType: "",
-            seatingOption: "",
-            openingTime: "",
-            closingTime: "",
-            operationalDays: [] as string[],
-            totalSeats: "",
-            availableSeats: "",
-            pricePerSeat: "",
-            hasWifi: false,
-            hasChargingPoints: false,
-            hasAC: false,
-            hasPersonalLocker: false,
-            // Additional fields for Tuition Centers
-            tuitionType: "",
-            instructorProfile: "",
-            subject: "",
-          },
-        ]);
-        setSelectedCourseId(1);
+    // ✅ Save deduplicated courses into IndexedDB
+    for (const entry of sanitizedPayload) {
+      if (!entry.branchName) {
+        // handle unassigned courses
+        const existingUnassigned = await getCoursesGroupsByBranchName("");
+        if (existingUnassigned.length) {
+          const group = existingUnassigned[0];
+          // Deduplicate by courseName + (optional) subject + (optional) mode
+          const existing = group.courses || [];
+          const incoming = entry.courses || [];
+          const keyOf = (c: any) => `${(c.courseName||"").trim().toLowerCase()}|${(c.subject||"").trim().toLowerCase()}|${(c.mode||"").trim().toLowerCase()}`;
+          const existingSet = new Set(existing.map(keyOf));
+          const uniqueIncoming = incoming.filter((c: any) => !existingSet.has(keyOf(c)));
+          const merged = {
+            ...group,
+            courses: [...existing, ...uniqueIncoming],
+          };
+          await updateCoursesGroupInDB(merged);
+        } else {
+          await addCoursesGroupToDB({
+            branchName: "",
+            courses: entry.courses || [],
+          });
+        }
       } else {
-        throw new Error(response.message || "Failed to create courses");
+        // handle branch-specific courses
+        const existingGroups = await getCoursesGroupsByBranchName(entry.branchName);
+        if (existingGroups.length) {
+          // update existing group (merge courses)
+          const group = existingGroups[0];
+          // Deduplicate by courseName + (optional) subject + (optional) mode
+          const existing = group.courses || [];
+          const incoming = entry.courses || [];
+          const keyOf = (c: any) => `${(c.courseName||"").trim().toLowerCase()}|${(c.subject||"").trim().toLowerCase()}|${(c.mode||"").trim().toLowerCase()}`;
+          const existingSet = new Set(existing.map(keyOf));
+          const uniqueIncoming = incoming.filter((c: any) => !existingSet.has(keyOf(c)));
+          const merged = {
+            ...group,
+            branchName: entry.branchName,
+            branchAddress: (entry as any).branchAddress,
+            contactInfo: (entry as any).contactInfo,
+            locationUrl: (entry as any).locationUrl,
+            courses: [...existing, ...uniqueIncoming],
+          };
+          await updateCoursesGroupInDB(merged);
+        } else {
+          // new branch entry
+          await addCoursesGroupToDB({
+            branchName: entry.branchName,
+            branchAddress: (entry as any).branchAddress,
+            contactInfo: (entry as any).contactInfo,
+            locationUrl: (entry as any).locationUrl,
+            courses: entry.courses || [],
+          });
+        }
       }
-    } catch (error) {
-      console.error("Error saving courses:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Failed to save course details. Please try again.";
-      alert(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
-  };
 
-  const validateBranches = () => {
-    const requiredFields = [
+    // --- Reset after success ---
+    setSelectedCourseId(1);
+    if(shouldSkipL3){
+      const response = await exportAndUploadInstitutionAndCourses()
+      if(response.success){
+        router.push("/payment");
+      }else{
+        alert("Failed to upload data")
+      }
+    }
+    onSuccess?.()
+  } catch (error) {
+    console.error("Error saving courses:", error);
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Failed to save course details. Please try again.";
+    alert(errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+  const validateBranch = (branch: Branch) => {
+    const requiredFields: (keyof Branch)[] = [
       "branchName",
       "branchAddress",
       "contactInfo",
       "locationUrl",
     ];
 
-    for (const branch of branches) {
-      for (const field of requiredFields) {
-        if (
-          !branch[field as keyof typeof branch] ||
-          String(branch[field as keyof typeof branch]).trim() === ""
-        ) {
-          return `Please fill in the ${field} field for branch: ${
-            branch.branchName || "Unnamed branch"
-          }`;
-        }
+    for (const field of requiredFields) {
+      const value = branch[field];
+      if (!value || String(value).trim() === "") {
+        return `Please fill in the ${String(field)} field for branch: ${
+          branch.branchName || "Unnamed branch"
+        }`;
       }
+    }
 
-      // Validate contact number format
-      if (branch.contactInfo && !/^\d{10}$/.test(branch.contactInfo)) {
-        return `Please enter a valid 10-digit contact number for branch: ${branch.branchName}`;
-      }
+    // Validate contact number format
+    if (branch.contactInfo && !/^\d{10}$/.test(branch.contactInfo)) {
+      return; // Please enter a valid 10-digit contact number for branch: ${branch.branchName};
     }
 
     return null;
@@ -474,9 +626,12 @@ export default function L2DialogBox({
 
   const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.log("in branch parent handler");
 
-    // Validate branches before submission
-    const validationError = validateBranches();
+    const currentBranch = branches.find((b) => b.id === selectedBranchId);
+    if (!currentBranch) return;
+
+    const validationError = validateBranch(currentBranch);
     if (validationError) {
       alert(validationError);
       return;
@@ -485,85 +640,46 @@ export default function L2DialogBox({
     setIsLoading(true);
 
     try {
-      // Send all branches to the backend
-      console.log("Sending branches data:", branches);
+      // Save only the currently selected branch to prevent duplicates
+      const payload = {
+        branchName: currentBranch.branchName,
+        branchAddress: currentBranch.branchAddress,
+        contactInfo: currentBranch.contactInfo,
+        locationUrl: currentBranch.locationUrl,
+      };
 
-      const response = await branchAPI.createBranches(branches);
-
-      if (response.success) {
-        console.log("Branches created successfully:", response.data);
+      if (currentBranch.dbId) {
+        // Update existing branch in IndexedDB
+        await updateBranchInDB({ id: currentBranch.dbId, ...payload });
+        console.log("Branch updated in DB with ID:", currentBranch.dbId);
       } else {
-        throw new Error(response.message || "Failed to create branches");
+        // Add new branch and store the generated DB id back into state
+        const [newId] = await addBranchesToDB([payload]);
+        console.log("Branch saved locally with ID:", newId);
+        setBranches((prev) =>
+          prev.map((b) => (b.id === selectedBranchId ? { ...b, dbId: newId } : b))
+        );
       }
 
-      // Close dialog and handle next step based on institution type
-      setDialogOpen(false);
+      // Refresh branch options so the course dropdown has latest values
+      try {
+        const all = await getAllBranchesFromDB();
+        setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
+      } catch (fetchErr) {
+        console.error("Failed to refresh branches after save", fetchErr);
+      }
 
-      // For Study Halls and Tution Centers, redirect directly to dashboard
-      if (shouldSkipL3) {
+      // 🔹 Instead of closing dialog, show course form if institution requires courses
+      if (isStudyHall || isTutionCenter) {
+        // These types skip courses and go dashboard
+        setDialogOpen(false);
         router.push("/dashboard");
       } else {
-        // For other institution types, proceed to L3DialogBox
-        onSuccess?.();
+        // Append course form after branch form
+        setShowCourseAfterBranch(true);
       }
-
-      // Reset forms
-      setCourses([
-        {
-          id: 1,
-          courseName: "",
-          aboutCourse: "",
-          courseDuration: "",
-          mode: "Offline",
-          priceOfCourse: "",
-          location: "",
-          image: null,
-          brochure: null,
-          // Additional fields for Under Graduate/Post graduate
-          graduationType: "",
-          streamType: "",
-          selectBranch: "",
-          aboutBranch: "",
-          educationType: "Full time",
-          classSize: "",
-          // Additional fields for Coaching centers
-          categoriesType: "",
-          domainType: "",
-          // Additional fields for Study Hall
-          seatingOption: "",
-          openingTime: "",
-          closingTime: "",
-          operationalDays: [] as string[],
-          totalSeats: "",
-          availableSeats: "",
-          pricePerSeat: "",
-          hasWifi: false,
-          hasChargingPoints: false,
-          hasAC: false,
-          hasPersonalLocker: false,
-          // Additional fields for Tuition Centers
-          tuitionType: "",
-          instructorProfile: "",
-          subject: "",
-        },
-      ]);
-      setSelectedCourseId(1);
-      setBranches([
-        {
-          id: 1,
-          branchName: "",
-          branchAddress: "",
-          contactInfo: "",
-          locationUrl: "",
-        },
-      ]);
-      setSelectedBranchId(1);
-      setActiveTab(
-        isStudyHall ? "Study Halls" : isTutionCenter ? "Tuition Hall" : "course"
-      );
     } catch (error) {
-      console.error("Error saving branch:", error);
-      alert("Failed to save branch details. Please try again.");
+      console.error("Error saving branch locally:", error);
     } finally {
       setIsLoading(false);
     }
@@ -580,31 +696,10 @@ export default function L2DialogBox({
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
-          {/* Tabs - Outside the card */}
-          <div className="mx-auto max-w-md mb-6">
-            <SlidingIndicator
-              options={
-                [
-                  isStudyHall
-                    ? "Study Halls"
-                    : isTutionCenter
-                    ? "Tuition Hall"
-                    : "course",
-                  "branch",
-                ] as const
-              }
-              activeOption={activeTab}
-              onOptionChange={setActiveTab}
-              size="md"
-            />
-          </div>
-
           <Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
             <CardContent className="space-y-6">
-              {/* Course Form */}
-              {(activeTab === "course" ||
-                activeTab === "Study Halls" ||
-                activeTab === "Tuition Hall") && (
+              {/* Render based on initialSection */}
+              {initialSection === "course" ? (
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <h3 className="text-xl md:text-2xl font-bold">
@@ -623,7 +718,7 @@ export default function L2DialogBox({
                     </p>
                   </div>
 
-                  {/* Course Tabs */}
+                  {/* Course items switching */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 flex-wrap">
                       {courses.map((course) => (
@@ -676,814 +771,57 @@ export default function L2DialogBox({
 
                   <form onSubmit={handleCourseSubmit} className="space-y-6">
                     {isCoachingCenter ? (
-                      // Coaching centers form fields
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <InputField
-                          label="Categories type"
-                          name="categoriesType"
-                          value={currentCourse.categoriesType}
-                          onChange={handleCourseChange}
-                          isSelect={true}
-                          options={[
-                            "Academic",
-                            "Competitive Exam",
-                            "Professional",
-                            "Skill Development",
-                            "Language",
-                            "Arts & Crafts",
-                            "Sports",
-                            "Music & Dance",
-                          ]}
-                          placeholder="Select Categories type"
-                        />
-
-                        <InputField
-                          label="Domain type"
-                          name="domainType"
-                          value={currentCourse.domainType}
-                          onChange={handleCourseChange}
-                          isSelect={true}
-                          options={[
-                            "Engineering",
-                            "Medical",
-                            "Management",
-                            "Law",
-                            "Banking",
-                            "Government Jobs",
-                            "IT & Software",
-                            "Design",
-                            "Marketing",
-                            "Finance",
-                          ]}
-                          placeholder="Select domain type"
-                        />
-
-                        <InputField
-                          label="Course name"
-                          name="courseName"
-                          value={currentCourse.courseName}
-                          onChange={handleCourseChange}
-                          placeholder="Enter course name"
-                        />
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Mode
-                          </label>
-                          <SlidingIndicator
-                            options={["Offline", "Online", "Hybrid"] as const}
-                            activeOption={currentCourse.mode}
-                            onOptionChange={(mode) =>
-                              setCourses(
-                                courses.map((course) =>
-                                  course.id === selectedCourseId
-                                    ? { ...course, mode }
-                                    : course
-                                )
-                              )
-                            }
-                            size="md"
-                          />
-                        </div>
-
-                        <InputField
-                          label="Course Duration"
-                          name="courseDuration"
-                          value={currentCourse.courseDuration}
-                          onChange={handleCourseChange}
-                          placeholder="e.g, 3 months"
-                        />
-
-                        <InputField
-                          label="Price of Course"
-                          name="priceOfCourse"
-                          value={currentCourse.priceOfCourse}
-                          onChange={handleCourseChange}
-                          placeholder="Enter Course price"
-                          type="number"
-                        />
-
-                        <InputField
-                          label="Location"
-                          name="location"
-                          value={currentCourse.location}
-                          onChange={handleCourseChange}
-                          placeholder="Enter Place name"
-                        />
-
-                        <InputField
-                          label="Class size"
-                          name="classSize"
-                          value={currentCourse.classSize}
-                          onChange={handleCourseChange}
-                          placeholder="Enter no of students per class"
-                          type="number"
-                        />
-                      </div>
+                      <CoachingCourseForm
+                        currentCourse={currentCourse}
+                        handleCourseChange={handleCourseChange}
+                        setCourses={setCourses}
+                        courses={courses}
+                        selectedCourseId={selectedCourseId}
+                      />
                     ) : isStudyHall ? (
-                      // Study Hall form fields
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <InputField
-                          label="Seating option"
-                          name="seatingOption"
-                          value={currentCourse.seatingOption}
-                          onChange={handleCourseChange}
-                          isSelect={true}
-                          options={[
-                            "Individual Desk",
-                            "Shared Table",
-                            "Private Cabin",
-                            "Open Seating",
-                          ]}
-                          placeholder="Select seating option"
-                        />
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Operational Time's
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="time"
-                              name="openingTime"
-                              value={currentCourse.openingTime}
-                              onChange={handleCourseChange}
-                              placeholder="Opening time"
-                              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                            />
-                            <input
-                              type="time"
-                              name="closingTime"
-                              value={currentCourse.closingTime}
-                              onChange={handleCourseChange}
-                              placeholder="Closing time"
-                              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Operational Day's
-                          </label>
-                          <div className="flex flex-wrap gap-2">
-                            {["Mon", "Tues", "Wed", "Thur", "Fri", "Sat"].map(
-                              (day) => (
-                                <button
-                                  key={day}
-                                  type="button"
-                                  onClick={() =>
-                                    handleOperationalDayChange(day)
-                                  }
-                                  className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
-                                    currentCourse.operationalDays.includes(day)
-                                      ? "bg-blue-50 border-blue-200 text-blue-700"
-                                      : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
-                                  }`}
-                                >
-                                  {day}
-                                </button>
-                              )
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Total Seats
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="number"
-                              name="totalSeats"
-                              value={currentCourse.totalSeats}
-                              onChange={handleCourseChange}
-                              placeholder="Total seats"
-                              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                            />
-                            <input
-                              type="number"
-                              name="availableSeats"
-                              value={currentCourse.availableSeats}
-                              onChange={handleCourseChange}
-                              placeholder="Available seats"
-                              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <InputField
-                          label="Price of the Seat"
-                          name="pricePerSeat"
-                          value={currentCourse.pricePerSeat}
-                          onChange={handleCourseChange}
-                          placeholder="Enter price per seat"
-                          type="number"
-                        />
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Add Image
-                          </label>
-                          <label className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors">
-                            <Upload size={24} className="text-gray-400 mb-2" />
-                            <span className="text-sm text-gray-500">
-                              {currentCourse.image
-                                ? (currentCourse.image as File).name
-                                : "Upload Course Image (jpg / jpeg)"}
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/jpg"
-                              className="hidden"
-                              onChange={(e) => handleFileChange(e, "image")}
-                            />
-                          </label>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Wi-fi ?
-                          </label>
-                          <div className="flex gap-4">
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="hasWifi"
-                                checked={currentCourse.hasWifi === true}
-                                onChange={() =>
-                                  setCourses(
-                                    courses.map((course) =>
-                                      course.id === selectedCourseId
-                                        ? { ...course, hasWifi: true }
-                                        : course
-                                    )
-                                  )
-                                }
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm">Yes</span>
-                            </label>
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="hasWifi"
-                                checked={currentCourse.hasWifi === false}
-                                onChange={() =>
-                                  setCourses(
-                                    courses.map((course) =>
-                                      course.id === selectedCourseId
-                                        ? { ...course, hasWifi: false }
-                                        : course
-                                    )
-                                  )
-                                }
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm">No</span>
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Charging Points ?
-                          </label>
-                          <div className="flex gap-4">
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="hasChargingPoints"
-                                checked={
-                                  currentCourse.hasChargingPoints === true
-                                }
-                                onChange={() =>
-                                  setCourses(
-                                    courses.map((course) =>
-                                      course.id === selectedCourseId
-                                        ? { ...course, hasChargingPoints: true }
-                                        : course
-                                    )
-                                  )
-                                }
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm">Yes</span>
-                            </label>
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="hasChargingPoints"
-                                checked={
-                                  currentCourse.hasChargingPoints === false
-                                }
-                                onChange={() =>
-                                  setCourses(
-                                    courses.map((course) =>
-                                      course.id === selectedCourseId
-                                        ? {
-                                            ...course,
-                                            hasChargingPoints: false,
-                                          }
-                                        : course
-                                    )
-                                  )
-                                }
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm">No</span>
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Air Conditioner (AC) ?
-                          </label>
-                          <div className="flex gap-4">
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="hasAC"
-                                checked={currentCourse.hasAC === true}
-                                onChange={() =>
-                                  setCourses(
-                                    courses.map((course) =>
-                                      course.id === selectedCourseId
-                                        ? { ...course, hasAC: true }
-                                        : course
-                                    )
-                                  )
-                                }
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm">Yes</span>
-                            </label>
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="hasAC"
-                                checked={currentCourse.hasAC === false}
-                                onChange={() =>
-                                  setCourses(
-                                    courses.map((course) =>
-                                      course.id === selectedCourseId
-                                        ? { ...course, hasAC: false }
-                                        : course
-                                    )
-                                  )
-                                }
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm">No</span>
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Personal Locker's ?
-                          </label>
-                          <div className="flex gap-4">
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="hasPersonalLocker"
-                                checked={
-                                  currentCourse.hasPersonalLocker === true
-                                }
-                                onChange={() =>
-                                  setCourses(
-                                    courses.map((course) =>
-                                      course.id === selectedCourseId
-                                        ? { ...course, hasPersonalLocker: true }
-                                        : course
-                                    )
-                                  )
-                                }
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm">Yes</span>
-                            </label>
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name="hasPersonalLocker"
-                                checked={
-                                  currentCourse.hasPersonalLocker === false
-                                }
-                                onChange={() =>
-                                  setCourses(
-                                    courses.map((course) =>
-                                      course.id === selectedCourseId
-                                        ? {
-                                            ...course,
-                                            hasPersonalLocker: false,
-                                          }
-                                        : course
-                                    )
-                                  )
-                                }
-                                className="text-blue-600"
-                              />
-                              <span className="text-sm">No</span>
-                            </label>
-                          </div>
-                        </div>
-                      </div>
+                      <StudyHallForm
+                        currentCourse={currentCourse}
+                        handleCourseChange={handleCourseChange}
+                        handleOperationalDayChange={handleOperationalDayChange}
+                        handleFileChange={handleFileChange}
+                        setCourses={setCourses}
+                        courses={courses}
+                        selectedCourseId={selectedCourseId}
+                      />
                     ) : isTutionCenter ? (
-                      // Tuition Center form fields
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <InputField
-                          label="Tuition type"
-                          name="tuitionType"
-                          value={currentCourse.tuitionType}
-                          onChange={handleCourseChange}
-                          isSelect={true}
-                          options={["Individual", "Group", "Online", "Hybrid"]}
-                          placeholder="Select tuition type"
-                        />
-
-                        <InputField
-                          label="Instructor Profile"
-                          name="instructorProfile"
-                          value={currentCourse.instructorProfile}
-                          onChange={handleCourseChange}
-                          placeholder="Instructor name"
-                        />
-
-                        <InputField
-                          label="Subject"
-                          name="subject"
-                          value={currentCourse.subject}
-                          onChange={handleCourseChange}
-                          placeholder="Enter subject name"
-                        />
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Total Seats
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="number"
-                              name="totalSeats"
-                              value={currentCourse.totalSeats}
-                              onChange={handleCourseChange}
-                              placeholder="Total seats"
-                              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                            />
-                            <input
-                              type="number"
-                              name="availableSeats"
-                              value={currentCourse.availableSeats}
-                              onChange={handleCourseChange}
-                              placeholder="Available seats"
-                              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Operational Day's
-                          </label>
-                          <div className="flex flex-wrap gap-2">
-                            {["Mon", "Tues", "Wed", "Thur", "Fri", "Sat"].map(
-                              (day) => (
-                                <button
-                                  key={day}
-                                  type="button"
-                                  onClick={() =>
-                                    handleOperationalDayChange(day)
-                                  }
-                                  className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
-                                    currentCourse.operationalDays.includes(day)
-                                      ? "bg-blue-50 border-blue-200 text-blue-700"
-                                      : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
-                                  }`}
-                                >
-                                  {day}
-                                </button>
-                              )
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Operational Time's
-                          </label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="time"
-                              name="openingTime"
-                              value={currentCourse.openingTime}
-                              onChange={handleCourseChange}
-                              placeholder="Opening time"
-                              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                            />
-                            <input
-                              type="time"
-                              name="closingTime"
-                              value={currentCourse.closingTime}
-                              onChange={handleCourseChange}
-                              placeholder="Closing time"
-                              className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        <InputField
-                          label="Price of the Seat"
-                          name="pricePerSeat"
-                          value={currentCourse.pricePerSeat}
-                          onChange={handleCourseChange}
-                          placeholder="Enter price per seat"
-                          type="number"
-                        />
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Add Image
-                          </label>
-                          <label className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors">
-                            <Upload size={24} className="text-gray-400 mb-2" />
-                            <span className="text-sm text-gray-500">
-                              {currentCourse.image
-                                ? (currentCourse.image as File).name
-                                : "Upload Course Image (jpg / jpeg)"}
-                            </span>
-                            <input
-                              type="file"
-                              accept="image/jpeg,image/jpg"
-                              className="hidden"
-                              onChange={(e) => handleFileChange(e, "image")}
-                            />
-                          </label>
-                        </div>
-                      </div>
+                      <TuitionCenterForm
+                        currentCourse={currentCourse}
+                        handleCourseChange={handleCourseChange}
+                        handleOperationalDayChange={handleOperationalDayChange}
+                        handleFileChange={handleFileChange}
+                        setCourses={setCourses}
+                        courses={courses}
+                        selectedCourseId={selectedCourseId}
+                      />
                     ) : isUnderPostGraduate ? (
-                      // Under Graduate/Post graduate form fields
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <InputField
-                          label="Graduation type"
-                          name="graduationType"
-                          value={currentCourse.graduationType}
-                          onChange={handleCourseChange}
-                          isSelect={true}
-                          options={[
-                            "Under Graduate",
-                            "Post Graduate",
-                            "Diploma",
-                            "Certificate",
-                          ]}
-                          placeholder="Select graduation type"
-                        />
-
-                        <InputField
-                          label="Stream type"
-                          name="streamType"
-                          value={currentCourse.streamType}
-                          onChange={handleCourseChange}
-                          isSelect={true}
-                          options={[
-                            "Engineering",
-                            "Medical",
-                            "Commerce",
-                            "Arts",
-                            "Science",
-                            "Management",
-                            "Law",
-                          ]}
-                          placeholder="Select Stream type"
-                        />
-
-                        <InputField
-                          label="Select branch"
-                          name="selectBranch"
-                          value={currentCourse.selectBranch}
-                          onChange={handleCourseChange}
-                          isSelect={true}
-                          options={[
-                            "Computer Science",
-                            "Mechanical",
-                            "Electrical",
-                            "Civil",
-                            "Electronics",
-                            "Chemical",
-                          ]}
-                          placeholder="Select branch type"
-                        />
-
-                        <InputField
-                          label="About branch"
-                          name="aboutBranch"
-                          value={currentCourse.aboutBranch}
-                          onChange={handleCourseChange}
-                          placeholder="Enter the course info"
-                        />
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Education type
-                          </label>
-                          <SlidingIndicator
-                            options={
-                              ["Full time", "part time", "Distance"] as const
-                            }
-                            activeOption={currentCourse.educationType}
-                            onOptionChange={(educationType) =>
-                              setCourses(
-                                courses.map((course) =>
-                                  course.id === selectedCourseId
-                                    ? { ...course, educationType }
-                                    : course
-                                )
-                              )
-                            }
-                            size="md"
-                          />
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Mode
-                          </label>
-                          <SlidingIndicator
-                            options={["Offline", "Online", "Hybrid"] as const}
-                            activeOption={currentCourse.mode}
-                            onOptionChange={(mode) =>
-                              setCourses(
-                                courses.map((course) =>
-                                  course.id === selectedCourseId
-                                    ? { ...course, mode }
-                                    : course
-                                )
-                              )
-                            }
-                            size="md"
-                          />
-                        </div>
-
-                        <InputField
-                          label="Course Duration"
-                          name="courseDuration"
-                          value={currentCourse.courseDuration}
-                          onChange={handleCourseChange}
-                          placeholder="e.g, 3 months"
-                        />
-
-                        <InputField
-                          label="Price of Course"
-                          name="priceOfCourse"
-                          value={currentCourse.priceOfCourse}
-                          onChange={handleCourseChange}
-                          placeholder="Enter Course price"
-                          type="number"
-                        />
-
-                        <InputField
-                          label="Location"
-                          name="location"
-                          value={currentCourse.location}
-                          onChange={handleCourseChange}
-                          placeholder="Enter Place name"
-                        />
-
-                        <InputField
-                          label="Class size"
-                          name="classSize"
-                          value={currentCourse.classSize}
-                          onChange={handleCourseChange}
-                          placeholder="Enter no of students per class"
-                          type="number"
-                        />
-                      </div>
+                      <UnderPostGraduateForm
+                        currentCourse={currentCourse}
+                        handleCourseChange={handleCourseChange}
+                        setCourses={setCourses}
+                        courses={courses}
+                        selectedCourseId={selectedCourseId}
+                      />
                     ) : isBasicCourseForm ? (
-                      // Basic form fields for Kindergarten, School, Intermediate College
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <InputField
-                          label="Course Name"
-                          name="courseName"
-                          value={currentCourse.courseName}
-                          onChange={handleCourseChange}
-                          placeholder="Enter Course name"
-                        />
-                        <InputField
-                          label="About Course"
-                          name="aboutCourse"
-                          value={currentCourse.aboutCourse}
-                          onChange={handleCourseChange}
-                          placeholder="Enter the course info"
-                        />
-
-                        <InputField
-                          label="Course Duration"
-                          name="courseDuration"
-                          value={currentCourse.courseDuration}
-                          onChange={handleCourseChange}
-                          placeholder="e.g, 3 months"
-                        />
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Mode
-                          </label>
-                          <SlidingIndicator
-                            options={["Offline", "Online", "Hybrid"] as const}
-                            activeOption={currentCourse.mode}
-                            onOptionChange={(mode) =>
-                              setCourses(
-                                courses.map((course) =>
-                                  course.id === selectedCourseId
-                                    ? { ...course, mode }
-                                    : course
-                                )
-                              )
-                            }
-                            size="md"
-                          />
-                        </div>
-
-                        <InputField
-                          label="Price of Course"
-                          name="priceOfCourse"
-                          value={currentCourse.priceOfCourse}
-                          onChange={handleCourseChange}
-                          placeholder="Enter Course price"
-                          type="number"
-                        />
-                        <InputField
-                          label="Location"
-                          name="location"
-                          value={currentCourse.location}
-                          onChange={handleCourseChange}
-                          placeholder="Enter Place name"
-                        />
-                      </div>
+                      <BasicCourseForm
+                        currentCourse={currentCourse}
+                        handleCourseChange={handleCourseChange}
+                        setCourses={setCourses}
+                        courses={courses}
+                        selectedCourseId={selectedCourseId}
+                      />
                     ) : (
-                      // Fallback: Basic form for any other institution types
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <InputField
-                          label="Course Name"
-                          name="courseName"
-                          value={currentCourse.courseName}
-                          onChange={handleCourseChange}
-                          placeholder="Enter Course name"
-                        />
-                        <InputField
-                          label="About Course"
-                          name="aboutCourse"
-                          value={currentCourse.aboutCourse}
-                          onChange={handleCourseChange}
-                          placeholder="Enter the course info"
-                        />
-
-                        <InputField
-                          label="Course Duration"
-                          name="courseDuration"
-                          value={currentCourse.courseDuration}
-                          onChange={handleCourseChange}
-                          placeholder="e.g, 3 months"
-                        />
-
-                        <div className="flex flex-col gap-2">
-                          <label className="font-medium text-[16px]">
-                            Mode
-                          </label>
-                          <SlidingIndicator
-                            options={["Offline", "Online", "Hybrid"] as const}
-                            activeOption={currentCourse.mode}
-                            onOptionChange={(mode) =>
-                              setCourses(
-                                courses.map((course) =>
-                                  course.id === selectedCourseId
-                                    ? { ...course, mode }
-                                    : course
-                                )
-                              )
-                            }
-                            size="md"
-                          />
-                        </div>
-
-                        <InputField
-                          label="Price of Course"
-                          name="priceOfCourse"
-                          value={currentCourse.priceOfCourse}
-                          onChange={handleCourseChange}
-                          placeholder="Enter Course price"
-                          type="number"
-                        />
-                        <InputField
-                          label="Location"
-                          name="location"
-                          value={currentCourse.location}
-                          onChange={handleCourseChange}
-                          placeholder="Enter Place name"
-                        />
-                      </div>
+                      <FallbackCourseForm
+                        currentCourse={currentCourse}
+                        handleCourseChange={handleCourseChange}
+                        setCourses={setCourses}
+                        courses={courses}
+                        selectedCourseId={selectedCourseId}
+                      />
                     )}
 
                     <div className="grid md:grid-cols-2 gap-6">
@@ -1511,27 +849,33 @@ export default function L2DialogBox({
                         </div>
                       ))}
                     </div>
+                    <div className="flex justify-center gap-10">
+                      <button
+                        type="button"
+                        onClick={onPrevious}
+                        className="w-[314px] h-[48px] border border-[#697282] text-[#697282] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center shadow-inner"
+                      >
+                        Previous
+                      </button>
 
-                    <div className="flex justify-center pt-4">
-                      <Button
+                      <button
                         type="submit"
                         disabled={isLoading}
-                        className={`w-full max-w-[400px] h-[48px] rounded-[12px] font-semibold transition-colors
-        ${
-          isLoading
-            ? "opacity-50 cursor-not-allowed bg-gray-600"
-            : "bg-[#6B7280] hover:bg-[#6B7280]/90"
-        } text-white`}
+                        className={`w-[314px] h-[48px] rounded-[12px] font-semibold transition-colors 
+            ${
+              isLoading
+                ? "opacity-50 cursor-not-allowed bg-gray-600"
+                : "bg-[#6B7280] hover:bg-[#6B7280]/90"
+            } 
+            text-white flex items-center justify-center`}
                       >
                         {isLoading ? "Saving..." : "Save & Next"}
-                      </Button>
+                      </button>
                     </div>
                   </form>
                 </div>
-              )}
-
-              {/* Branch Form */}
-              {activeTab === "branch" && (
+              ) : (
+                // Branch section
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <h3 className="text-xl md:text-2xl font-bold">
@@ -1542,7 +886,6 @@ export default function L2DialogBox({
                     </p>
                   </div>
 
-                  {/* Branch Tabs */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 flex-wrap">
                       {branches.map((branch) => (
@@ -1583,70 +926,224 @@ export default function L2DialogBox({
                       Add Branch
                     </Button>
                   </div>
-                  <form onSubmit={handleBranchSubmit} className="space-y-6">
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <InputField
-                        label="Branch Name"
-                        name="branchName"
-                        value={currentBranch.branchName}
-                        onChange={handleBranchChange}
-                        placeholder="Enter Course name"
-                      />
-                      <InputField
-                        label="Contact info"
-                        name="contactInfo"
-                        value={currentBranch.contactInfo}
-                        onChange={handleBranchChange}
-                        placeholder="+91 00000 0000"
-                        type="tel"
-                        numericOnly
-                        pattern="[0-9]*"
-                        maxLength={10}
-                      />
-                      <InputField
-                        label="Branch address"
-                        name="branchAddress"
-                        value={currentBranch.branchAddress}
-                        onChange={handleBranchChange}
-                        placeholder="Enter address"
-                      />
-                      <InputField
-                        label="Location URL"
-                        name="locationUrl"
-                        value={currentBranch.locationUrl}
-                        onChange={handleBranchChange}
-                        placeholder="Paste the URL"
-                      />
-                    </div>
 
-                    <div className="flex justify-center pt-4">
-                      <Button
-                        type="submit"
-                        disabled={isLoading}
-                        className={`w-full max-w-[400px] h-[48px] rounded-[12px] font-semibold transition-colors
-        ${
-          isLoading
-            ? "opacity-50 cursor-not-allowed bg-gray-600"
-            : "bg-[#6B7280] hover:bg-[#6B7280]/90"
-        } text-white`}
-                      >
-                        {isLoading ? "Saving..." : "Add Branch"}
-                      </Button>
+                  <div className="b p-4 rounded-md">
+                    <BranchForm
+                      branches={branches}
+                      setBranches={setBranches}
+                      selectedBranchId={selectedBranchId}
+                      setSelectedBranchId={setSelectedBranchId}
+                      handleBranchChange={handleBranchChange}
+                      handleBranchSubmit={handleBranchSubmit}
+                      handlePreviousClick={onPrevious}
+                      deleteBranch={deleteBranch}
+                      addNewBranch={addNewBranch}
+                      isLoading={isLoading}
+                    />
+                  </div>
+
+                  {showCourseAfterBranch && (
+                    <div className="space-y-6">
+                      <div className="space-y-2">
+                        <h3 className="text-xl md:text-2xl font-bold">
+                          {isStudyHall
+                            ? "Study Hall"
+                            : isTutionCenter
+                            ? "Tuition Hall"
+                            : "Course Details"}
+                        </h3>
+                        <p className="text-[#697282] text-sm">
+                          {isStudyHall
+                            ? "Enter the details of the study hall."
+                            : isTutionCenter
+                            ? "Enter the details of the tuition hall."
+                            : "Enter the courses your institution offers."}
+                        </p>
+                      </div>
+
+                      {/* Course items switching */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {courses.map((course) => (
+                            <div key={course.id} className="flex items-center">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setSelectedCourseId(course.id)}
+                                className={`px-3 py-2 rounded-lg text-sm border transition-colors flex items-center gap-2 ${
+                                  selectedCourseId === course.id
+                                    ? "bg-blue-50 border-blue-200 text-blue-700"
+                                    : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
+                                }`}
+                              >
+                                <span>
+                                  {course.courseName ||
+                                    (isStudyHall
+                                      ? `Hall ${course.id}`
+                                      : isTutionCenter
+                                      ? `Hall ${course.id}`
+                                      : `Course ${course.id}`)}
+                                </span>
+                                {courses.length > 1 && (
+                                  <MoreVertical
+                                    size={14}
+                                    className="text-gray-400 hover:text-gray-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteCourse(course.id);
+                                    }}
+                                  />
+                                )}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={addNewCourse}
+                          className="bg-[#0222D7] hover:bg-[#0222D7]/90 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"
+                        >
+                          <Plus size={16} />
+                          {isStudyHall
+                            ? "Add Hall"
+                            : isTutionCenter
+                            ? "Add Hall"
+                            : "Add Course"}
+                        </Button>
+                      </div>
+
+                      <form onSubmit={handleCourseSubmit} className="space-y-6">
+                        <InputField
+                          label="Branch"
+                          name="createdBranch"
+                          value={currentCourse.createdBranch}
+                          onChange={handleCourseChange}
+                          isSelect={true}
+                          options={
+                            branchOptions.length
+                              ? branchOptions
+                              : ["No branches saved yet"]
+                          }
+                          placeholder="Select branch"
+                        />
+                        {isCoachingCenter ? (
+                          <CoachingCourseForm
+                            currentCourse={currentCourse}
+                            handleCourseChange={handleCourseChange}
+                            setCourses={setCourses}
+                            courses={courses}
+                            selectedCourseId={selectedCourseId}
+                          />
+                        ) : isStudyHall ? (
+                          <StudyHallForm
+                            currentCourse={currentCourse}
+                            handleCourseChange={handleCourseChange}
+                            handleOperationalDayChange={
+                              handleOperationalDayChange
+                            }
+                            handleFileChange={handleFileChange}
+                            setCourses={setCourses}
+                            courses={courses}
+                            selectedCourseId={selectedCourseId}
+                          />
+                        ) : isTutionCenter ? (
+                          <TuitionCenterForm
+                            currentCourse={currentCourse}
+                            handleCourseChange={handleCourseChange}
+                            handleOperationalDayChange={
+                              handleOperationalDayChange
+                            }
+                            handleFileChange={handleFileChange}
+                            setCourses={setCourses}
+                            courses={courses}
+                            selectedCourseId={selectedCourseId}
+                          />
+                        ) : isUnderPostGraduate ? (
+                          <UnderPostGraduateForm
+                            currentCourse={currentCourse}
+                            handleCourseChange={handleCourseChange}
+                            setCourses={setCourses}
+                            courses={courses}
+                            selectedCourseId={selectedCourseId}
+                          />
+                        ) : isBasicCourseForm ? (
+                          <BasicCourseForm
+                            currentCourse={currentCourse}
+                            handleCourseChange={handleCourseChange}
+                            setCourses={setCourses}
+                            courses={courses}
+                            selectedCourseId={selectedCourseId}
+                          />
+                        ) : (
+                          <FallbackCourseForm
+                            currentCourse={currentCourse}
+                            handleCourseChange={handleCourseChange}
+                            setCourses={setCourses}
+                            courses={courses}
+                            selectedCourseId={selectedCourseId}
+                          />
+                        )}
+
+                        <div className="grid md:grid-cols-2 gap-6">
+                          {uploadFields.map((f) => (
+                            <div key={f.type} className="flex flex-col gap-2">
+                              <label className="font-medium text-[16px]">
+                                {f.label}
+                              </label>
+                              <label className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors">
+                                <Upload
+                                  size={24}
+                                  className="text-gray-400 mb-2"
+                                />
+                                <span className="text-sm text-gray-500">
+                                  {currentCourse[f.type]
+                                    ? (currentCourse[f.type] as File).name
+                                    : f.type === "image"
+                                    ? "Upload Course Image (jpg / jpeg)"
+                                    : "Upload Brochure Course (pdf)"}
+                                </span>
+                                <input
+                                  type="file"
+                                  accept={f.accept}
+                                  className="hidden"
+                                  onChange={(e) => handleFileChange(e, f.type)}
+                                />
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-center gap-10">
+                          <button
+                            type="button"
+                            onClick={onPrevious}
+                            className="w-[314px] h-[48px] border border-[#697282] text-[#697282] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center shadow-inner"
+                          >
+                            Previous
+                          </button>
+
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className={`w-[314px] h-[48px] rounded-[12px] font-semibold transition-colors 
+            ${
+              isLoading
+                ? "opacity-50 cursor-not-allowed bg-gray-600"
+                : "bg-[#6B7280] hover:bg-[#6B7280]/90"
+            } 
+            text-white flex items-center justify-center`}
+                          >
+                            {isLoading ? "Saving..." : "Save & Next"}
+                          </button>
+                        </div>
+                      </form>
                     </div>
-                  </form>
+                  )}
                 </div>
               )}
             </CardContent>
           </Card>
         </DialogContent>
       </Dialog>
-
-      {/* Course or Branch Selection Dialog */}
-      <CourseOrBranchSelectionDialog
-        open={showSelectionDialog}
-        onOpenChange={setShowSelectionDialog}
-        onSelection={handleSelectionDialogChoice}
-      />
     </>
   );
 }

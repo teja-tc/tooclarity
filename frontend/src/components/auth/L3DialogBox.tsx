@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/levels_dialog";
 import {
   Card,
   CardHeader,
@@ -22,12 +22,65 @@ import {
 import InputField from "@/components/ui/InputField";
 import { Clock } from "lucide-react";
 import { institutionDetailsAPI, clearInstitutionData } from "@/lib/api";
+import { validateField, validateForm } from "@/lib/validations/validateField";
+import {
+  KindergartenSchema,
+  SchoolSchema,
+  CoachingSchema,
+  CollegeSchema,
+  UndergraduateSchema,
+} from "@/lib/validations/L3Schema";
+import {
+  addInstitutionToDB,
+  getAllInstitutionsFromDB,
+  updateInstitutionInDB,
+} from "@/lib/localDb";
+import {
+  exportAndUploadInstitutionAndCourses,
+  exportInstitutionAndCoursesToFile,
+} from "@/lib/utility";
 
 interface L3DialogBoxProps {
   trigger?: React.ReactNode;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  onSuccess?: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+  onPrevious?: () => void; // 👈 add this
+}
+
+interface InputFieldProps {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => void;
+  isSelect?: boolean;
+  isRadio?: boolean;
+  options?: string[];
+  placeholder?: string;
+  icon?: React.ReactNode;
+  className?: string;
+  error?: string;
+}
+interface InputFieldProps {
+  label: string;
+  name: string;
+  value: string;
+  onChange: (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => void;
+  placeholder?: string;
+  options?: string[];
+  isSelect?: boolean;
+  isRadio?: boolean;
+  isTextarea?: boolean;
+  rows?: number;
+  error?: string;
 }
 
 interface FormData {
@@ -94,21 +147,18 @@ export default function L3DialogBox({
   open,
   onOpenChange,
   onSuccess,
+  onPrevious,
 }: L3DialogBoxProps) {
   const router = useRouter();
   // const [institutionType, setInstitutionType] = useState<string | null>(null);const response = await courseAPI.createCourses(courses);
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-  // useEffect(() => {
-  //   if (typeof window !== "undefined") {
-  //     const storedType = localStorage.getItem("institutionType");
-  //     setInstitutionType(storedType);
-  //   }
-  // }, []);
-
-  const institutionType = localStorage.getItem("institutionType");
+  let institutionType: string | null = null;
+  // const institutionType = localStorage.getItem("institutionType");
+  if (typeof window !== "undefined") {
+    institutionType = localStorage.getItem("institutionType");
+  }
   // Check institution types - default to kindergarten if no type is set
   const isKindergarten =
     institutionType === "Kindergarten/childcare center" ||
@@ -118,6 +168,52 @@ export default function L3DialogBox({
   const isIntermediate = institutionType === "Intermediate college(K12)";
   const isUndergraduate =
     institutionType === "Under Graduation/Post Graduation";
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+
+    let isMounted = true;
+    (async () => {
+      try {
+        const institutions = await getAllInstitutionsFromDB();
+        if (!isMounted) return;
+
+        if (institutions && institutions.length > 0) {
+          const latest = institutions.sort(
+            (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+          )[0];
+          setFormData({
+            schoolType: latest.schoolType || "",
+            curriculumType: latest.curriculumType || "",
+            openingTime: latest.openingTime || "",
+            closingTime: latest.closingTime || "",
+            operationalDays: latest.operationalDays || [],
+            extendedCare: latest.extendedCare || "",
+            mealsProvided: latest.mealsProvided || "",
+            outdoorPlayArea: latest.outdoorPlayArea || "",
+          });
+        } else {
+          // ensure blank state
+          setFormData({
+            schoolType: "",
+            curriculumType: "",
+            openingTime: "",
+            closingTime: "",
+            operationalDays: [],
+            extendedCare: "",
+            mealsProvided: "",
+            outdoorPlayArea: "",
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load institutions from IndexedDB", err);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [formData, setFormData] = useState<FormData>({
     schoolType: "",
@@ -179,28 +275,225 @@ export default function L3DialogBox({
       busService: "",
     });
 
+  const [formErrors, setFormErrors] = useState<
+    Partial<Record<keyof FormData, string>>
+  >({});
+  const [schoolFormErrors, setSchoolFormErrors] = useState<
+    Partial<Record<keyof SchoolFormData, string>>
+  >({});
+  const [coachingFormErrors, setCoachingFormErrors] = useState<
+    Partial<Record<keyof CoachingFormData, string>>
+  >({});
+  const [collegeFormErrors, setCollegeFormErrors] = useState<
+    Partial<Record<keyof IntermediateFormData, string>>
+  >({});
+  const [undergraduateFormErrors, setUndergraduateFormErrors] = useState<
+    Partial<Record<keyof UndergraduateFormData, string>>
+  >({});
+
   // Handle controlled open state
   const dialogOpen = open !== undefined ? open : isOpen;
   const setDialogOpen = onOpenChange || setIsOpen;
 
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  // ---------- Handlers ----------
+
+  const handleRadioChangeField = (name: keyof FormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    const error = validateField(KindergartenSchema, name, value);
+    setFormErrors((prev) => ({ ...prev, [name]: error }));
+  };
+
+  const handleOperationalDayToggle = (day: string) => {
+    setFormData((prev) => {
+      const updatedDays = prev.operationalDays.includes(day)
+        ? prev.operationalDays.filter((d) => d !== day)
+        : [...prev.operationalDays, day];
+
+      const error = validateField(
+        KindergartenSchema,
+        "operationalDays",
+        updatedDays
+      );
+      setFormErrors((prevErrors) => ({
+        ...prevErrors,
+        operationalDays: error,
+      }));
+
+      return { ...prev, operationalDays: updatedDays };
+    });
+  };
+
+  // --- ONCHANGE HANDLERS ---
+
+  // Time fields (opening/closing) handler
+  const handleTimeChange = (
+    name: "openingTime" | "closingTime",
+    value: string
+  ) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    const error = validateField(KindergartenSchema, name, value); // Joi schema handles HH:MM + required
+    setFormErrors((prev) => ({ ...prev, [name]: error }));
+  };
+
+  const handleFieldChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    const error = validateField(KindergartenSchema, name, value);
+    setFormErrors((prev) => ({ ...prev, [name]: error }));
   };
 
-  const handleOperationalDayChange = (day: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      operationalDays: prev.operationalDays.includes(day)
+  const handleSchoolFieldChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
+
+    // Update state
+    setSchoolFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Dynamic validation
+    const error = validateField(SchoolSchema, name, value);
+    setSchoolFormErrors((prev) => ({ ...prev, [name]: error || "" }));
+  };
+  const handleSchoolRadioChangeWithValidation = (
+    name: keyof SchoolFormData,
+    value: string
+  ) => {
+    setSchoolFormData((prev) => ({ ...prev, [name]: value }));
+
+    const error = validateField(SchoolSchema, name, value);
+    setSchoolFormErrors((prev) => ({ ...prev, [name]: error || "" }));
+  };
+
+  const handleSchoolOperationalDayToggle = (day: string) => {
+    setSchoolFormData((prev) => {
+      const updatedDays = prev.operationalDays.includes(day)
         ? prev.operationalDays.filter((d) => d !== day)
-        : [...prev.operationalDays, day],
-    }));
-  };
+        : [...prev.operationalDays, day];
 
-  const handleRadioChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+      // Validate array
+      const error = validateField(SchoolSchema, "operationalDays", updatedDays);
+      setSchoolFormErrors((prev) => ({
+        ...prev,
+        operationalDays: error || "",
+      }));
+
+      return { ...prev, operationalDays: updatedDays };
+    });
+  };
+  const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    // setSubmitted(true);
+
+    // ✅ Validate with Joi (or your validateForm util)
+    const errors = validateForm(SchoolSchema, schoolFormData);
+    setSchoolFormErrors(errors);
+
+    if (Object.keys(errors).length > 0) return; // stop if errors exist
+
+    setIsLoading(true);
+
+    try {
+      // Normalize Yes/No → booleans
+      const schoolFormDataWithBooleans = {
+        ...schoolFormData,
+        hostelFacility: schoolFormData.hostelFacility === "Yes",
+        playground: schoolFormData.playground === "Yes",
+        busService: schoolFormData.busService === "Yes",
+      };
+
+      // 1) Load existing schools
+      const schools = await getAllInstitutionsFromDB?.(); // ✅ you’ll need this in your localDb.ts
+
+      // Normalize for comparison
+      const normalize = (x: any) => ({
+        schoolType: x.schoolType || "",
+        schoolCategory: x.schoolCategory || "",
+        curriculumType: x.curriculumType || "",
+        operationalDays: x.operationalDays || [],
+        otherActivities: x.otherActivities || "",
+        hostelFacility: !!x.hostelFacility,
+        playground: !!x.playground,
+        busService: !!x.busService,
+      });
+
+      const latest =
+        schools && schools.length > 0
+          ? schools.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
+          : null;
+
+      const current = normalize(schoolFormDataWithBooleans);
+      let effectiveId: number | null = null;
+
+      if (latest) {
+        const latestNormalized = normalize(latest);
+        const isSame =
+          JSON.stringify(latestNormalized) === JSON.stringify(current);
+
+        if (isSame) {
+          // ✅ unchanged → skip saving
+          effectiveId = latest.id || null;
+        } else {
+          // ✅ update existing
+          await updateInstitutionInDB({
+            ...(latest as any),
+            ...current,
+            id: latest.id,
+          });
+          effectiveId = latest.id || null;
+        }
+      } else {
+        // ✅ insert new
+        const id = await addInstitutionToDB(current);
+        effectiveId = id;
+        console.log("School saved locally with id:", id);
+      }
+
+      // 2) Store reference in localStorage (optional)
+      if (typeof window !== "undefined") {
+        if (effectiveId !== null) {
+          localStorage.setItem("schoolId", String(effectiveId));
+        }
+      }
+
+      // 3) Success → close dialog & reset form
+      setDialogOpen(false);
+      // setSubmitted(false);
+      setSchoolFormErrors({});
+      setSchoolFormData({
+        schoolType: "",
+        schoolCategory: "",
+        curriculumType: "",
+        operationalDays: [],
+        otherActivities: "",
+        hostelFacility: "",
+        playground: "",
+        busService: "",
+      });
+
+      //   router.push("/dashboard");
+      const uploadResponse = await exportInstitutionAndCoursesToFile();
+      console.log("Upload response:", uploadResponse);
+
+      //   if (!uploadResponse.success) {
+      //     alert(uploadResponse.message || "Failed to upload institution file.");
+      //   }
+
+      // Success → close dialog & reset form
+      setDialogOpen(false);
+      setSchoolFormErrors({});
+      onSuccess?.();
+    } catch (error) {
+      console.error("Error saving school details:", error);
+      alert("Failed to save school details locally. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSchoolChange = (
@@ -226,6 +519,158 @@ export default function L3DialogBox({
   const handleCoachingRadioChange = (name: string, value: string) => {
     setCoachingFormData((prev) => ({ ...prev, [name]: value }));
   };
+  const handleCollegeFieldChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+
+    // Update college form data
+    setCollegeFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Dynamic validation
+    const error = validateField(CollegeSchema, name, value);
+    setCollegeFormErrors((prev) => ({ ...prev, [name]: error || "" }));
+  };
+
+  const handleCollegeOperationalDayToggle = (day: string) => {
+    setCollegeFormData((prev) => {
+      const updatedDays = prev.operationalDays.includes(day)
+        ? prev.operationalDays.filter((d) => d !== day)
+        : [...prev.operationalDays, day];
+
+      // Validate array
+      const error = validateField(
+        CollegeSchema,
+        "operationalDays",
+        updatedDays
+      );
+      setCollegeFormErrors((prev) => ({
+        ...prev,
+        operationalDays: error || "",
+      }));
+
+      return { ...prev, operationalDays: updatedDays };
+    });
+  };
+  const handleCollegeRadioChangeWithValidation = (
+    name: keyof IntermediateFormData,
+    value: string
+  ) => {
+    setCollegeFormData((prev) => ({ ...prev, [name]: value }));
+
+    const error = validateField(CollegeSchema, name, value);
+    setCollegeFormErrors((prev) => ({ ...prev, [name]: error || "" }));
+  };
+
+  const handleCollegeSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    // setSubmitted(true);
+
+    // ✅ Validate form
+    const errors = validateForm(CollegeSchema, collegeFormData);
+    setCollegeFormErrors(errors);
+
+    if (Object.keys(errors).length > 0) return;
+
+    setIsLoading(true);
+
+    try {
+      // ✅ Normalize Yes/No → boolean
+      const collegeFormDataWithBooleans = {
+        ...collegeFormData,
+        hostelFacility: collegeFormData.hostelFacility === "Yes",
+        playground: collegeFormData.playground === "Yes",
+        busService: collegeFormData.busService === "Yes",
+      };
+
+      // 1) Load existing colleges from IndexedDB
+      const colleges = await getAllInstitutionsFromDB?.(); // 🔑 need to implement in localDb.ts
+
+      // Normalize for comparison
+      const normalize = (x: any) => ({
+        collegeType: x.collegeType || "",
+        collegeCategory: x.collegeCategory || "",
+        curriculumType: x.curriculumType || "",
+        operationalDays: x.operationalDays || [],
+        otherActivities: x.otherActivities || "",
+        hostelFacility: !!x.hostelFacility,
+        playground: !!x.playground,
+        busService: !!x.busService,
+      });
+
+      const latest =
+        colleges && colleges.length > 0
+          ? colleges.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
+          : null;
+
+      const current = normalize(collegeFormDataWithBooleans);
+      let effectiveId: number | null = null;
+
+      if (latest) {
+        const latestNormalized = normalize(latest);
+        const isSame =
+          JSON.stringify(latestNormalized) === JSON.stringify(current);
+
+        if (isSame) {
+          // ✅ unchanged → skip saving
+          effectiveId = latest.id || null;
+        } else {
+          // ✅ update existing
+          await updateInstitutionInDB({
+            ...(latest as any),
+            ...current,
+            id: latest.id,
+          });
+          effectiveId = latest.id || null;
+        }
+      } else {
+        // ✅ insert new
+        const id = await addInstitutionToDB(current);
+        effectiveId = id;
+        console.log("College saved locally with id:", id);
+      }
+
+      // 2) Save reference in localStorage (optional)
+      if (typeof window !== "undefined") {
+        if (effectiveId !== null) {
+          localStorage.setItem("collegeId", String(effectiveId));
+        }
+      }
+
+      const response = await exportAndUploadInstitutionAndCourses();
+      console.log("Upload response:", response);
+
+      if (response.success) {
+        // 3) Success → reset + redirect
+        setDialogOpen(false);
+        //   setSubmitted(false);
+        setCollegeFormErrors({});
+        setCollegeFormData({
+          collegeType: "",
+          collegeCategory: "",
+          curriculumType: "",
+          operationalDays: [],
+          otherActivities: "",
+          hostelFacility: "",
+          playground: "",
+          busService: "",
+        });
+
+        router.push("/payment");
+        onSuccess?.();
+      } else {
+        alert(
+          response.message ||
+            "Failed to save college details. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Error saving college details locally:", error);
+      alert("Failed to save college details locally. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleCollegeChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -247,123 +692,20 @@ export default function L3DialogBox({
     setCollegeFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleUndergraduateChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setUndergraduateFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleUndergraduateRadioChange = (name: string, value: string) => {
-    setUndergraduateFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      // Convert Yes/No values to boolean before sending to backend
-      const formDataWithBooleans = {
-        ...formData,
-        extendedCare: formData.extendedCare === "Yes",
-        mealsProvided: formData.mealsProvided === "Yes",
-        outdoorPlayArea: formData.outdoorPlayArea === "Yes",
-      };
-
-      const response = await institutionDetailsAPI.createInstitutionDetails(
-        formDataWithBooleans
-      );
-
-      if (response.success) {
-
-        // Close dialog and call success callback
-        setDialogOpen(false);
-        onSuccess?.();
-
-        // Reset form
-        setFormData({
-          schoolType: "",
-          curriculumType: "",
-          openingTime: "",
-          closingTime: "",
-          operationalDays: [],
-          extendedCare: "",
-          mealsProvided: "",
-          outdoorPlayArea: "",
-        });
-
-        // Redirect to dashboard
-        router.push("/dashboard");
-      } else {
-        alert(
-          response.message ||
-            "Failed to save kindergarten details. Please try again."
-        );
-      }
-    } catch (error) {
-      console.error("Error saving kindergarten details:", error);
-      alert("Failed to save kindergarten details. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      // Convert Yes/No values to boolean before sending to backend
-      const schoolFormDataWithBooleans = {
-        ...schoolFormData,
-        hostelFacility: schoolFormData.hostelFacility === "Yes",
-        playground: schoolFormData.playground === "Yes",
-        busService: schoolFormData.busService === "Yes",
-      };
-
-      const response = await institutionDetailsAPI.createInstitutionDetails(
-        schoolFormDataWithBooleans
-      );
-
-      if (response.success) {
-        // Close dialog and call success callback
-        setDialogOpen(false);
-        onSuccess?.();
-
-        // Reset form
-        setSchoolFormData({
-          schoolType: "",
-          schoolCategory: "",
-          curriculumType: "",
-          operationalDays: [],
-          otherActivities: "",
-          hostelFacility: "",
-          playground: "",
-          busService: "",
-        });
-
-        // Redirect to dashboard
-        router.push("/dashboard");
-      } else {
-        alert(
-          response.message || "Failed to save school details. Please try again."
-        );
-      }
-    } catch (error) {
-      console.error("Error saving school details:", error);
-      alert("Failed to save school details. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleCoachingSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // setSubmitted(true);
+
+    // ✅ Validate form
+    const errors = validateForm(CoachingSchema, coachingFormData);
+    setCoachingFormErrors(errors);
+
+    if (errors && Object.keys(errors).length > 0) return;
+
     setIsLoading(true);
 
     try {
-      // Convert Yes/No values to boolean before sending to backend
+      // ✅ Normalize Yes/No → booleans
       const coachingFormDataWithBooleans = {
         ...coachingFormData,
         placementDrives: coachingFormData.placementDrives === "Yes",
@@ -374,16 +716,66 @@ export default function L3DialogBox({
         certification: coachingFormData.certification === "Yes",
       };
 
-      const response = await institutionDetailsAPI.createInstitutionDetails(
-        coachingFormDataWithBooleans
-      );
+      // 1) Load existing coaching records
+      const coachings = await getAllInstitutionsFromDB?.(); // 🔑 needs to exist in localDb.ts
+
+      // Normalize for comparison
+      const normalize = (x: any) => ({
+        placementDrives: !!x.placementDrives,
+        mockInterviews: !!x.mockInterviews,
+        resumeBuilding: !!x.resumeBuilding,
+        linkedinOptimization: !!x.linkedinOptimization,
+        exclusiveJobPortal: !!x.exclusiveJobPortal,
+        certification: !!x.certification,
+      });
+
+      const latest =
+        coachings && coachings.length > 0
+          ? coachings.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
+          : null;
+
+      const current = normalize(coachingFormDataWithBooleans);
+      let effectiveId: number | null = null;
+
+      if (latest) {
+        const latestNormalized = normalize(latest);
+        const isSame =
+          JSON.stringify(latestNormalized) === JSON.stringify(current);
+
+        if (isSame) {
+          // ✅ unchanged → skip saving
+          effectiveId = latest.id || null;
+        } else {
+          // ✅ update existing
+          await updateInstitutionInDB({
+            ...(latest as any),
+            ...current,
+            id: latest.id,
+          });
+          effectiveId = latest.id || null;
+        }
+      } else {
+        // ✅ insert new
+        const id = await addInstitutionToDB(current);
+        effectiveId = id;
+        console.log("Coaching center saved locally with id:", id);
+      }
+
+      // 2) Save reference in localStorage
+      if (typeof window !== "undefined") {
+        if (effectiveId !== null) {
+          localStorage.setItem("coachingId", String(effectiveId));
+        }
+      }
+
+      const response = await exportAndUploadInstitutionAndCourses();
+      console.log("Upload response:", response);
 
       if (response.success) {
-        // Close dialog and call success callback
+        // 3) Success → reset + redirect
         setDialogOpen(false);
-        onSuccess?.();
-
-        // Reset form
+        //   setSubmitted(false);
+        setCoachingFormErrors({});
         setCoachingFormData({
           placementDrives: "",
           mockInterviews: "",
@@ -393,9 +785,8 @@ export default function L3DialogBox({
           certification: "",
         });
 
-        clearInstitutionData();
-        // Redirect to dashboard
-        router.push("/dashboard");
+        router.push("/payment");
+        onSuccess?.();
       } else {
         alert(
           response.message ||
@@ -403,75 +794,59 @@ export default function L3DialogBox({
         );
       }
     } catch (error) {
-      console.error("Error saving coaching center details:", error);
-      alert("Failed to save coaching center details. Please try again.");
+      console.error("Error saving coaching center details locally:", error);
+      alert(
+        "Failed to save coaching center details locally. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCollegeSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleUndergraduateChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
 
-    try {
-      // Convert Yes/No values to boolean before sending to backend
-      const collegeFormDataWithBooleans = {
-        ...collegeFormData,
-        hostelFacility: collegeFormData.hostelFacility === "Yes",
-        playground: collegeFormData.playground === "Yes",
-        busService: collegeFormData.busService === "Yes",
-      };
+    // Update form data
+    setUndergraduateFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
 
-      const response = await institutionDetailsAPI.createInstitutionDetails(
-        collegeFormDataWithBooleans
-      );
+    // Validate the single field against the UndergraduateSchema
+    const fieldSchema = UndergraduateSchema.extract(name);
+    const { error } = fieldSchema.validate(value);
 
-      if (response.success) {
-        // Close dialog and call success callback
-        setDialogOpen(false);
-        onSuccess?.();
-
-        // Reset form
-        setCollegeFormData({
-          collegeType: "",
-          collegeCategory: "",
-          curriculumType: "",
-          operationalDays: [],
-          otherActivities: "",
-          hostelFacility: "",
-          playground: "",
-          busService: "",
-        });
-
-        // Redirect to dashboard
-        router.push("/dashboard");
-      } else {
-        alert(
-          response.message ||
-            "Failed to save college details. Please try again."
-        );
-      }
-    } catch (error) {
-      console.error("Error saving college details:", error);
-      alert("Failed to save college details. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+    // Update errors: clear if valid
+    setUndergraduateFormErrors((prev) => ({
+      ...prev,
+      [name]: error ? error.message : "",
+    }));
   };
 
   const handleUndergraduateSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // ✅ Validate form
+    const errors = validateForm(UndergraduateSchema, undergraduateFormData);
+    setUndergraduateFormErrors(errors);
+
+    if (Object.keys(errors).length > 0) return;
+
     setIsLoading(true);
 
     try {
-      // Convert Yes/No values to boolean before sending to backend
+      // ✅ Normalize Yes/No → boolean
       const undergraduateFormDataWithBooleans = {
         ...undergraduateFormData,
         placementDrives: undergraduateFormData.placementDrives === "Yes",
         mockInterviews: undergraduateFormData.mockInterviews === "Yes",
         resumeBuilding: undergraduateFormData.resumeBuilding === "Yes",
-        linkedinOptimization: undergraduateFormData.linkedinOptimization === "Yes",
+        linkedinOptimization:
+          undergraduateFormData.linkedinOptimization === "Yes",
         exclusiveJobPortal: undergraduateFormData.exclusiveJobPortal === "Yes",
         library: undergraduateFormData.library === "Yes",
         hostelFacility: undergraduateFormData.hostelFacility === "Yes",
@@ -481,16 +856,75 @@ export default function L3DialogBox({
         busService: undergraduateFormData.busService === "Yes",
       };
 
-      const response = await institutionDetailsAPI.createInstitutionDetails(
-        undergraduateFormDataWithBooleans
-      );
+      // 1) Load existing undergraduates from IndexedDB
+      const undergraduates = await getAllInstitutionsFromDB?.(); // 🔑 implement in localDb.ts
+
+      // Normalize for comparison
+      const normalize = (x: any) => ({
+        ownershipType: x.ownershipType || "",
+        collegeCategory: x.collegeCategory || "",
+        affiliationType: x.affiliationType || "",
+        placementDrives: !!x.placementDrives,
+        mockInterviews: !!x.mockInterviews,
+        resumeBuilding: !!x.resumeBuilding,
+        linkedinOptimization: !!x.linkedinOptimization,
+        exclusiveJobPortal: !!x.exclusiveJobPortal,
+        library: !!x.library,
+        hostelFacility: !!x.hostelFacility,
+        entranceExam: !!x.entranceExam,
+        managementQuota: !!x.managementQuota,
+        playground: !!x.playground,
+        busService: !!x.busService,
+      });
+
+      const latest =
+        undergraduates && undergraduates.length > 0
+          ? undergraduates.sort(
+              (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+            )[0]
+          : null;
+
+      const current = normalize(undergraduateFormDataWithBooleans);
+      let effectiveId: number | null = null;
+
+      if (latest) {
+        const latestNormalized = normalize(latest);
+        const isSame =
+          JSON.stringify(latestNormalized) === JSON.stringify(current);
+
+        if (isSame) {
+          // ✅ unchanged → skip saving
+          effectiveId = latest.id || null;
+        } else {
+          // ✅ update existing
+          await updateInstitutionInDB({
+            ...(latest as any),
+            ...current,
+            id: latest.id,
+          });
+          effectiveId = latest.id || null;
+        }
+      } else {
+        // ✅ insert new
+        const id = await addInstitutionToDB(current);
+        effectiveId = id;
+        console.log("Undergraduate details saved locally with id:", id);
+      }
+
+      // 2) Save reference in localStorage (optional)
+      if (typeof window !== "undefined") {
+        if (effectiveId !== null) {
+          localStorage.setItem("undergraduateId", String(effectiveId));
+        }
+      }
+
+      const response = await exportAndUploadInstitutionAndCourses();
+      console.log("Upload response:", response);
 
       if (response.success) {
-        // Close dialog and call success callback
+        // 3) Success → reset + redirect
         setDialogOpen(false);
-        onSuccess?.();
-
-        // Reset form
+        setUndergraduateFormErrors({});
         setUndergraduateFormData({
           ownershipType: "",
           collegeCategory: "",
@@ -508,25 +942,184 @@ export default function L3DialogBox({
           busService: "",
         });
 
-        // Redirect to dashboard
-        router.push("/dashboard");
+        router.push("/payment");
+        onSuccess?.();
       } else {
         alert(
-          response.message ||
-            "Failed to save undergraduate college details. Please try again."
+          response.message || "Failed to save UG details. Please try again."
         );
       }
     } catch (error) {
-      console.error("Error saving undergraduate college details:", error);
-      alert("Failed to save undergraduate college details. Please try again.");
+      console.error("Error saving UG details locally:", error);
+      alert("Failed to save UG details locally. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Always render since we default to kindergarten when no institution type is set
+  // Use the same handler for radios
+  const handleUndergraduateRadioChange = handleUndergraduateChange;
 
   const operationalDaysOptions = ["Mon", "Tues", "Wed", "Thur", "Fri", "Sat"];
+
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
+
+    // Update form data
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Validate field
+    const error = validateField(KindergartenSchema, name, value);
+    setFormErrors((prev) => ({ ...prev, [name]: error || "" }));
+  };
+
+  // Handle radio button change
+  const handleRadioChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    const error = validateField(KindergartenSchema, name, value);
+    setFormErrors((prev) => ({ ...prev, [name]: error || "" }));
+  };
+
+  // Handle operational days toggle
+  const handleOperationalDayChange = (day: string) => {
+    const updatedDays = formData.operationalDays.includes(day)
+      ? formData.operationalDays.filter((d) => d !== day)
+      : [...formData.operationalDays, day];
+
+    setFormData((prev) => ({ ...prev, operationalDays: updatedDays }));
+
+    const error = validateField(
+      KindergartenSchema,
+      "operationalDays",
+      updatedDays
+    );
+    setFormErrors((prev) => ({ ...prev, operationalDays: error || "" }));
+  };
+
+  const handleCoachingFieldChange = (
+    name: keyof CoachingFormData,
+    value: string
+  ) => {
+    setCoachingFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Validate single field dynamically
+    const error = validateField(CoachingSchema, name, value);
+    setCoachingFormErrors((prev) => ({ ...prev, [name]: error || "" }));
+  };
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // Validate with Joi
+    const errors = validateForm(KindergartenSchema, formData);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    setIsLoading(true);
+
+    try {
+      // ✅ Normalize Yes/No → booleans
+      const formDataWithBooleans = {
+        ...formData,
+        extendedCare: formData.extendedCare === "Yes",
+        mealsProvided: formData.mealsProvided === "Yes",
+        outdoorPlayArea: formData.outdoorPlayArea === "Yes",
+      };
+
+      // 1) Load existing institutions
+      const institutions = await getAllInstitutionsFromDB();
+      const latest =
+        institutions && institutions.length > 0
+          ? institutions.sort(
+              (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+            )[0]
+          : null;
+
+      // Normalize for comparison
+      const normalize = (x: any) => ({
+        schoolType: x.schoolType || "",
+        curriculumType: x.curriculumType || "",
+        openingTime: x.openingTime || "",
+        closingTime: x.closingTime || "",
+        operationalDays: x.operationalDays || [],
+        extendedCare: !!x.extendedCare,
+        mealsProvided: !!x.mealsProvided,
+        outdoorPlayArea: !!x.outdoorPlayArea,
+      });
+
+      const current = normalize(formDataWithBooleans);
+      let effectiveId: number | null = null;
+
+      if (latest) {
+        const latestNormalized = normalize(latest);
+        const isSame =
+          JSON.stringify(latestNormalized) === JSON.stringify(current);
+
+        if (isSame) {
+          effectiveId = latest.id || null; // no changes
+        } else {
+          // ✅ update existing
+          await updateInstitutionInDB({
+            ...(latest as any),
+            ...current,
+            id: latest.id,
+            createdAt: latest.createdAt, // preserve createdAt
+            updatedAt: Date.now(),
+          });
+          effectiveId = latest.id || null;
+        }
+      } else {
+        // ✅ insert new
+        const id = await addInstitutionToDB({
+          ...(latest as any),
+          ...current,
+          createdAt: Date.now(),
+        });
+        effectiveId = id;
+        console.log("Kindergarten saved locally with id:", id);
+      }
+
+      // 2) Save reference in localStorage
+      if (typeof window !== "undefined" && effectiveId !== null) {
+        localStorage.setItem("institutionId", String(effectiveId));
+      }
+
+      // 3) Export + upload
+      const response = await exportAndUploadInstitutionAndCourses();
+      console.log("Upload response:", response);
+
+      if (response.success) {
+        // ✅ success → reset and redirect
+        setDialogOpen(false);
+        onSuccess?.();
+
+        setFormData({
+          schoolType: "",
+          curriculumType: "",
+          openingTime: "",
+          closingTime: "",
+          operationalDays: [],
+          extendedCare: "",
+          mealsProvided: "",
+          outdoorPlayArea: "",
+        });
+
+        router.push("/payment");
+      } else {
+        alert(response.message || "Failed to save kindergarten details.");
+      }
+    } catch (error) {
+      console.error("Error saving kindergarten details:", error);
+      alert("Failed to save kindergarten details locally. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -560,7 +1153,7 @@ export default function L3DialogBox({
                       name="schoolType"
                       value={formData.schoolType}
                       onChange={handleChange}
-                      isSelect={true}
+                      isSelect
                       options={[
                         "Public",
                         "Private (For-profit)",
@@ -569,6 +1162,8 @@ export default function L3DialogBox({
                         "Home - based",
                       ]}
                       placeholder="Select school type"
+                      error={formErrors.schoolType}
+                      required
                     />
 
                     <InputField
@@ -577,15 +1172,17 @@ export default function L3DialogBox({
                       value={formData.curriculumType}
                       onChange={handleChange}
                       placeholder="Enter Curriculum type"
+                      error={formErrors.curriculumType}
+                      required
                     />
                   </div>
 
-                  {/* Row 2: Operational Time's and Operational Day's */}
+                  {/* Row 2: Operational Times */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Operational Time's */}
                     <div className="flex flex-col gap-2">
                       <label className="font-[Montserrat] font-medium text-[16px] md:text-[18px] text-black">
-                        Operational Time's
+                        Operational Time's{" "}
+                        <span className="text-red-500 ml-1">*</span>
                       </label>
                       <div className="grid grid-cols-2 gap-2">
                         <InputField
@@ -596,6 +1193,7 @@ export default function L3DialogBox({
                           placeholder="Opening time"
                           className="max-w-none"
                           icon={<Clock size={18} className="text-[#697282]" />}
+                          error={formErrors.openingTime}
                         />
                         <InputField
                           label=""
@@ -605,14 +1203,16 @@ export default function L3DialogBox({
                           placeholder="Closing time"
                           className="max-w-none"
                           icon={<Clock size={18} className="text-[#697282]" />}
+                          error={formErrors.closingTime}
                         />
                       </div>
                     </div>
 
-                    {/* Operational Day's */}
+                    {/* Operational Days */}
                     <div className="flex flex-col gap-4">
                       <label className="font-[Montserrat] font-medium text-[16px] md:text-[18px] text-black">
-                        Operational Day's
+                        Operational Day's{" "}
+                        <span className="text-red-500 ml-1">*</span>
                       </label>
                       <div className="grid grid-cols-6 gap-2">
                         {operationalDaysOptions.map((day) => (
@@ -620,8 +1220,7 @@ export default function L3DialogBox({
                             key={day}
                             type="button"
                             onClick={() => handleOperationalDayChange(day)}
-                            className={`h-[48px] px-3 rounded-[8px] border text-sm 
-                            ${
+                            className={`h-[48px] px-3 rounded-[8px] border text-sm ${
                               formData.operationalDays.includes(day)
                                 ? "bg-[#0222D7] border-[#0222D7] text-white hover:!bg-[#0222D7]"
                                 : "bg-[#F5F6F9] border-[#DADADD] text-[#697282] hover:!bg-[#F5F6F9] hover:!text-[#697282]"
@@ -631,12 +1230,16 @@ export default function L3DialogBox({
                           </Button>
                         ))}
                       </div>
+                      {formErrors.operationalDays && (
+                        <p className="text-red-500 text-sm">
+                          {formErrors.operationalDays}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Row 3: Radio Button Questions in 2x2 Grid */}
+                  {/* Row 3: Radio Button Questions */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Extended care */}
                     <InputField
                       label="Extended care ?"
                       name="extendedCare"
@@ -644,11 +1247,12 @@ export default function L3DialogBox({
                       onChange={(e) =>
                         handleRadioChange("extendedCare", e.target.value)
                       }
-                      isRadio={true}
+                      isRadio
                       options={["Yes", "No"]}
+                      error={formErrors.extendedCare}
+                      required
                     />
 
-                    {/* Meals Provided */}
                     <InputField
                       label="Meals Provided?"
                       name="mealsProvided"
@@ -656,12 +1260,14 @@ export default function L3DialogBox({
                       onChange={(e) =>
                         handleRadioChange("mealsProvided", e.target.value)
                       }
-                      isRadio={true}
+                      isRadio
                       options={["Yes", "No"]}
+                      error={formErrors.mealsProvided}
+                      required
                     />
                   </div>
 
-                  {/* Row 4: Outdoor Play area (single column) */}
+                  {/* Row 4: Outdoor Play area */}
                   <InputField
                     label="Outdoor Play area?"
                     name="outdoorPlayArea"
@@ -669,19 +1275,31 @@ export default function L3DialogBox({
                     onChange={(e) =>
                       handleRadioChange("outdoorPlayArea", e.target.value)
                     }
-                    isRadio={true}
+                    isRadio
                     options={["Yes", "No"]}
+                    error={formErrors.outdoorPlayArea}
+                    required
                   />
-
-                  {/* Submit Button */}
+                  {/* Button Group */}
                   <div className="flex justify-center pt-4">
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full max-w-[500px] h-[48px] bg-[#0222D7] text-white rounded-[12px] font-semibold hover:bg-blue-700 transition-colors"
-                    >
-                      {isLoading ? "Saving..." : "Save & Next"}
-                    </Button>
+                    <div className="flex flex-row items-center justify-center gap-10 w-full max-w-[668px]">
+                      <button
+                        type="button"
+                        onClick={() => onPrevious?.()} // optional chaining
+                        className="w-[314px] h-[48px] border border-[#697282] text-[#697282] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center shadow-inner"
+                      >
+                        Previous
+                      </button>
+
+                      {/* Save & Next Button */}
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-[314px] h-[48px] bg-[#697282] text-[#F5F6F9] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center hover:bg-[#5b626f] transition-colors"
+                      >
+                        {isLoading ? "Saving..." : "Save & Next"}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </>
@@ -706,29 +1324,29 @@ export default function L3DialogBox({
                       label="School type"
                       name="schoolType"
                       value={schoolFormData.schoolType}
-                      onChange={handleSchoolChange}
+                      onChange={handleSchoolFieldChange}
                       isSelect={true}
-                      options={[
-                        "Co-ed",
-                        "Boys Only",
-                        "Girls Only"
-                      ]}
+                      options={["Co-ed", "Boys Only", "Girls Only"]}
                       placeholder="Select school type"
+                      error={schoolFormErrors.schoolType}
+                      required
                     />
 
                     <InputField
                       label="School category"
                       name="schoolCategory"
                       value={schoolFormData.schoolCategory}
-                      onChange={handleSchoolChange}
+                      onChange={handleSchoolFieldChange}
                       isSelect={true}
                       options={[
                         "Public",
                         "Private",
                         "Charter",
-                        "International"
+                        "International",
                       ]}
                       placeholder="Select school Category"
+                      error={schoolFormErrors.schoolCategory}
+                      required
                     />
                   </div>
 
@@ -738,22 +1356,18 @@ export default function L3DialogBox({
                       label="Curriculum type"
                       name="curriculumType"
                       value={schoolFormData.curriculumType}
-                      onChange={handleSchoolChange}
+                      onChange={handleSchoolFieldChange}
                       isSelect={true}
-                      options={[
-                        "State Board",
-                        "CBSE",
-                        "ICSE",
-                        "IB",
-                        "IGCSE"
-                      ]}
+                      options={["State Board", "CBSE", "ICSE", "IB", "IGCSE"]}
                       placeholder="Select Curriculum type"
+                      error={schoolFormErrors.curriculumType}
+                      required
                     />
 
-                    {/* Operational Day's */}
+                    {/* Operational Days */}
                     <div className="flex flex-col gap-2">
                       <label className="font-[Montserrat] font-medium text-[16px] md:text-[18px] text-black">
-                        Operational Day's
+                        Operational Days
                       </label>
                       <div className="grid grid-cols-6 gap-2">
                         {operationalDaysOptions.map((day) => (
@@ -761,10 +1375,9 @@ export default function L3DialogBox({
                             key={day}
                             type="button"
                             onClick={() =>
-                              handleSchoolOperationalDayChange(day)
+                              handleSchoolOperationalDayToggle(day)
                             }
-                            className={`h-[48px] px-3 rounded-[8px] border text-sm 
-                            ${
+                            className={`h-[48px] px-3 rounded-[8px] border text-sm ${
                               schoolFormData.operationalDays.includes(day)
                                 ? "bg-[#0222D7] border-[#0222D7] text-white hover:!bg-[#0222D7]"
                                 : "bg-[#F5F6F9] border-[#DADADD] text-[#697282] hover:!bg-[#F5F6F9] hover:!text-[#697282]"
@@ -774,74 +1387,99 @@ export default function L3DialogBox({
                           </Button>
                         ))}
                       </div>
+                      {schoolFormErrors.operationalDays && (
+                        <p className="text-red-500 text-sm">
+                          {schoolFormErrors.operationalDays}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Row 3: Other Activities and Radio Button Questions */}
+                  {/* Row 3: Other Activities and Hostel Facility */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Other Activities */}
                     <InputField
                       label="Other activities"
                       name="otherActivities"
                       value={schoolFormData.otherActivities}
-                      onChange={handleSchoolChange}
+                      onChange={handleSchoolFieldChange}
                       placeholder="Enter activities"
                       isTextarea={true}
                       rows={2}
+                      error={schoolFormErrors.otherActivities}
+                      required
                     />
 
-                    {/* Hostel facility */}
                     <InputField
                       label="Hostel facility ?"
                       name="hostelFacility"
                       value={schoolFormData.hostelFacility}
                       onChange={(e) =>
-                        handleSchoolRadioChange(
+                        handleSchoolRadioChangeWithValidation(
                           "hostelFacility",
                           e.target.value
                         )
                       }
                       isRadio={true}
                       options={["Yes", "No"]}
+                      error={schoolFormErrors.hostelFacility}
+                      required
                     />
                   </div>
 
                   {/* Row 4: Playground and Bus Service */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Playground */}
                     <InputField
                       label="Playground ?"
                       name="playground"
                       value={schoolFormData.playground}
                       onChange={(e) =>
-                        handleSchoolRadioChange("playground", e.target.value)
+                        handleSchoolRadioChangeWithValidation(
+                          "playground",
+                          e.target.value
+                        )
                       }
                       isRadio={true}
                       options={["Yes", "No"]}
+                      error={schoolFormErrors.playground}
+                      required
                     />
 
-                    {/* Bus Service */}
                     <InputField
                       label="Bus service ?"
                       name="busService"
                       value={schoolFormData.busService}
                       onChange={(e) =>
-                        handleSchoolRadioChange("busService", e.target.value)
+                        handleSchoolRadioChangeWithValidation(
+                          "busService",
+                          e.target.value
+                        )
                       }
                       isRadio={true}
                       options={["Yes", "No"]}
+                      error={schoolFormErrors.busService}
+                      required
                     />
                   </div>
 
-                  {/* Submit Button */}
                   <div className="flex justify-center pt-4">
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full max-w-[500px] h-[48px] bg-[#0222D7] text-white rounded-[12px] font-semibold hover:bg-blue-700 transition-colors"
-                    >
-                      {isLoading ? "Saving..." : "Save & Next"}
-                    </Button>
+                    <div className="flex flex-row items-center justify-center gap-10 w-full max-w-[668px]">
+                      <button
+                        type="button"
+                        onClick={() => onPrevious?.()} // optional chaining
+                        className="w-[314px] h-[48px] border border-[#697282] text-[#697282] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center shadow-inner"
+                      >
+                        Previous
+                      </button>
+
+                      {/* Save & Next Button */}
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-[314px] h-[48px] bg-[#697282] text-[#F5F6F9] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center hover:bg-[#5b626f] transition-colors"
+                      >
+                        {isLoading ? "Saving..." : "Save & Next"}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </>
@@ -873,13 +1511,15 @@ export default function L3DialogBox({
                         name="placementDrives"
                         value={coachingFormData.placementDrives}
                         onChange={(e) =>
-                          handleCoachingRadioChange(
+                          handleCoachingFieldChange(
                             "placementDrives",
                             e.target.value
                           )
                         }
-                        isRadio={true}
+                        isRadio
                         options={["Yes", "No"]}
+                        error={coachingFormErrors.placementDrives}
+                        required
                       />
 
                       {/* Mock interviews */}
@@ -888,13 +1528,15 @@ export default function L3DialogBox({
                         name="mockInterviews"
                         value={coachingFormData.mockInterviews}
                         onChange={(e) =>
-                          handleCoachingRadioChange(
+                          handleCoachingFieldChange(
                             "mockInterviews",
                             e.target.value
                           )
                         }
-                        isRadio={true}
+                        isRadio
                         options={["Yes", "No"]}
+                        error={coachingFormErrors.mockInterviews}
+                        required
                       />
                     </div>
 
@@ -906,28 +1548,32 @@ export default function L3DialogBox({
                         name="resumeBuilding"
                         value={coachingFormData.resumeBuilding}
                         onChange={(e) =>
-                          handleCoachingRadioChange(
+                          handleCoachingFieldChange(
                             "resumeBuilding",
                             e.target.value
                           )
                         }
-                        isRadio={true}
+                        isRadio
                         options={["Yes", "No"]}
+                        error={coachingFormErrors.resumeBuilding}
+                        required
                       />
 
                       {/* LinkedIn optimization */}
                       <InputField
-                        label="Linked-in optimization ?"
+                        label="LinkedIn optimization ?"
                         name="linkedinOptimization"
                         value={coachingFormData.linkedinOptimization}
                         onChange={(e) =>
-                          handleCoachingRadioChange(
+                          handleCoachingFieldChange(
                             "linkedinOptimization",
                             e.target.value
                           )
                         }
-                        isRadio={true}
+                        isRadio
                         options={["Yes", "No"]}
+                        error={coachingFormErrors.linkedinOptimization}
+                        required
                       />
                     </div>
 
@@ -939,13 +1585,15 @@ export default function L3DialogBox({
                         name="exclusiveJobPortal"
                         value={coachingFormData.exclusiveJobPortal}
                         onChange={(e) =>
-                          handleCoachingRadioChange(
+                          handleCoachingFieldChange(
                             "exclusiveJobPortal",
                             e.target.value
                           )
                         }
-                        isRadio={true}
+                        isRadio
                         options={["Yes", "No"]}
+                        error={coachingFormErrors.exclusiveJobPortal}
+                        required
                       />
 
                       {/* Certification */}
@@ -954,26 +1602,38 @@ export default function L3DialogBox({
                         name="certification"
                         value={coachingFormData.certification}
                         onChange={(e) =>
-                          handleCoachingRadioChange(
+                          handleCoachingFieldChange(
                             "certification",
                             e.target.value
                           )
                         }
-                        isRadio={true}
+                        isRadio
                         options={["Yes", "No"]}
+                        error={coachingFormErrors.certification}
+                        required
                       />
                     </div>
                   </div>
 
-                  {/* Submit Button */}
                   <div className="flex justify-center pt-4">
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full max-w-[500px] h-[48px] bg-[#0222D7] text-white rounded-[12px] font-semibold hover:bg-blue-700 transition-colors"
-                    >
-                      {isLoading ? "Saving..." : "Save & Next"}
-                    </Button>
+                    <div className="flex flex-row items-center justify-center gap-10 w-full max-w-[668px]">
+                      <button
+                        type="button"
+                        onClick={() => onPrevious?.()} // optional chaining
+                        className="w-[314px] h-[48px] border border-[#697282] text-[#697282] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center shadow-inner"
+                      >
+                        Previous
+                      </button>
+
+                      {/* Save & Next Button */}
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-[314px] h-[48px] bg-[#697282] text-[#F5F6F9] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center hover:bg-[#5b626f] transition-colors"
+                      >
+                        {isLoading ? "Saving..." : "Save & Next"}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </>
@@ -998,7 +1658,7 @@ export default function L3DialogBox({
                       label="College type"
                       name="collegeType"
                       value={collegeFormData.collegeType}
-                      onChange={handleCollegeChange}
+                      onChange={handleCollegeFieldChange}
                       isSelect={true}
                       options={[
                         "Junior College",
@@ -1008,13 +1668,15 @@ export default function L3DialogBox({
                         "Pre-University",
                       ]}
                       placeholder="Select college type"
+                      error={collegeFormErrors.collegeType}
+                      required
                     />
 
                     <InputField
                       label="College category"
                       name="collegeCategory"
                       value={collegeFormData.collegeCategory}
-                      onChange={handleCollegeChange}
+                      onChange={handleCollegeFieldChange}
                       isSelect={true}
                       options={[
                         "Government",
@@ -1024,6 +1686,8 @@ export default function L3DialogBox({
                         "Unaided",
                       ]}
                       placeholder="Select college category"
+                      error={collegeFormErrors.collegeCategory}
+                      required
                     />
                   </div>
 
@@ -1033,7 +1697,7 @@ export default function L3DialogBox({
                       label="Curriculum type"
                       name="curriculumType"
                       value={collegeFormData.curriculumType}
-                      onChange={handleCollegeChange}
+                      onChange={handleCollegeFieldChange}
                       isSelect={true}
                       options={[
                         "State Board",
@@ -1044,12 +1708,15 @@ export default function L3DialogBox({
                         "Other",
                       ]}
                       placeholder="Select Curriculum type"
+                      error={collegeFormErrors.curriculumType}
+                      required
                     />
 
                     {/* Operational Day's */}
                     <div className="flex flex-col gap-2">
                       <label className="font-[Montserrat] font-medium text-[16px] md:text-[18px] text-black">
-                        Operational Day's
+                        Operational Day's{" "}
+                        <span className="text-red-500 ml-1">*</span>
                       </label>
                       <div className="grid grid-cols-6 gap-2">
                         {operationalDaysOptions.map((day) => (
@@ -1057,60 +1724,71 @@ export default function L3DialogBox({
                             key={day}
                             type="button"
                             onClick={() =>
-                              handleCollegeOperationalDayChange(day)
+                              handleCollegeOperationalDayToggle(day)
                             }
                             className={`h-[48px] px-3 rounded-[8px] border text-sm 
-                            ${
-                              collegeFormData.operationalDays.includes(day)
-                                ? "bg-[#0222D7] border-[#0222D7] text-white hover:!bg-[#0222D7]"
-                                : "bg-[#F5F6F9] border-[#DADADD] text-[#697282] hover:!bg-[#F5F6F9] hover:!text-[#697282]"
-                            }`}
+                ${
+                  collegeFormData.operationalDays.includes(day)
+                    ? "bg-[#0222D7] border-[#0222D7] text-white hover:!bg-[#0222D7]"
+                    : "bg-[#F5F6F9] border-[#DADADD] text-[#697282] hover:!bg-[#F5F6F9] hover:!text-[#697282]"
+                }`}
                           >
                             {day}
                           </Button>
                         ))}
                       </div>
+                      {collegeFormErrors.operationalDays && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {collegeFormErrors.operationalDays}
+                        </p>
+                      )}
                     </div>
                   </div>
-
                   {/* Row 3: Other Activities */}
                   <InputField
                     label="Other activities"
                     name="otherActivities"
                     value={collegeFormData.otherActivities}
-                    onChange={handleCollegeChange}
+                    onChange={handleCollegeFieldChange}
                     placeholder="Enter activities"
                     isTextarea={true}
                     rows={2}
+                    error={collegeFormErrors.otherActivities} // will show error if empty
+                    required={true} // optional: visually mark field as required
                   />
 
                   {/* Row 4: Radio Button Questions in 2x2 Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Hostel facility */}
                     <InputField
                       label="Hostel facility ?"
                       name="hostelFacility"
                       value={collegeFormData.hostelFacility}
                       onChange={(e) =>
-                        handleCollegeRadioChange(
+                        handleCollegeRadioChangeWithValidation(
                           "hostelFacility",
                           e.target.value
                         )
                       }
                       isRadio={true}
                       options={["Yes", "No"]}
+                      error={collegeFormErrors.hostelFacility}
+                      required
                     />
 
-                    {/* Playground */}
                     <InputField
                       label="Playground ?"
                       name="playground"
                       value={collegeFormData.playground}
                       onChange={(e) =>
-                        handleCollegeRadioChange("playground", e.target.value)
+                        handleCollegeRadioChangeWithValidation(
+                          "playground",
+                          e.target.value
+                        )
                       }
                       isRadio={true}
                       options={["Yes", "No"]}
+                      error={collegeFormErrors.playground}
+                      required
                     />
                   </div>
 
@@ -1120,10 +1798,15 @@ export default function L3DialogBox({
                     name="busService"
                     value={collegeFormData.busService}
                     onChange={(e) =>
-                      handleCollegeRadioChange("busService", e.target.value)
+                      handleCollegeRadioChangeWithValidation(
+                        "busService",
+                        e.target.value
+                      )
                     }
                     isRadio={true}
                     options={["Yes", "No"]}
+                    error={collegeFormErrors.busService}
+                    required
                   />
 
                   {/* Submit Button */}
@@ -1155,7 +1838,7 @@ export default function L3DialogBox({
                   onSubmit={handleUndergraduateSubmit}
                   className="space-y-6"
                 >
-                  {/* Row 1: Ownership type, College category, Affiliation type */}
+                  {/* Row 1: Ownership type and College category */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <InputField
                       label="Ownership type"
@@ -1171,6 +1854,8 @@ export default function L3DialogBox({
                         "Unaided",
                       ]}
                       placeholder="Select ownership type"
+                      error={undergraduateFormErrors.ownershipType}
+                      required
                     />
 
                     <InputField
@@ -1189,6 +1874,8 @@ export default function L3DialogBox({
                         "Other",
                       ]}
                       placeholder="Select Category"
+                      error={undergraduateFormErrors.collegeCategory}
+                      required
                     />
                   </div>
 
@@ -1208,8 +1895,9 @@ export default function L3DialogBox({
                         "Other",
                       ]}
                       placeholder="Select Affiliation type"
+                      error={undergraduateFormErrors.affiliationType}
+                      required
                     />
-                    {/* Empty div to take the other half */}
                     <div></div>
                   </div>
 
@@ -1219,203 +1907,164 @@ export default function L3DialogBox({
                       Placements
                     </h4>
 
-                    {/* Row 3: Placement drives and Mock interviews */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Placement drives */}
                       <InputField
                         label="Placement drives ?"
                         name="placementDrives"
                         value={undergraduateFormData.placementDrives}
-                        onChange={(e) =>
-                          handleUndergraduateRadioChange(
-                            "placementDrives",
-                            e.target.value
-                          )
-                        }
+                        onChange={handleUndergraduateRadioChange}
                         isRadio={true}
                         options={["Yes", "No"]}
+                        error={undergraduateFormErrors.placementDrives}
+                        required
                       />
 
-                      {/* Mock interviews */}
                       <InputField
                         label="Mock interviews ?"
                         name="mockInterviews"
                         value={undergraduateFormData.mockInterviews}
-                        onChange={(e) =>
-                          handleUndergraduateRadioChange(
-                            "mockInterviews",
-                            e.target.value
-                          )
-                        }
+                        onChange={handleUndergraduateRadioChange}
                         isRadio={true}
                         options={["Yes", "No"]}
+                        error={undergraduateFormErrors.mockInterviews}
+                        required
                       />
                     </div>
 
-                    {/* Row 4: Resume building and LinkedIn optimization */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Resume building */}
                       <InputField
                         label="Resume building ?"
                         name="resumeBuilding"
                         value={undergraduateFormData.resumeBuilding}
-                        onChange={(e) =>
-                          handleUndergraduateRadioChange(
-                            "resumeBuilding",
-                            e.target.value
-                          )
-                        }
+                        onChange={handleUndergraduateRadioChange}
                         isRadio={true}
                         options={["Yes", "No"]}
+                        error={undergraduateFormErrors.resumeBuilding}
+                        required
                       />
 
-                      {/* LinkedIn optimization */}
                       <InputField
                         label="Linked-in optimization ?"
                         name="linkedinOptimization"
                         value={undergraduateFormData.linkedinOptimization}
-                        onChange={(e) =>
-                          handleUndergraduateRadioChange(
-                            "linkedinOptimization",
-                            e.target.value
-                          )
-                        }
+                        onChange={handleUndergraduateRadioChange}
                         isRadio={true}
                         options={["Yes", "No"]}
+                        error={undergraduateFormErrors.linkedinOptimization}
+                        required
                       />
                     </div>
 
-                    {/* Row 5: Access to exclusive job portal */}
                     <InputField
                       label="Access to exclusive job portal ?"
                       name="exclusiveJobPortal"
                       value={undergraduateFormData.exclusiveJobPortal}
-                      onChange={(e) =>
-                        handleUndergraduateRadioChange(
-                          "exclusiveJobPortal",
-                          e.target.value
-                        )
-                      }
+                      onChange={handleUndergraduateRadioChange}
                       isRadio={true}
                       options={["Yes", "No"]}
+                      error={undergraduateFormErrors.exclusiveJobPortal}
+                      required
                     />
                   </div>
 
-                  {/* Other questions Section */}
+                  {/* Other Questions Section */}
                   <div className="space-y-4">
                     <h4 className="text-lg font-semibold text-black">
                       Other questions
                     </h4>
 
-                    {/* Row 6: Library and Hostel facility */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Library */}
                       <InputField
                         label="Library ?"
                         name="library"
                         value={undergraduateFormData.library}
-                        onChange={(e) =>
-                          handleUndergraduateRadioChange(
-                            "library",
-                            e.target.value
-                          )
-                        }
+                        onChange={handleUndergraduateRadioChange}
                         isRadio={true}
                         options={["Yes", "No"]}
+                        error={undergraduateFormErrors.library}
+                        required
                       />
 
-                      {/* Hostel facility */}
                       <InputField
                         label="Hostel facility ?"
                         name="hostelFacility"
                         value={undergraduateFormData.hostelFacility}
-                        onChange={(e) =>
-                          handleUndergraduateRadioChange(
-                            "hostelFacility",
-                            e.target.value
-                          )
-                        }
+                        onChange={handleUndergraduateRadioChange}
                         isRadio={true}
                         options={["Yes", "No"]}
+                        error={undergraduateFormErrors.hostelFacility}
+                        required
                       />
                     </div>
 
-                    {/* Row 7: Entrance exam and Management Quota */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Entrance exam */}
                       <InputField
                         label="Entrance exam ?"
                         name="entranceExam"
                         value={undergraduateFormData.entranceExam}
-                        onChange={(e) =>
-                          handleUndergraduateRadioChange(
-                            "entranceExam",
-                            e.target.value
-                          )
-                        }
+                        onChange={handleUndergraduateRadioChange}
                         isRadio={true}
                         options={["Yes", "No"]}
+                        error={undergraduateFormErrors.entranceExam}
+                        required
                       />
 
-                      {/* Management Quota */}
                       <InputField
                         label="Management Quota ?"
                         name="managementQuota"
                         value={undergraduateFormData.managementQuota}
-                        onChange={(e) =>
-                          handleUndergraduateRadioChange(
-                            "managementQuota",
-                            e.target.value
-                          )
-                        }
+                        onChange={handleUndergraduateRadioChange}
                         isRadio={true}
                         options={["Yes", "No"]}
+                        error={undergraduateFormErrors.managementQuota}
+                        required
                       />
                     </div>
 
-                    {/* Row 8: Playground and Bus service */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Playground */}
                       <InputField
                         label="Playground ?"
                         name="playground"
                         value={undergraduateFormData.playground}
-                        onChange={(e) =>
-                          handleUndergraduateRadioChange(
-                            "playground",
-                            e.target.value
-                          )
-                        }
+                        onChange={handleUndergraduateRadioChange}
                         isRadio={true}
                         options={["Yes", "No"]}
+                        error={undergraduateFormErrors.playground}
+                        required
                       />
 
-                      {/* Bus service */}
                       <InputField
                         label="Bus service ?"
                         name="busService"
                         value={undergraduateFormData.busService}
-                        onChange={(e) =>
-                          handleUndergraduateRadioChange(
-                            "busService",
-                            e.target.value
-                          )
-                        }
+                        onChange={handleUndergraduateRadioChange}
                         isRadio={true}
                         options={["Yes", "No"]}
+                        error={undergraduateFormErrors.busService}
+                        required
                       />
                     </div>
                   </div>
 
-                  {/* Submit Button */}
                   <div className="flex justify-center pt-4">
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full max-w-[500px] h-[48px] bg-[#0222D7] text-white rounded-[12px] font-semibold hover:bg-blue-700 transition-colors"
-                    >
-                      {isLoading ? "Saving..." : "Save & Next"}
-                    </Button>
+                    <div className="flex flex-row items-center justify-center gap-10 w-full max-w-[668px]">
+                      <button
+                        type="button"
+                        onClick={() => onPrevious?.()} // optional chaining
+                        className="w-[314px] h-[48px] border border-[#697282] text-[#697282] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center shadow-inner"
+                      >
+                        Previous
+                      </button>
+
+                      {/* Save & Next Button */}
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="w-[314px] h-[48px] bg-[#697282] text-[#F5F6F9] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center hover:bg-[#5b626f] transition-colors"
+                      >
+                        {isLoading ? "Saving..." : "Save & Next"}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </>

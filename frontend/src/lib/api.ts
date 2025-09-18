@@ -275,6 +275,16 @@ export const institutionAPI = {
       body: JSON.stringify(institutionData),
     });
   },
+
+  // Upload institution JSON file
+  uploadInstitutionFile: async (file: File): Promise<ApiResponse> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiRequest("/v1/institutions/upload", {
+      method: "POST",
+      body: formData,
+    });
+  },
 };
 
 // Utility functions for institution data management
@@ -598,7 +608,9 @@ export const institutionDetailsAPI = {
 // Dashboard data helpers (non-destructive additions)
 export const getMyInstitution = async (): Promise<any> => {
   const res = await apiRequest<any>("/v1/institutions/me", { method: "GET" });
-  return (res as any).data;
+  // Support both {success, data} and raw object responses
+  const payload: any = res as any;
+  return payload?.data || payload;
 };
 
 export const getInstitutionBranches = async (
@@ -608,8 +620,7 @@ export const getInstitutionBranches = async (
     `/v1/institutions/${institutionId}/branches`,
     { method: "GET" }
   );
-  const payload = (res as any);
-  // Support both {success, data} and raw array responses
+  const payload = res as any;
   if (payload && Array.isArray(payload.data)) return payload.data;
   if (Array.isArray(payload)) return payload;
   return [];
@@ -622,7 +633,7 @@ export const getInstitutionCourses = async (
     `/v1/institutions/${institutionId}/courses`,
     { method: "GET" }
   );
-  const payload = (res as any);
+  const payload = res as any;
   if (payload && Array.isArray(payload.data)) return payload.data;
   if (Array.isArray(payload)) return payload;
   return [];
@@ -643,35 +654,6 @@ export const analyticsAPI = {
   },
   getSummaryPrevious: async (range: TimeRangeParam = "weekly"): Promise<ApiResponse> => {
     return apiRequest(`/v1/analytics/summary?range=${range}&compare=prev`, { method: "GET" });
-  }
-};
-
-// Course views helpers (real-time and initial summary)
-export const courseViewsAPI = {
-  incrementView: async (institutionId: string, courseId: string): Promise<ApiResponse> => {
-    return apiRequest(`/v1/institutions/${institutionId}/courses/${courseId}/views`, { method: "POST" });
-  },
-  getInstitutionViewsSummary: async (institutionId: string): Promise<ApiResponse> => {
-    return apiRequest(`/v1/institutions/${institutionId}/courses/summary/views`, { method: "GET" });
-  },
-  getOwnerViewsSummary: async (): Promise<ApiResponse> => {
-    return apiRequest(`/v1/institutions/summary/views/owner`, { method: "GET" });
-  },
-  getOwnerViewsByRange: async (range: 'weekly' | 'monthly' | 'yearly'): Promise<ApiResponse> => {
-    return apiRequest(`/v1/institutions/summary/views/owner/range?range=${range}`, { method: "GET" });
-  }
-};
-
-// Comparisons helpers
-export const comparisonsAPI = {
-  increment: async (institutionId: string, courseId: string): Promise<ApiResponse> => {
-    return apiRequest(`/v1/institutions/${institutionId}/courses/${courseId}/comparisons`, { method: "POST" });
-  },
-  getOwnerSummary: async (): Promise<ApiResponse> => {
-    return apiRequest(`/v1/institutions/summary/comparisons/owner`, { method: "GET" });
-  },
-  getOwnerByRange: async (range: 'weekly' | 'monthly' | 'yearly'): Promise<ApiResponse> => {
-    return apiRequest(`/v1/institutions/summary/comparisons/owner/range?range=${range}`, { method: "GET" });
   }
 };
 
@@ -716,7 +698,6 @@ export const metricsAPI = {
     return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner/series?${q.join('&')}`, { method: "GET" });
   }
 };
-
 
 // Enquiries API helpers (leads generated and recent enquiries)
 export const enquiriesAPI = {
