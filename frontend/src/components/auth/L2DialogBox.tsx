@@ -1076,6 +1076,8 @@ import FallbackCourseForm from "./L2DialogBoxParts/Course/FallbackCourseForm";
 import BranchForm from "./L2DialogBoxParts/Branch/BranchForm";
 import { error } from "console";
 import { exportAndUploadInstitutionAndCourses, exportInstitutionAndCoursesToFile } from "@/lib/utility"
+import { L2Schemas } from "@/lib/validations/L2Schema"
+import { createdBranchRule } from "@/lib/validations/ValidationRules";
 
 interface L2DialogBoxProps {
   trigger?: React.ReactNode;
@@ -1110,15 +1112,17 @@ export interface Course {
   totalSeats: string;
   availableSeats: string;
   pricePerSeat: string;
-  hasWifi: boolean;
-  hasChargingPoints: boolean;
-  hasAC: boolean;
-  hasPersonalLocker: boolean;
+   hasWifi:  null;
+  hasChargingPoints:  null;
+  hasAC:  null;
+  hasPersonalLocker:  null;
+  eligibilityCriteria: string; // Add this line
   tuitionType: string;
   instructorProfile: string;
   subject: string;
   createdBranch: string;
 }
+
 
 // Branch shape used locally in this component; dbId tracks IndexedDB id
 interface Branch {
@@ -1136,6 +1140,7 @@ export default function L2DialogBox({
   onOpenChange,
   onSuccess,
   onPrevious,
+  
   initialSection: initialSectionProp,
 }: L2DialogBoxProps) {
   const router = useRouter();
@@ -1147,7 +1152,7 @@ export default function L2DialogBox({
   const isStudyHall = institutionType === "Study Halls";
   const isTutionCenter = institutionType === "Tution Center's";
   const isKindergarten = institutionType === "Kindergarten/childcare center";
-  const isSchool = institutionType === "School";
+  const isSchool = institutionType === "School's";
   const isIntermediateCollege = institutionType === "Intermediate college(K12)";
 
   // Basic course form (only common fields) for these institution types
@@ -1162,6 +1167,11 @@ export default function L2DialogBox({
   const [selectedCourseId, setSelectedCourseId] = useState(1);
   const [showCourseAfterBranch, setShowCourseAfterBranch] = useState(false);
   const [branchOptions, setBranchOptions] = useState<string[]>([]);
+  
+ // ✅ 1. Add state to hold validation errors for each branch
+const [branchErrors, setBranchErrors] = useState<
+  Record<number, Record<string, string>>
+>({});
 
   useEffect(() => {
     if (!dialogOpen) return;
@@ -1185,6 +1195,7 @@ export default function L2DialogBox({
       courseDuration: "",
       mode: "Offline",
       priceOfCourse: "",
+      eligibilityCriteria: "", // Add this line
       location: "",
       image: null as File | null,
       brochure: null as File | null,
@@ -1206,10 +1217,10 @@ export default function L2DialogBox({
       totalSeats: "",
       availableSeats: "",
       pricePerSeat: "",
-      hasWifi: false,
-      hasChargingPoints: false,
-      hasAC: false,
-      hasPersonalLocker: false,
+      hasWifi: null,
+      hasChargingPoints: null,
+      hasAC: null,
+      hasPersonalLocker: null,
       // Additional fields for Tuition Centers
       tuitionType: "",
       instructorProfile: "",
@@ -1261,28 +1272,66 @@ export default function L2DialogBox({
   ];
 
   // Handlers
-  const handleCourseChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    setCourses(
-      courses.map((course) =>
-        course.id === selectedCourseId
-          ? { ...course, [e.target.name]: e.target.value }
-          : course
-      )
-    );
-  };
+const handleCourseChange = (
+  e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+) => {
+  const { name, value } = e.target;
 
-  const handleBranchChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setBranches((prev) =>
-      prev.map((branch) =>
-        branch.id === selectedBranchId ? { ...branch, [name]: value } : branch
-      )
-    );
-  };
+  // 1. Update the state so the UI shows the new value
+  setCourses((prevCourses) =>
+    prevCourses.map((course) =>
+      course.id === selectedCourseId
+        ? { ...course, [name]: value }
+        : course
+    )
+  );
+
+  // --- Dynamic Validation Logic ---
+  const schema = L2Schemas[getSchemaKey()];
+  let validationError = "";
+
+  // 2. Use the central schema to validate the field that was just changed.
+  // This now automatically includes the check for 'createdBranch'.
+  if (schema && schema.extract(name)) {
+    const { error } = schema.extract(name).validate(value);
+    // If there's an error, store the message. If not, error is null.
+    if (error) {
+      validationError = error.details[0].message;
+    }
+  }
+  
+  // 3. Update the error state. If validation passed, validationError will be an
+  //    empty string, which clears the error message from the UI.
+  setCourseErrorsById((prevErrors) => ({
+    ...prevErrors,
+    [selectedCourseId]: {
+      ...(prevErrors[selectedCourseId] || {}),
+      [name]: validationError,
+    },
+  }));
+};
+  // const handleCourseChange = (
+  //   e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  // ) => {
+  //   setCourses(
+  //     courses.map((course) =>
+  //       course.id === selectedCourseId
+  //         ? { ...course, [e.target.name]: e.target.value }
+  //         : course
+  //     )
+  //   );
+  // };
+
+  // const handleBranchChange = (
+  //   e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  // ) => {
+  //   const { name, value } = e.target;
+  //   setBranches((prev) =>
+  //     prev.map((branch) =>
+  //       branch.id === selectedBranchId ? { ...branch, [name]: value } : branch
+  //     )
+  //   );
+  // };
 
   const handleFileChange = (
     e: ChangeEvent<HTMLInputElement>,
@@ -1337,6 +1386,7 @@ export default function L2DialogBox({
       // Additional fields for Coaching centers
       categoriesType: "",
       domainType: "",
+       eligibilityCriteria: "", 
       // Additional fields for Study Hall
       seatingOption: "",
       openingTime: "",
@@ -1345,10 +1395,10 @@ export default function L2DialogBox({
       totalSeats: "",
       availableSeats: "",
       pricePerSeat: "",
-      hasWifi: false,
-      hasChargingPoints: false,
-      hasAC: false,
-      hasPersonalLocker: false,
+      hasWifi: null,
+      hasChargingPoints: null,
+      hasAC: null,
+      hasPersonalLocker: null,
       // Additional fields for Tuition Centers
       tuitionType: "",
       instructorProfile: "",
@@ -1397,6 +1447,8 @@ export default function L2DialogBox({
     });
   };
 
+  // const [selectedCourseId, setSelectedCourseId] = useState(1);
+const [courseErrorsById, setCourseErrorsById] = useState<Record<number, Record<string, string>>>({}); // ✅ ADD THIS LINE
   const validateCourses = () => {
     const requiredFields = [
       "courseName",
@@ -1467,23 +1519,108 @@ export default function L2DialogBox({
   };
 
 
+  // Inside L2DialogBox.tsx
+
+const getSchemaKey = (): keyof typeof L2Schemas => {
+  if (isCoachingCenter) {
+    return "coaching";
+  }
+  if (isStudyHall) {
+    return "studyHall";
+  }
+  if (isTutionCenter) {
+    return "tuition";
+  }
+  if (isUnderPostGraduate) {
+    return "ugpg";
+  }
+  // Default for Kindergarten, School, etc.
+  return "basic";
+};
   const handleCourseSubmit = async (e: FormEvent<HTMLFormElement>) => {
   e.preventDefault();
+  // This block runs first to ensure a branch is selected for every course.
+ // ✅ --- 1. CONDITIONAL Branch Check ---
+  // This now only runs if the user came from the "Add Branch" screen.
+  if (showCourseAfterBranch) {
+    const initialErrors: Record<number, Record<string, string>> = {};
+    let hasMissingBranch = false;
 
-  // ✅ Validate courses before submission
-  const validationError = validateCourses();
-  if (validationError) {
-    alert(validationError);
+    for (const course of courses) {
+      if (!course.createdBranch) {
+        hasMissingBranch = true;
+        initialErrors[course.id] = { 
+          ...initialErrors[course.id], 
+          createdBranch: "Please select a branch for this course." 
+        };
+      }
+    }
+
+    if (hasMissingBranch) {
+      setCourseErrorsById(initialErrors);
+      console.warn("Submission stopped: Branch selection is required.");
+      return;
+    }
+  }
+  
+  // ✅ --- 2. CONDITIONAL Joi Validation ---
+  // --- Joi Validation Step with Debugging ---
+  // This line temporarily makes the branch optional if the user did not come from the "Add Branch" screen.
+  const allCourseErrors: Record<number, Record<string, string>> = {};
+  let hasErrors = false;
+
+  let schema = L2Schemas[getSchemaKey()]; 
+  if (!showCourseAfterBranch) {
+    schema = schema.fork('createdBranch', (field) => field.optional().allow(''));
+    
+  }
+
+  // ✅ DEBUG: Log which schema is being used
+  console.log(`🕵️ Using Schema for Validation: "${getSchemaKey()}"`);
+  console.log(`Is Branch Required? ${showCourseAfterBranch}`);
+
+  for (const course of courses) {
+    // ✅ DEBUG: Log the exact object being validated
+    console.log(`📝 Validating Course ID: ${course.id}`, course);
+
+    const { error } = schema.validate(course, { 
+      abortEarly: false, 
+      allowUnknown: true
+    });
+
+    if (error) {
+      hasErrors = true;
+      
+      // ✅ DEBUG: Log the detailed error object from Joi if validation fails
+      console.error(`❌ Validation FAILED for Course ID: ${course.id}`, error.details);
+      
+      allCourseErrors[course.id] = error.details.reduce((acc, detail) => {
+        const key = detail.path[0] as string;
+        acc[key] = detail.message;
+        return acc;
+      }, {} as Record<string, string>);
+    } else {
+      // ✅ DEBUG: Log a success message if a course object is valid
+      console.log(`✅ Validation PASSED for Course ID: ${course.id}`);
+    }
+  }
+
+  setCourseErrorsById(allCourseErrors);
+  
+  if (hasErrors) {
+    console.warn("Submission stopped due to validation errors.");
     return;
   }
 
+  // ✅ --- End of Validation Step ---
+
+
+  // The rest of your logic remains exactly the same.
   setIsLoading(true);
 
   try {
-    // ✅ Get all existing branches from IndexedDB
     const allBranches = await getAllBranchesFromDB();
 
-    // Map of branchName -> branch object with courses[] (deduplication anchor)
     const branchMap = new Map(
       allBranches.map((b) => [
         b.branchName.trim().toLowerCase(),
@@ -1491,35 +1628,48 @@ export default function L2DialogBox({
       ])
     );
 
-    // --- Helpers ---
     const sanitizeBranch = (branch: any) => {
-      const { createdAt, id, ...rest } = branch; // strip unwanted fields
+      const { createdAt, id, ...rest } = branch;
       return rest;
     };
 
+     // ✅ THIS IS THE SPECIFIC PART TO REPLACE
+      // const sanitizeCourse = (course: Course) => {
+      //   const sanitized: Partial<Course> = { ...course };
+
+      //   sanitized.hasWifi = sanitized.hasWifi ?? false;
+      //   sanitized.hasChargingPoints = sanitized.hasChargingPoints ?? false;
+      //   sanitized.hasAC = sanitized.hasAC ?? false;
+      //   sanitized.hasPersonalLocker = sanitized.hasPersonalLocker ?? false;
+
+      //   for (const key in sanitized) {
+      //     const value = sanitized[key as keyof Course];
+      //     if (
+      //       value === null ||
+      //       value === "" ||
+      //       (Array.isArray(value) && value.length === 0)
+      //     ) {
+      //       delete sanitized[key as keyof Course];
+      //     }
+      //   }
+      //   return sanitized;
+      // };
     const sanitizeCourse = (course: any) => {
-      const cleaned: Record<string, any> = {};
-      Object.entries(course).forEach(([key, value]) => {
-        if (
-          value !== null &&
-          value !== "" &&
-          !(Array.isArray(value) && value.length === 0) &&
-          value !== false
-        ) {
-          cleaned[key] = value;
-        }
-      });
-      return cleaned;
+      return Object.fromEntries(
+        Object.entries(course).filter(
+          ([_, value]) =>
+            value !== null &&
+            value !== "" &&
+            !(Array.isArray(value) && value.length === 0) &&
+            value !== false
+        )
+      );
     };
 
-    // --- Attach courses to their branches ---
     const unassignedCourses: any[] = [];
-
     courses.forEach((c) => {
       const key = (c.createdBranch || "").trim().toLowerCase();
-
       if (!key || !branchMap.has(key)) {
-        // no matching branch → unassigned
         unassignedCourses.push(sanitizeCourse(c));
       } else {
         branchMap
@@ -1528,7 +1678,6 @@ export default function L2DialogBox({
       }
     });
 
-    // --- Prepare final payload (deduplicated) ---
     const sanitizedPayload = [
       ...Array.from(branchMap.values())
         .filter((b) => b.courses.length > 0)
@@ -1537,7 +1686,6 @@ export default function L2DialogBox({
 
     if (unassignedCourses.length > 0) {
       sanitizedPayload.push({
-        // no branchName → "unassigned" bucket
         courses: unassignedCourses,
       } as any);
     }
@@ -1550,71 +1698,44 @@ export default function L2DialogBox({
 
     console.log("Deduplicated payload to save:", sanitizedPayload);
 
-    // ✅ Save deduplicated courses into IndexedDB
     for (const entry of sanitizedPayload) {
       if (!entry.branchName) {
-        // handle unassigned courses
         const existingUnassigned = await getCoursesGroupsByBranchName("");
         if (existingUnassigned.length) {
           const group = existingUnassigned[0];
-          // Deduplicate by courseName + (optional) subject + (optional) mode
           const existing = group.courses || [];
           const incoming = entry.courses || [];
           const keyOf = (c: any) => `${(c.courseName||"").trim().toLowerCase()}|${(c.subject||"").trim().toLowerCase()}|${(c.mode||"").trim().toLowerCase()}`;
           const existingSet = new Set(existing.map(keyOf));
           const uniqueIncoming = incoming.filter((c: any) => !existingSet.has(keyOf(c)));
-          const merged = {
-            ...group,
-            courses: [...existing, ...uniqueIncoming],
-          };
+          const merged = { ...group, courses: [...existing, ...uniqueIncoming] };
           await updateCoursesGroupInDB(merged);
         } else {
-          await addCoursesGroupToDB({
-            branchName: "",
-            courses: entry.courses || [],
-          });
+          await addCoursesGroupToDB({ branchName: "", courses: entry.courses || [] });
         }
       } else {
-        // handle branch-specific courses
         const existingGroups = await getCoursesGroupsByBranchName(entry.branchName);
         if (existingGroups.length) {
-          // update existing group (merge courses)
           const group = existingGroups[0];
-          // Deduplicate by courseName + (optional) subject + (optional) mode
           const existing = group.courses || [];
           const incoming = entry.courses || [];
           const keyOf = (c: any) => `${(c.courseName||"").trim().toLowerCase()}|${(c.subject||"").trim().toLowerCase()}|${(c.mode||"").trim().toLowerCase()}`;
           const existingSet = new Set(existing.map(keyOf));
           const uniqueIncoming = incoming.filter((c: any) => !existingSet.has(keyOf(c)));
-          const merged = {
-            ...group,
-            branchName: entry.branchName,
-            branchAddress: (entry as any).branchAddress,
-            contactInfo: (entry as any).contactInfo,
-            locationUrl: (entry as any).locationUrl,
-            courses: [...existing, ...uniqueIncoming],
-          };
+          const merged = { ...group, branchName: entry.branchName, branchAddress: (entry as any).branchAddress, contactInfo: (entry as any).contactInfo, locationUrl: (entry as any).locationUrl, courses: [...existing, ...uniqueIncoming] };
           await updateCoursesGroupInDB(merged);
         } else {
-          // new branch entry
-          await addCoursesGroupToDB({
-            branchName: entry.branchName,
-            branchAddress: (entry as any).branchAddress,
-            contactInfo: (entry as any).contactInfo,
-            locationUrl: (entry as any).locationUrl,
-            courses: entry.courses || [],
-          });
+          await addCoursesGroupToDB({ branchName: entry.branchName, branchAddress: (entry as any).branchAddress, contactInfo: (entry as any).contactInfo, locationUrl: (entry as any).locationUrl, courses: entry.courses || [] });
         }
       }
     }
 
-    // --- Reset after success ---
     setSelectedCourseId(1);
     if(shouldSkipL3){
       const response = await exportAndUploadInstitutionAndCourses()
       if(response.success){
         router.push("/payment");
-      }else{
+      } else {
         alert("Failed to upload data")
       }
     }
@@ -1630,93 +1751,363 @@ export default function L2DialogBox({
     setIsLoading(false);
   }
 };
+//   const handleCourseSubmit = async (e: FormEvent<HTMLFormElement>) => {
+//   e.preventDefault();
 
+//   // ✅ Validate courses before submission
+//   const validationError = validateCourses();
+//   if (validationError) {
+//     alert(validationError);
+//     return;
+//   }
 
-  const validateBranch = (branch: Branch) => {
-    const requiredFields: (keyof Branch)[] = [
-      "branchName",
-      "branchAddress",
-      "contactInfo",
-      "locationUrl",
-    ];
+//   setIsLoading(true);
 
-    for (const field of requiredFields) {
-      const value = branch[field];
-      if (!value || String(value).trim() === "") {
-        return `Please fill in the ${String(field)} field for branch: ${
-          branch.branchName || "Unnamed branch"
-        }`;
-      }
+//   try {
+//     // ✅ Get all existing branches from IndexedDB
+//     const allBranches = await getAllBranchesFromDB();
+
+//     // Map of branchName -> branch object with courses[] (deduplication anchor)
+//     const branchMap = new Map(
+//       allBranches.map((b) => [
+//         b.branchName.trim().toLowerCase(),
+//         { ...b, courses: [] as typeof courses },
+//       ])
+//     );
+
+//     // --- Helpers ---
+//     const sanitizeBranch = (branch: any) => {
+//       const { createdAt, id, ...rest } = branch; // strip unwanted fields
+//       return rest;
+//     };
+
+//     const sanitizeCourse = (course: any) => {
+//       const cleaned: Record<string, any> = {};
+//       Object.entries(course).forEach(([key, value]) => {
+//         if (
+//           value !== null &&
+//           value !== "" &&
+//           !(Array.isArray(value) && value.length === 0) &&
+//           value !== false
+//         ) {
+//           cleaned[key] = value;
+//         }
+//       });
+//       return cleaned;
+//     };
+
+//     // --- Attach courses to their branches ---
+//     const unassignedCourses: any[] = [];
+
+//     courses.forEach((c) => {
+//       const key = (c.createdBranch || "").trim().toLowerCase();
+
+//       if (!key || !branchMap.has(key)) {
+//         // no matching branch → unassigned
+//         unassignedCourses.push(sanitizeCourse(c));
+//       } else {
+//         branchMap
+//           .get(key)!
+//           .courses.push(sanitizeCourse(c) as (typeof courses)[number]);
+//       }
+//     });
+
+//     // --- Prepare final payload (deduplicated) ---
+//     const sanitizedPayload = [
+//       ...Array.from(branchMap.values())
+//         .filter((b) => b.courses.length > 0)
+//         .map(sanitizeBranch),
+//     ];
+
+//     if (unassignedCourses.length > 0) {
+//       sanitizedPayload.push({
+//         // no branchName → "unassigned" bucket
+//         courses: unassignedCourses,
+//       } as any);
+//     }
+
+//     if (!sanitizedPayload.length) {
+//       alert("No valid courses found. Please select a branch or fill valid details.");
+//       setIsLoading(false);
+//       return;
+//     }
+
+//     console.log("Deduplicated payload to save:", sanitizedPayload);
+
+//     // ✅ Save deduplicated courses into IndexedDB
+//     for (const entry of sanitizedPayload) {
+//       if (!entry.branchName) {
+//         // handle unassigned courses
+//         const existingUnassigned = await getCoursesGroupsByBranchName("");
+//         if (existingUnassigned.length) {
+//           const group = existingUnassigned[0];
+//           // Deduplicate by courseName + (optional) subject + (optional) mode
+//           const existing = group.courses || [];
+//           const incoming = entry.courses || [];
+//           const keyOf = (c: any) => `${(c.courseName||"").trim().toLowerCase()}|${(c.subject||"").trim().toLowerCase()}|${(c.mode||"").trim().toLowerCase()}`;
+//           const existingSet = new Set(existing.map(keyOf));
+//           const uniqueIncoming = incoming.filter((c: any) => !existingSet.has(keyOf(c)));
+//           const merged = {
+//             ...group,
+//             courses: [...existing, ...uniqueIncoming],
+//           };
+//           await updateCoursesGroupInDB(merged);
+//         } else {
+//           await addCoursesGroupToDB({
+//             branchName: "",
+//             courses: entry.courses || [],
+//           });
+//         }
+//       } else {
+//         // handle branch-specific courses
+//         const existingGroups = await getCoursesGroupsByBranchName(entry.branchName);
+//         if (existingGroups.length) {
+//           // update existing group (merge courses)
+//           const group = existingGroups[0];
+//           // Deduplicate by courseName + (optional) subject + (optional) mode
+//           const existing = group.courses || [];
+//           const incoming = entry.courses || [];
+//           const keyOf = (c: any) => `${(c.courseName||"").trim().toLowerCase()}|${(c.subject||"").trim().toLowerCase()}|${(c.mode||"").trim().toLowerCase()}`;
+//           const existingSet = new Set(existing.map(keyOf));
+//           const uniqueIncoming = incoming.filter((c: any) => !existingSet.has(keyOf(c)));
+//           const merged = {
+//             ...group,
+//             branchName: entry.branchName,
+//             branchAddress: (entry as any).branchAddress,
+//             contactInfo: (entry as any).contactInfo,
+//             locationUrl: (entry as any).locationUrl,
+//             courses: [...existing, ...uniqueIncoming],
+//           };
+//           await updateCoursesGroupInDB(merged);
+//         } else {
+//           // new branch entry
+//           await addCoursesGroupToDB({
+//             branchName: entry.branchName,
+//             branchAddress: (entry as any).branchAddress,
+//             contactInfo: (entry as any).contactInfo,
+//             locationUrl: (entry as any).locationUrl,
+//             courses: entry.courses || [],
+//           });
+//         }
+//       }
+//     }
+
+//     // --- Reset after success ---
+//     setSelectedCourseId(1);
+//     if(shouldSkipL3){
+//       const response = await exportAndUploadInstitutionAndCourses()
+//       if(response.success){
+//         router.push("/payment");
+//       }else{
+//         alert("Failed to upload data")
+//       }
+//     }
+//     onSuccess?.()
+//   } catch (error) {
+//     console.error("Error saving courses:", error);
+//     const errorMessage =
+//       error instanceof Error
+//         ? error.message
+//         : "Failed to save course details. Please try again.";
+//     alert(errorMessage);
+//   } finally {
+//     setIsLoading(false);
+//   }
+// };
+
+// / Helper function to validate a single field using your Joi schema
+const validateField = (name: string, value: string) => {
+  // Check if the field exists in the branch schema to avoid errors
+  const keyExists = L2Schemas.branch.$_terms.keys?.some(
+    (k: any) => k.key === name
+  );
+  if (!keyExists) return "";
+
+  const { error } = L2Schemas.branch.extract(name).validate(value);
+  return error ? error.details[0].message : "";
+};
+
+// ✅ 2. Update handleBranchChange to validate as the user types
+const handleBranchChange = (
+  e: React.ChangeEvent<HTMLInputElement |HTMLSelectElement | HTMLTextAreaElement>
+) => {
+  const { name, value } = e.target;
+
+  // First, update the branch state
+  setBranches((prev) =>
+    prev.map((branch) =>
+      branch.id === selectedBranchId ? { ...branch, [name]: value } : branch
+    )
+  );
+
+  // Then, validate the changed field and update the error state
+  const error = validateField(name, value);
+  setBranchErrors((prev) => ({
+    ...prev,
+    [selectedBranchId]: {
+      ...(prev[selectedBranchId] || {}),
+      [name]: error,
+    },
+  }));
+};
+
+// ✅ 3. Replace your old handleBranchSubmit with this Joi-powered version
+const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+
+  const currentBranch = branches.find((b) => b.id === selectedBranchId);
+  if (!currentBranch) return;
+
+  // Validate the entire form using the Joi schema
+  const { error } = L2Schemas.branch.validate(currentBranch, {
+    abortEarly: false,
+    allowUnknown: true, // Important to ignore fields like 'id' or 'dbId'
+  });
+
+  // If validation fails...
+  if (error) {
+    const newErrors: Record<string, string> = {};
+    // Collect all error messages
+    error.details.forEach((err) => {
+      const field = err.path[0] as string;
+      newErrors[field] = err.message;
+    });
+    // Update the state to display all errors at once
+    setBranchErrors((prev) => ({
+      ...prev,
+      [selectedBranchId]: newErrors,
+    }));
+    return; // Stop the submission
+  }
+
+  // If validation passes, clear any previous errors for this branch
+  setBranchErrors((prev) => ({
+    ...prev,
+    [selectedBranchId]: {},
+  }));
+
+  setIsLoading(true);
+  try {
+    // --- YOUR EXISTING SAVE LOGIC CAN GO HERE ---
+    const payload = {
+      branchName: currentBranch.branchName,
+      branchAddress: currentBranch.branchAddress,
+      contactInfo: currentBranch.contactInfo,
+      locationUrl: currentBranch.locationUrl,
+    };
+
+    if ((currentBranch as any).dbId) {
+      await updateBranchInDB({ id: (currentBranch as any).dbId, ...payload });
+    } else {
+      const [newId] = await addBranchesToDB([payload]);
+      setBranches((prev) =>
+        prev.map((b) => (b.id === selectedBranchId ? { ...b, dbId: newId } : b))
+      );
     }
 
-    // Validate contact number format
-    if (branch.contactInfo && !/^\d{10}$/.test(branch.contactInfo)) {
-      return; // Please enter a valid 10-digit contact number for branch: ${branch.branchName};
-    }
+    const all = await getAllBranchesFromDB();
+    setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
 
-    return null;
-  };
+    // if (isStudyHall || isTutionCenter) {
+    //   setDialogOpen(false);
+    //   router.push("/dashboard");
+    // } else {
+    //   setShowCourseAfterBranch(true);
+    // }
+    setShowCourseAfterBranch(true);
+    // --- END OF YOUR SAVE LOGIC ---
+  } catch (err) {
+    console.error("Error saving branch:", err);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-  const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log("in branch parent handler");
+  // const validateBranch = (branch: Branch) => {
+  //   const requiredFields: (keyof Branch)[] = [
+  //     "branchName",
+  //     "branchAddress",
+  //     "contactInfo",
+  //     "locationUrl",
+  //   ];
 
-    const currentBranch = branches.find((b) => b.id === selectedBranchId);
-    if (!currentBranch) return;
+  //   for (const field of requiredFields) {
+  //     const value = branch[field];
+  //     if (!value || String(value).trim() === "") {
+  //       return `Please fill in the ${String(field)} field for branch: ${
+  //         branch.branchName || "Unnamed branch"
+  //       }`;
+  //     }
+  //   }
 
-    const validationError = validateBranch(currentBranch);
-    if (validationError) {
-      alert(validationError);
-      return;
-    }
+  //   // Validate contact number format
+  //   if (branch.contactInfo && !/^\d{10}$/.test(branch.contactInfo)) {
+  //     return; // Please enter a valid 10-digit contact number for branch: ${branch.branchName};
+  //   }
 
-    setIsLoading(true);
+  //   return null;
+  // };
 
-    try {
-      // Save only the currently selected branch to prevent duplicates
-      const payload = {
-        branchName: currentBranch.branchName,
-        branchAddress: currentBranch.branchAddress,
-        contactInfo: currentBranch.contactInfo,
-        locationUrl: currentBranch.locationUrl,
-      };
+  // const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  //   e.preventDefault();
+  //   console.log("in branch parent handler");
 
-      if (currentBranch.dbId) {
-        // Update existing branch in IndexedDB
-        await updateBranchInDB({ id: currentBranch.dbId, ...payload });
-        console.log("Branch updated in DB with ID:", currentBranch.dbId);
-      } else {
-        // Add new branch and store the generated DB id back into state
-        const [newId] = await addBranchesToDB([payload]);
-        console.log("Branch saved locally with ID:", newId);
-        setBranches((prev) =>
-          prev.map((b) => (b.id === selectedBranchId ? { ...b, dbId: newId } : b))
-        );
-      }
+  //   const currentBranch = branches.find((b) => b.id === selectedBranchId);
+  //   if (!currentBranch) return;
 
-      // Refresh branch options so the course dropdown has latest values
-      try {
-        const all = await getAllBranchesFromDB();
-        setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
-      } catch (fetchErr) {
-        console.error("Failed to refresh branches after save", fetchErr);
-      }
+  //   const validationError = validateBranch(currentBranch);
+  //   if (validationError) {
+  //     alert(validationError);
+  //     return;
+  //   }
 
-      // 🔹 Instead of closing dialog, show course form if institution requires courses
-      if (isStudyHall || isTutionCenter) {
-        // These types skip courses and go dashboard
-        setDialogOpen(false);
-        router.push("/dashboard");
-      } else {
-        // Append course form after branch form
-        setShowCourseAfterBranch(true);
-      }
-    } catch (error) {
-      console.error("Error saving branch locally:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //   setIsLoading(true);
+
+  //   try {
+  //     // Save only the currently selected branch to prevent duplicates
+  //     const payload = {
+  //       branchName: currentBranch.branchName,
+  //       branchAddress: currentBranch.branchAddress,
+  //       contactInfo: currentBranch.contactInfo,
+  //       locationUrl: currentBranch.locationUrl,
+  //     };
+
+  //     if (currentBranch.dbId) {
+  //       // Update existing branch in IndexedDB
+  //       await updateBranchInDB({ id: currentBranch.dbId, ...payload });
+  //       console.log("Branch updated in DB with ID:", currentBranch.dbId);
+  //     } else {
+  //       // Add new branch and store the generated DB id back into state
+  //       const [newId] = await addBranchesToDB([payload]);
+  //       console.log("Branch saved locally with ID:", newId);
+  //       setBranches((prev) =>
+  //         prev.map((b) => (b.id === selectedBranchId ? { ...b, dbId: newId } : b))
+  //       );
+  //     }
+
+  //     // Refresh branch options so the course dropdown has latest values
+  //     try {
+  //       const all = await getAllBranchesFromDB();
+  //       setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
+  //     } catch (fetchErr) {
+  //       console.error("Failed to refresh branches after save", fetchErr);
+  //     }
+
+  //     // 🔹 Instead of closing dialog, show course form if institution requires courses
+  //     if (isStudyHall || isTutionCenter) {
+  //       // These types skip courses and go dashboard
+  //       setDialogOpen(false);
+  //       router.push("/dashboard");
+  //     } else {
+  //       // Append course form after branch form
+  //       setShowCourseAfterBranch(true);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error saving branch locally:", error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   return (
     <>
@@ -1804,13 +2195,15 @@ export default function L2DialogBox({
 
                   <form onSubmit={handleCourseSubmit} className="space-y-6">
                     {isCoachingCenter ? (
-                      <CoachingCourseForm
-                        currentCourse={currentCourse}
-                        handleCourseChange={handleCourseChange}
-                        setCourses={setCourses}
-                        courses={courses}
-                        selectedCourseId={selectedCourseId}
-                      />
+                       <CoachingCourseForm
+    currentCourse={currentCourse}
+    handleCourseChange={handleCourseChange}
+    setCourses={setCourses}
+    courses={courses}
+    selectedCourseId={selectedCourseId}
+    // ✅ Add this line to pass down the errors
+    courseErrors={courseErrorsById[currentCourse.id] || {}}
+  />
                     ) : isStudyHall ? (
                       <StudyHallForm
                         currentCourse={currentCourse}
@@ -1820,33 +2213,41 @@ export default function L2DialogBox({
                         setCourses={setCourses}
                         courses={courses}
                         selectedCourseId={selectedCourseId}
+                        courseErrors={courseErrorsById[currentCourse.id] || {}}
                       />
                     ) : isTutionCenter ? (
                       <TuitionCenterForm
-                        currentCourse={currentCourse}
-                        handleCourseChange={handleCourseChange}
-                        handleOperationalDayChange={handleOperationalDayChange}
-                        handleFileChange={handleFileChange}
-                        setCourses={setCourses}
-                        courses={courses}
-                        selectedCourseId={selectedCourseId}
-                      />
+            currentCourse={currentCourse}
+            handleCourseChange={handleCourseChange}
+            handleOperationalDayChange={handleOperationalDayChange}
+            handleFileChange={handleFileChange}
+            setCourses={setCourses}
+            courses={courses}
+            selectedCourseId={selectedCourseId}
+            // ✅ Pass errors to TuitionCenterForm
+            courseErrors={courseErrorsById[currentCourse.id] || {}}
+        />
                     ) : isUnderPostGraduate ? (
                       <UnderPostGraduateForm
-                        currentCourse={currentCourse}
-                        handleCourseChange={handleCourseChange}
-                        setCourses={setCourses}
-                        courses={courses}
-                        selectedCourseId={selectedCourseId}
-                      />
+        currentCourse={currentCourse}
+        handleCourseChange={handleCourseChange}
+        setCourses={setCourses}
+        courses={courses}
+        selectedCourseId={selectedCourseId}
+        // ✅ Add this prop to pass the errors down
+        courseErrors={courseErrorsById[currentCourse.id] || {}}
+    />
                     ) : isBasicCourseForm ? (
-                      <BasicCourseForm
-                        currentCourse={currentCourse}
-                        handleCourseChange={handleCourseChange}
-                        setCourses={setCourses}
-                        courses={courses}
-                        selectedCourseId={selectedCourseId}
-                      />
+                       <BasicCourseForm
+    currentCourse={currentCourse}
+    handleCourseChange={handleCourseChange}
+    setCourses={setCourses}
+    courses={courses}
+    selectedCourseId={selectedCourseId}
+    // ✅ This line passes the validation errors for the currently selected course
+    // to the child component. The `|| {}` ensures it's always an object.
+    courseErrors={courseErrorsById[currentCourse.id] || {}}
+  />
                     ) : (
                       <FallbackCourseForm
                         currentCourse={currentCourse}
@@ -1856,8 +2257,35 @@ export default function L2DialogBox({
                         selectedCourseId={selectedCourseId}
                       />
                     )}
+                    {!isStudyHall && !isTutionCenter && (
+    <div className="grid md:grid-cols-2 gap-6">
+      {uploadFields.map((f) => (
+        <div key={f.type} className="flex flex-col gap-2">
+          <label className="font-medium text-[16px]">
+            {f.label}
+          </label>
+          <label className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors">
+            <Upload size={24} className="text-gray-400 mb-2" />
+            <span className="text-sm text-gray-500">
+              {currentCourse[f.type]
+                ? (currentCourse[f.type] as File).name
+                : f.type === "image"
+                ? "Upload Course Image (jpg / jpeg)"
+                : "Upload Brochure Course (pdf)"}
+            </span>
+            <input
+              type="file"
+              accept={f.accept}
+              className="hidden"
+              onChange={(e) => handleFileChange(e, f.type)}
+            />
+          </label>
+        </div>
+      ))}
+    </div>
+  )}
 
-                    <div className="grid md:grid-cols-2 gap-6">
+                    {/* <div className="grid md:grid-cols-2 gap-6">
                       {uploadFields.map((f) => (
                         <div key={f.type} className="flex flex-col gap-2">
                           <label className="font-medium text-[16px]">
@@ -1881,7 +2309,7 @@ export default function L2DialogBox({
                           </label>
                         </div>
                       ))}
-                    </div>
+                    </div> */}
                     <div className="flex justify-center gap-10">
                       <button
                         type="button"
@@ -1961,18 +2389,17 @@ export default function L2DialogBox({
                   </div>
 
                   <div className="b p-4 rounded-md">
-                    <BranchForm
-                      branches={branches}
-                      setBranches={setBranches}
-                      selectedBranchId={selectedBranchId}
-                      setSelectedBranchId={setSelectedBranchId}
-                      handleBranchChange={handleBranchChange}
-                      handleBranchSubmit={handleBranchSubmit}
-                      handlePreviousClick={onPrevious}
-                      deleteBranch={deleteBranch}
-                      addNewBranch={addNewBranch}
-                      isLoading={isLoading}
-                    />
+                 
+<BranchForm
+  branches={branches}
+  selectedBranchId={selectedBranchId}
+  handleBranchChange={handleBranchChange}
+  handleBranchSubmit={handleBranchSubmit}
+  handlePreviousClick={onPrevious}
+  isLoading={isLoading}
+  errors={branchErrors[selectedBranchId] || {}} // Pass the errors for the selected branch
+  // Pass other necessary props like setBranches, setSelectedBranchId etc.
+/>
                   </div>
 
                   {showCourseAfterBranch && (
@@ -2046,27 +2473,31 @@ export default function L2DialogBox({
                       </div>
 
                       <form onSubmit={handleCourseSubmit} className="space-y-6">
-                        <InputField
-                          label="Branch"
-                          name="createdBranch"
-                          value={currentCourse.createdBranch}
-                          onChange={handleCourseChange}
-                          isSelect={true}
-                          options={
-                            branchOptions.length
-                              ? branchOptions
-                              : ["No branches saved yet"]
-                          }
-                          placeholder="Select branch"
-                        />
+                       <InputField
+    label="Branch"
+    name="createdBranch"
+    value={currentCourse.createdBranch}
+    onChange={handleCourseChange}
+    isSelect={true}
+    options={
+      branchOptions.length
+        ? branchOptions
+        : ["No branches saved yet"]
+    }
+    placeholder="Select branch"
+    // ✅ ADD THIS PROP TO DISPLAY THE ERROR
+    error={courseErrorsById[currentCourse.id]?.createdBranch}
+  />
                         {isCoachingCenter ? (
-                          <CoachingCourseForm
-                            currentCourse={currentCourse}
-                            handleCourseChange={handleCourseChange}
-                            setCourses={setCourses}
-                            courses={courses}
-                            selectedCourseId={selectedCourseId}
-                          />
+                           <CoachingCourseForm
+    currentCourse={currentCourse}
+    handleCourseChange={handleCourseChange}
+    setCourses={setCourses}
+    courses={courses}
+    selectedCourseId={selectedCourseId}
+    // ✅ Add this line to pass down the errors
+    courseErrors={courseErrorsById[currentCourse.id] || {}}
+  />
                         ) : isStudyHall ? (
                           <StudyHallForm
                             currentCourse={currentCourse}
@@ -2078,35 +2509,41 @@ export default function L2DialogBox({
                             setCourses={setCourses}
                             courses={courses}
                             selectedCourseId={selectedCourseId}
+                            courseErrors={courseErrorsById[currentCourse.id] || {}}
                           />
                         ) : isTutionCenter ? (
                           <TuitionCenterForm
-                            currentCourse={currentCourse}
-                            handleCourseChange={handleCourseChange}
-                            handleOperationalDayChange={
-                              handleOperationalDayChange
-                            }
-                            handleFileChange={handleFileChange}
-                            setCourses={setCourses}
-                            courses={courses}
-                            selectedCourseId={selectedCourseId}
-                          />
+            currentCourse={currentCourse}
+            handleCourseChange={handleCourseChange}
+            handleOperationalDayChange={handleOperationalDayChange}
+            handleFileChange={handleFileChange}
+            setCourses={setCourses}
+            courses={courses}
+            selectedCourseId={selectedCourseId}
+            // ✅ Pass errors to TuitionCenterForm
+            courseErrors={courseErrorsById[currentCourse.id] || {}}
+        />
                         ) : isUnderPostGraduate ? (
                           <UnderPostGraduateForm
-                            currentCourse={currentCourse}
-                            handleCourseChange={handleCourseChange}
-                            setCourses={setCourses}
-                            courses={courses}
-                            selectedCourseId={selectedCourseId}
-                          />
+        currentCourse={currentCourse}
+        handleCourseChange={handleCourseChange}
+        setCourses={setCourses}
+        courses={courses}
+        selectedCourseId={selectedCourseId}
+        // ✅ Add this prop to pass the errors down
+        courseErrors={courseErrorsById[currentCourse.id] || {}}
+    />
                         ) : isBasicCourseForm ? (
                           <BasicCourseForm
-                            currentCourse={currentCourse}
-                            handleCourseChange={handleCourseChange}
-                            setCourses={setCourses}
-                            courses={courses}
-                            selectedCourseId={selectedCourseId}
-                          />
+    currentCourse={currentCourse}
+    handleCourseChange={handleCourseChange}
+    setCourses={setCourses}
+    courses={courses}
+    selectedCourseId={selectedCourseId}
+    // ✅ This line passes the validation errors for the currently selected course
+    // to the child component. The `|| {}` ensures it's always an object.
+    courseErrors={courseErrorsById[currentCourse.id] || {}}
+  />
                         ) : (
                           <FallbackCourseForm
                             currentCourse={currentCourse}
@@ -2116,8 +2553,34 @@ export default function L2DialogBox({
                             selectedCourseId={selectedCourseId}
                           />
                         )}
-
-                        <div className="grid md:grid-cols-2 gap-6">
+                        {!isStudyHall && !isTutionCenter && (
+    <div className="grid md:grid-cols-2 gap-6">
+      {uploadFields.map((f) => (
+        <div key={f.type} className="flex flex-col gap-2">
+          <label className="font-medium text-[16px]">
+            {f.label}
+          </label>
+          <label className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors">
+            <Upload size={24} className="text-gray-400 mb-2" />
+            <span className="text-sm text-gray-500">
+              {currentCourse[f.type]
+                ? (currentCourse[f.type] as File).name
+                : f.type === "image"
+                ? "Upload Course Image (jpg / jpeg)"
+                : "Upload Brochure Course (pdf)"}
+            </span>
+            <input
+              type="file"
+              accept={f.accept}
+              className="hidden"
+              onChange={(e) => handleFileChange(e, f.type)}
+            />
+          </label>
+        </div>
+      ))}
+    </div>
+  )}
+                        {/* <div className="grid md:grid-cols-2 gap-6">
                           {uploadFields.map((f) => (
                             <div key={f.type} className="flex flex-col gap-2">
                               <label className="font-medium text-[16px]">
@@ -2144,7 +2607,7 @@ export default function L2DialogBox({
                               </label>
                             </div>
                           ))}
-                        </div>
+                        </div> */}
                         <div className="flex justify-center gap-10">
                           <button
                             type="button"

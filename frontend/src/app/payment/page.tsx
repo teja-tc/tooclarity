@@ -9,7 +9,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { authAPI } from "@/lib/api";
 import { BadgeCheck, Info } from "lucide-react";
+import { useEffect } from "react";
 
 // Simple currency formatter for INR (without symbol to match mock)
 function formatINR(amount: number) {
@@ -54,6 +56,8 @@ const PLAN_MAP: Record<PlanKey, Plan> = {
   },
 };
 
+ 
+
 export default function PaymentPage() {
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>("yearly");
   const [coupon, setCoupon] = useState("");
@@ -76,6 +80,13 @@ export default function PaymentPage() {
     if (!coupon.trim()) return;
     setAppliedCoupon(coupon.trim());
   }
+  useEffect(() => {
+    const loadProfile = async () => {
+      const response = await authAPI.getProfile();
+      console.log(response);
+    };
+    loadProfile();
+  }, []);
 
   function handleConfirmPay() {
     console.log("Proceed to payment:", {

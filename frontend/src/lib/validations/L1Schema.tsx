@@ -76,13 +76,8 @@ export const L1Schema = Joi.object({
   }),
 
   // ✅ Contact fields using phoneRule
-  contactInfo: phoneRule.required().messages({
-    "any.required": "Contact Info is required",
-  }),
-  additionalContactInfo: phoneRule.allow("").messages({
-    "string.pattern.base": "Please enter a valid Additional Contact number",
-  }),
-
+  contactInfo: phoneRule.required(),
+  additionalContactInfo: phoneRule.required(),
   headquartersAddress: addressRule.required(),
   state: Joi.string()
     .min(2)

@@ -112,34 +112,37 @@ export default function CollegeForm({
           </div>
         </div>
 
-        {/* Row 3: Other Activities */}
-        <InputField
-          label="Other activities"
-          name="otherActivities"
-          value={collegeFormData.otherActivities}
-          onChange={handleCollegeFieldChange}
-          placeholder="Enter activities"
-          isTextarea
-          rows={2}
-          error={collegeFormErrors.otherActivities}
-          required
-        />
-
-        {/* Row 4: Radio Button Questions */}
+        {/* Row 3: Other Activities and Hostel Facility */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <InputField
+            label="Other activities"
+            name="otherActivities"
+            value={collegeFormData.otherActivities}
+            onChange={handleCollegeFieldChange}
+            placeholder="Enter activities"
+            error={collegeFormErrors.otherActivities}
+            required
+          />
+
           <InputField
             label="Hostel facility ?"
             name="hostelFacility"
             value={collegeFormData.hostelFacility}
             onChange={(e) =>
-              handleCollegeRadioChangeWithValidation("hostelFacility", e.target.value)
+              handleCollegeRadioChangeWithValidation(
+                "hostelFacility",
+                e.target.value
+              )
             }
             isRadio
             options={["Yes", "No"]}
             error={collegeFormErrors.hostelFacility}
             required
           />
+        </div>
 
+        {/* Row 4: Playground and Bus Service */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <InputField
             label="Playground ?"
             name="playground"
@@ -152,31 +155,40 @@ export default function CollegeForm({
             error={collegeFormErrors.playground}
             required
           />
+
+          <InputField
+            label="Bus service ?"
+            name="busService"
+            value={collegeFormData.busService}
+            onChange={(e) =>
+              handleCollegeRadioChangeWithValidation("busService", e.target.value)
+            }
+            isRadio
+            options={["Yes", "No"]}
+            error={collegeFormErrors.busService}
+            required
+          />
         </div>
 
-        {/* Row 5: Bus Service */}
-        <InputField
-          label="Bus service ?"
-          name="busService"
-          value={collegeFormData.busService}
-          onChange={(e) =>
-            handleCollegeRadioChangeWithValidation("busService", e.target.value)
-          }
-          isRadio
-          options={["Yes", "No"]}
-          error={collegeFormErrors.busService}
-          required
-        />
-
-        {/* Submit Button */}
+        {/* Buttons */}
         <div className="flex justify-center pt-4">
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="w-full max-w-[500px] h-[48px] bg-[#0222D7] text-white rounded-[12px] font-semibold hover:bg-blue-700 transition-colors"
-          >
-            {isLoading ? "Saving..." : "Save & Next"}
-          </Button>
+          <div className="flex flex-row items-center justify-center gap-10 w-full max-w-[668px]">
+            <button
+              type="button"
+              onClick={() => onPrevious?.()}
+              className="w-[314px] h-[48px] border border-[#697282] text-[#697282] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center shadow-inner"
+            >
+              Previous
+            </button>
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-[314px] h-[48px] bg-[#697282] text-[#F5F6F9] rounded-[12px] font-semibold text-[18px] leading-[22px] flex items-center justify-center hover:bg-[#5b626f] transition-colors"
+            >
+              {isLoading ? "Saving..." : "Save & Next"}
+            </Button>
+          </div>
         </div>
       </form>
     </>

@@ -65,69 +65,69 @@
 
 // // // export default Stepper;
 
-// // "use client";
-// // import React from "react";
+"use client";
+import React from "react";
 
-// // type StepperProps = {
-// //   currentStep: number;
-// //   steps: string[];
-// //   className?: string;
-// // };
+type StepperProps = {
+  currentStep: number;
+  steps: string[];
+  className?: string;
+};
 
-// // const Stepper: React.FC<StepperProps> = ({ currentStep, steps, className }) => {
-// //   return (
-// //     <div className={`flex flex-row items-center justify-center gap-4 w-full mb-8 ${className}`}>
-// //       {steps.map((step, index) => {
-// //         const stepNumber = index + 1;
-// //         const isActive = currentStep === stepNumber;
-// //         const isCompleted = currentStep > stepNumber;
+const Stepper: React.FC<StepperProps> = ({ currentStep, steps, className }) => {
+  return (
+    <div className={`flex flex-row items-center justify-center gap-4 w-full mb-8 ${className}`}>
+      {steps.map((step, index) => {
+        const stepNumber = index + 1;
+        const isActive = currentStep === stepNumber;
+        const isCompleted = currentStep > stepNumber;
 
-// //         return (
-// //           <div key={index} className="flex flex-row items-center w-auto">
-// //             {/* Step Circle and Label */}
-// //             <div className="flex flex-col items-center justify-center gap-2">
-// //               <div
-// //                 className={`w-[24px] h-[24px] sm:w-[30px] sm:h-[30px] flex items-center justify-center rounded-full 
-// //                   ${isCompleted ? "bg-[#1FC274]" : isActive ? "bg-[#0222D7]" : "bg-[#F5F6F9]"}
-// //                 `}
-// //               >
-// //                 <span
-// //                   className={`font-montserrat font-medium text-[14px] sm:text-[16px] leading-[20px] text-center 
-// //                     ${isCompleted ? "text-white" : isActive ? "text-white" : "text-[#697282]"}
-// //                   `}
-// //                 >
-// //                   {isCompleted ? "✓" : stepNumber}
-// //                 </span>
-// //               </div>
+        return (
+          <div key={index} className="flex flex-row items-center w-auto">
+            {/* Step Circle and Label */}
+            <div className="flex flex-col items-center justify-center gap-2">
+              <div
+                className={`w-[24px] h-[24px] sm:w-[30px] sm:h-[30px] flex items-center justify-center rounded-full 
+                  ${isCompleted ? "bg-[#1FC274]" : isActive ? "bg-[#0222D7]" : "bg-[#F5F6F9]"}
+                `}
+              >
+                <span
+                  className={`font-montserrat font-medium text-[14px] sm:text-[16px] leading-[20px] text-center 
+                    ${isCompleted ? "text-white" : isActive ? "text-white" : "text-[#697282]"}
+                  `}
+                >
+                  {isCompleted ? "✓" : stepNumber}
+                </span>
+              </div>
 
-// //               <div className="flex flex-col items-center gap-[2px] text-center w-[60px] sm:w-[97px]">
-// //                 <p className="font-montserrat font-medium text-[8px] leading-[100%] tracking-[0.05em] text-[#697282]">
-// //                   STEP {stepNumber}
-// //                 </p>
-// //                 <p className="font-montserrat font-medium text-[10px] sm:text-[12px] leading-[100%] text-[#000] truncate">
-// //                   {step}
-// //                 </p>
-// //               </div>
-// //             </div>
+              <div className="flex flex-col items-center gap-[2px] text-center w-[60px] sm:w-[97px]">
+                <p className="font-montserrat font-medium text-[8px] leading-[100%] tracking-[0.05em] text-[#697282]">
+                  STEP {stepNumber}
+                </p>
+                <p className="font-montserrat font-medium text-[10px] sm:text-[12px] leading-[100%] text-[#000] truncate">
+                  {step}
+                </p>
+              </div>
+            </div>
 
-// //             {/* Connecting Line */}
-// //             {index < steps.length - 1 && (
-// //               <div className="flex justify-center items-center">
-// //                 <div
-// //                   className={`h-[2px] w-[50px] sm:w-[120px] rounded-[11px] ${
-// //                     isCompleted ? "bg-green-500" : "bg-[#DADADD]"
-// //                   }`}
-// //                 />
-// //               </div>
-// //             )}
-// //           </div>
-// //         );
-// //       })}
-// //     </div>
-// //   );
-// // };
+            {/* Connecting Line */}
+            {index < steps.length - 1 && (
+              <div className="flex justify-center items-center">
+                <div
+                  className={`h-[2px] w-[50px] sm:w-[120px] rounded-[11px] ${
+                    isCompleted ? "bg-green-500" : "bg-[#DADADD]"
+                  }`}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
-// // export default Stepper;
+export default Stepper;
 
 // "use client";
 // import React from "react";
@@ -209,88 +209,3 @@
 
 // export default Stepper;
 
-"use client";
-import React from "react";
-
-type StepperProps = {
-  currentStep: number;
-  steps: string[];
-  className?: string;
-};
-
-const Stepper: React.FC<StepperProps> = ({ currentStep, steps, className }) => {
-  return (
-    <div
-      className={`flex flex-col items-center justify-center gap-3 w-full mb-8 ${className}`}
-    >
-      {/* Row 1: Circles and Connecting Lines - Now fully responsive */}
-      <div className="flex flex-row items-center w-full">
-        {steps.map((step, index) => {
-          const stepNumber = index + 1;
-          const isActive = currentStep === stepNumber;
-          const isCompleted = currentStep > stepNumber;
-
-          return (
-            <React.Fragment key={`step-indicator-${index}`}>
-              {/* Step Circle: Added flex-shrink-0 to prevent shrinking */}
-              <div
-                className={`flex-shrink-0 w-[24px] h-[24px] sm:w-[30px] sm:h-[30px] flex items-center justify-center rounded-full 
-                  ${isCompleted ? "bg-[#1FC274]" : isActive ? "bg-[#0222D7]" : "bg-[#F5F6F9]"}
-                `}
-              >
-                <span
-                  className={`font-montserrat font-medium text-[14px] sm:text-[16px] leading-[20px] text-center 
-                    ${isCompleted ? "text-white" : isActive ? "text-white" : "text-[#697282]"}
-                  `}
-                >
-                  {isCompleted ? "✓" : stepNumber}
-                </span>
-              </div>
-
-              {/* Connecting Line: Changed from fixed width to w-full to make it flexible */}
-              {index < steps.length - 1 && (
-                <div
-                  className={`h-[2px] w-full rounded-md ${
-                    isCompleted ? "bg-[#1FC274]" : "bg-[#DADADD]"
-                  }`}
-                />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-
-      {/* Row 2: Step Labels - Now fully responsive */}
-      <div className="flex flex-row justify-between w-full">
-        {steps.map((step, index) => {
-          const stepNumber = index + 1;
-          // Logic to align text directly under the circles
-          const isFirst = index === 0;
-          const isLast = index === steps.length - 1;
-          const alignment = isFirst
-            ? "text-left"
-            : isLast
-            ? "text-right"
-            : "text-center";
-
-          return (
-            // Each label wrapper now takes up equal space using flex-1
-            <div
-              key={`step-label-${index}`}
-              className={`flex-1 px-1 ${alignment}`}
-            >
-              <p className="font-montserrat font-medium text-[8px] leading-[100%] tracking-[0.05em] text-[#697282] uppercase">
-                STEP {stepNumber}
-              </p>
-              <p className="font-montserrat font-medium text-[10px] sm:text-[12px] leading-tight text-[#000] truncate">
-                {step}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-export default Stepper;

@@ -28,12 +28,29 @@ process.on('unhandledRejection', err => {
 // 68c256e2f891e7798f02e98b for coaching centers
 // 68c25c25f71c4a9d33954a17 for tutition centers
 // 68c27f8327ba666824931af3 for study halls
-const Course = require("./models/Course");
-const Branch = require("./models/Branch");
+// const Course = require("./models/Course");
+// const Branch = require("./models/Branch");
+
+// const fetchInstitutionData = async (institutionId) => {
+//   try {
+//     const institution = await Institution.findById(institutionId);
+//     console.log("Institution:", institution);
+//     return institution;
+//   } catch (error) {
+//     console.error("🔥 Error fetching institution data:", error);
+//   }
+// };
+
+// // Example usage
+// const institutionId = "64f0a1b234c5d6e7f8a90123"; // replace with actual ID
+// fetchInstitutionData(institutionId);
+
 
 async function fetchInstitutionData(ownerId) {
   try {
     const institution = await Institution.findOne({ owner: ownerId });
+    // const institution = await Institution.findOne({ _id: institutionId });
+
 
     if (!institution) {
       console.log(`❌ No institution found for owner ID: ${ownerId}`);
@@ -54,16 +71,16 @@ async function fetchInstitutionData(ownerId) {
   }
 }
 
-fetchInstitutionData("68c27f8327ba666824931af3");
+fetchInstitutionData("68cc08dcb9ad1fa3d5b78406");
 
-app.use((err, req, res, next) => {
-  console.error("Global error handler:", err);
+// app.use((err, req, res, next) => {
+//   console.error("Global error handler:", err);
 
-  const statusCode = err.statusCode || err.status || 500; // fallback
-  const message = err.message || "Internal Server Error";
+//   const statusCode = err.statusCode || err.status || 500; // fallback
+//   const message = err.message || "Internal Server Error";
 
-  res.status(statusCode).json({
-    status: "error",
-    message,
-  });
-});
+//   res.status(statusCode).json({
+//     status: "error",
+//     message,
+//   });
+// });

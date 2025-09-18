@@ -490,7 +490,7 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
                     onChange={handleChange}
                     className="flex-1 text-[#060B13] font-montserrat text-[16px] sm:text-[16px] leading-[20px] focus:outline-none"
                     // className="flex-1 text-[#060B13] font-montserrat text-[16px] sm:text-[16px] leading-[20px] focus:outline-none"
-                    required
+                
                   />
                 </div>
 
@@ -576,7 +576,6 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
                     placeholder="00000 00000"
                     value={formData.additionalContactInfo}
                     onChange={handleChange}
-                    required
                     className="flex-1 text-[#060B13] font-montserrat text-[16px] leading-[20px]
              bg-[#F5F6F9] focus:bg-[#F5F6F9] active:bg-[#F5F6F9] 
              focus:outline-none"
