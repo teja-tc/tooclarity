@@ -9,7 +9,7 @@ const { saveRefreshToken } = require("./redis.util");
  * @param {string|number} [expiresIn] - Optional override expiry (e.g. "15m", "7d")
  * @returns {string} JWT token
  */
-const generateToken = (userId, username, type = "access", expiresIn) => {
+const generateToken = (userId, username, type = "access", role, expiresIn) => {
   if (!userId || !username) {
     throw new Error("UserId and username are required for token generation");
   }
@@ -25,7 +25,7 @@ const generateToken = (userId, username, type = "access", expiresIn) => {
   }
 
   return sign(
-    { id: userId, username, type },
+    { id: userId, username, type, role },
     process.env.JWT_SECRET,
     { expiresIn }
   );
@@ -64,6 +64,20 @@ const extractTokenFromCookies = (req) => {
     return req.cookies.access_token;
   }
   return null;
+};
+
+/**
+ * Extract user role from token
+ * @param {string} token
+ * @returns {string|null}
+ */
+const extractUserRole = (token) => {
+  try {
+    const decoded = verifyToken(token);
+    return decoded?.role || null;
+  } catch {
+    return null;
+  }
 };
 
 /**
@@ -136,7 +150,7 @@ const refreshAccessTokenIfNeeded = (req, res) => {
 
     // if less than 5 minutes left, refresh it
     if (timeLeft < 5 * 60) {
-      const newAccessToken = generateToken(decoded.id, "access");
+      const newAccessToken = generateToken(decoded.id, decoded.username, "access", decoded.role);
       CookieUtil.setCookie(res, "access_token", newAccessToken);
       console.log("🔄 Access token refreshed automatically");
       return newAccessToken;
@@ -161,7 +175,7 @@ const refreshRefreshTokenIfNeeded = async (userId, username, currentRefreshToken
 
     // if less than 1 day left, refresh it
     if (timeLeft < 24 * 60 * 60) {
-      const newRefreshToken = generateToken(userId, username, "refresh" );
+      const newRefreshToken = generateToken(userId, username, "refresh", decoded.role);
       const decodeNewRefreshToken = decodeToken(newRefreshToken);
       const ttlSeconds = decodeNewRefreshToken.exp - Math.floor(Date.now() / 1000);
       await saveRefreshToken(userId, newRefreshToken, ttlSeconds);
@@ -182,6 +196,7 @@ module.exports = {
   decodeToken,
   extractTokenFromCookies,
   extractUsernameFromCookie,
+  extractUserRole,
   extractUserId,
   extractUsernameEvenIfExpired,
   willExpireSoon,

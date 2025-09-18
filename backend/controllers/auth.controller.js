@@ -55,6 +55,9 @@ exports.register = async (req, res, next) => {
       contactNumber,
       designation,
       linkedinUrl,
+      role: "INSTITUTE_ADMIN",
+      isPaymentDone: false,
+      isProfileCompleted: false,
     });
 
     // send OTP for phone verification

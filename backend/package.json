@@ -32,6 +32,7 @@
     "nodemailer": "^7.0.5",
     "pino": "^9.8.0",
     "pino-http": "^10.5.0",
+    "razorpay": "^2.9.6",
     "twilio": "^5.8.0"
   },
   "devDependencies": {

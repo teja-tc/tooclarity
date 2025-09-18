@@ -1,5 +1,5 @@
 const cloudinary = require('cloudinary').v2;
-const AppError = require('../utils/AppError');
+const AppError = require('../utils/appError');
 const dotenv = require('dotenv');
 
 cloudinary.config({
