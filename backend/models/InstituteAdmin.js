@@ -52,6 +52,20 @@ const instituteAdminSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    role:{
+        type:String,
+        enum:['INSTITUTE_ADMIN','ADMIN','STUDENT'],
+        // default:'INSTITUTE_ADMIN',
+        required:true
+    },
+    isPaymentDone:{
+        type:Boolean,
+        default:false
+    },
+    isProfileCompleted:{
+        type:Boolean,
+        default:false
+    }
 }, { timestamps: true});
 
 instituteAdminSchema.pre('save', async function(next) {

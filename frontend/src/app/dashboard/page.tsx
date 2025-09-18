@@ -1,10 +1,46 @@
 "use client";
 
+import React from "react";
+import { useRouter } from "next/navigation";
 import { useAuth, withAuth } from "../../lib/auth-context";
 import { Button } from "@/components/ui/button";
 
 function DashboardPage() {
-  const { user, logout } = useAuth();
+  const router = useRouter();
+  const { user, logout, loading, isAuthenticated } = useAuth();
+
+  const isAllowed = React.useMemo(() => {
+    if (!user) return false;
+    return (
+      user.role === "INSTITUTE_ADMIN" &&
+      user.isPaymentDone === true &&
+      user.isProfileCompleted === true
+    );
+  }, [user]);
+
+  React.useEffect(() => {
+    if (loading) return;
+
+    // Not logged in → send to home
+    if (!isAuthenticated) {
+      router.replace("/");
+      return;
+    }
+
+    // Logged in but not eligible → send to payment
+    if (!isAllowed) {
+      router.replace("/payment");
+    }
+  }, [loading, isAuthenticated, isAllowed, router]);
+
+  // Show loader while verifying or redirecting
+  if (loading || !isAuthenticated || !isAllowed) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   const handleLogout = async () => {
     await logout();

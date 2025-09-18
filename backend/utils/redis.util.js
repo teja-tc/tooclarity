@@ -89,6 +89,25 @@ class RedisUtil {
     }
     return false;
   }
+
+  static async addSubscription(orderId, status, ttlSeconds = 300){
+    const key = `subscription:${orderId}`;
+    await redis.set(key, status, "EX", ttlSeconds);
+  }
+
+  static async getSubscription(orderId){
+    const key = `subscription:${orderId}`;
+    await redis.get(key);
+  }
+
+  static async deleteSubscription(orderId){
+    const key = `subscription:${orderId}`;
+    try{
+      await redis.del(key);
+    }catch{
+      console.log("key not found")
+    }
+  }
 }
 
 module.exports = RedisUtil;

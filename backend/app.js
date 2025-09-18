@@ -11,6 +11,9 @@ const institutionRoutes = require('./routes/institution.routes');
 const branchRoutes = require('./routes/branch.routes');
 const courseRoutes = require('./routes/course.routes');
 const profileRoutes = require('./routes/profile.routes');
+const { publicRouter: paymentPublicRoutes, protectedRouter: paymentProtectedRoutes } = require('./routes/payment.routes');
+const { couponAdminRoute: adminRoute, couponInstitutionAdminRoute: InstitutionAdminRoute} = require("./routes/coupon.routes")
+const authorizeRoles = require("./middleware/role.middleware");
 
 // import global auth middleware
 const globalAuthMiddleware = require('./middleware/globalAuth.middleware');
@@ -32,17 +35,31 @@ app.use(cookieParser());
 
 app.use(express.json({ limit: '10kb' }));
 
+const requireInstituteAdmin = [
+  globalAuthMiddleware,
+  authorizeRoles(["INSTITUTE_ADMIN"])
+];
+
+const requireAdmin = [
+    globalAuthMiddleware,
+    authorizeRoles(["ADMIN"])
+]
+
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/payment/', paymentPublicRoutes);
 
 // 🚨 Apply Global Auth Middleware (for all routes below this line)
 app.use(globalAuthMiddleware);
 
+app.use('/api/v1/payment', requireInstituteAdmin, paymentProtectedRoutes);
+app.use("/api/v1/coupon/", requireAdmin, adminRoute);
+app.use("/api/v1/coupon",requireInstituteAdmin, InstitutionAdminRoute);
 app.use("/api/v1/", profileRoutes)
 
-app.use('/api/v1/institutions', institutionRoutes);
+app.use('/api/v1/institutions', requireInstituteAdmin, institutionRoutes);
 
-app.use('/api/v1/institutions/:institutionId/branches', branchRoutes);
-app.use('/api/v1/institutions/:institutionId/courses', courseRoutes);
+app.use('/api/v1/institutions/:institutionId/branches', requireInstituteAdmin, branchRoutes);
+app.use('/api/v1/institutions/:institutionId/courses', requireInstituteAdmin, courseRoutes);
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
 

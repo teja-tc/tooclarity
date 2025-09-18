@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import L1DialogBox from "@/components/auth/L1DialogBox";
 import L2DialogBox from "@/components/auth/L2DialogBox";
 import L3DialogBox from "@/components/auth/L3DialogBox";
@@ -8,6 +10,53 @@ import CourseOrBranchSelectionDialog from "@/components/auth/CourseOrBranchSelec
 import Stepper from "@/components/ui/Stepper";
 
 export default function SignupPage() {
+  const router = useRouter();
+  const { user, isAuthenticated, loading } = useAuth();
+
+  // Allow only INSTITUTE_ADMIN with both flags false
+  const isAllowed = useMemo(() => {
+    if (!user) return false;
+    return (
+      user.role === "INSTITUTE_ADMIN" &&
+      user.isPaymentDone === false &&
+      user.isProfileCompleted === false
+    );
+  }, [user]);
+
+  // Redirect if not eligible for signup route
+  useEffect(() => {
+    if (loading) return;
+
+    if (!isAuthenticated) {
+      router.replace("/");
+      return;
+    }
+
+    if (!isAllowed) {
+      if (user?.role === "INSTITUTE_ADMIN") {
+        if (user.isPaymentDone === false && user.isProfileCompleted === true) {
+          router.replace("/payment");
+          return;
+        }
+        if (user.isPaymentDone === true && user.isProfileCompleted === true) {
+          router.replace("/dashboard");
+          return;
+        }
+      }
+      // Fallback
+      router.replace("/");
+    }
+  }, [loading, isAuthenticated, isAllowed, user, router]);
+
+  // Show loader while verifying or redirecting
+  if (loading || !isAuthenticated || !isAllowed) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   const [l1DialogOpen, setL1DialogOpen] = useState(false);
   const [selectionOpen, setSelectionOpen] = useState(false);
   const [l2DialogOpen, setL2DialogOpen] = useState(false);
