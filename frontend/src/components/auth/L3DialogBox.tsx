@@ -394,190 +394,85 @@ export default function L3DialogBox({
       return { ...prev, operationalDays: updatedDays };
     });
   };
-  const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  
+const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
 
-    // ✅ Validate with Joi
-    const errors = validateForm(SchoolSchema, schoolFormData);
-    setSchoolFormErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+  // Validate with Joi
+  const errors = validateForm(SchoolSchema, schoolFormData);
+  setSchoolFormErrors(errors);
+  if (Object.keys(errors).length > 0) return;
 
-    setIsLoading(true);
+  setIsLoading(true);
 
-    try {
-        // This logic for normalizing and saving to IndexedDB is correct and remains the same
-        const schoolFormDataWithBooleans = {
-            // ... your boolean normalization
-        };
-        const schools = await getAllInstitutionsFromDB?.();
-        // ... logic to find latest, compare, and then add/update in IndexedDB ...
-        
-        // This part also remains the same
-        let effectiveId: number | null = null;
-        // ... logic to set effectiveId ...
+  try {
+    const schoolFormDataWithBooleans = {
+      ...schoolFormData,
+      hostelFacility: schoolFormData.hostelFacility === "Yes",
+      playground: schoolFormData.playground === "Yes",
+      busService: schoolFormData.busService === "Yes",
+    };
 
-        if (typeof window !== "undefined" && effectiveId !== null) {
-            // Using "institutionId" for consistency with your working function
-            localStorage.setItem("institutionId", String(effectiveId));
-        }
+    const schools = await getAllInstitutionsFromDB?.();
+
+    const normalize = (x: any) => ({
+      schoolType: x.schoolType || "",
+      schoolCategory: x.schoolCategory || "",
+      curriculumType: x.curriculumType || "",
+      operationalDays: x.operationalDays || [],
+      otherActivities: x.otherActivities || "",
+      hostelFacility: !!x.hostelFacility,
+      playground: !!x.playground,
+      busService: !!x.busService,
+    });
+
+    const latest =
+      schools && schools.length > 0
+        ? schools.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
+        : null;
+
+    const current = normalize(schoolFormDataWithBooleans);
+    let effectiveId: number | null = null;
+
+    if (latest) {
+      const latestNormalized = normalize(latest);
+      const isSame =
+        JSON.stringify(latestNormalized) === JSON.stringify(current);
+
+      if (isSame) {
+        effectiveId = latest.id || null;
       } else {
-        // ✅ insert new
-        const id = await addInstitutionToDB(current);
-        effectiveId = id;
-        console.log("School saved locally with id:", id);
+        await updateInstitutionInDB({
+          ...(latest as any),
+          ...current,
+          id: latest.id,
+        });
+        effectiveId = latest.id || null;
       }
-
-      // 2) Store reference in localStorage (optional)
-      if (typeof window !== "undefined") {
-        if (effectiveId !== null) {
-          localStorage.setItem("schoolId", String(effectiveId));
-        }
-      }
-
-      // 3) Success → close dialog & reset form
-      setDialogOpen(false);
-      // setSubmitted(false);
-      setSchoolFormErrors({});
-      setSchoolFormData({
-        schoolType: "",
-        schoolCategory: "",
-        curriculumType: "",
-        operationalDays: [],
-        otherActivities: "",
-        hostelFacility: "",
-        playground: "",
-        busService: "",
-      });
-
-      //   router.push("/dashboard");
-      const uploadResponse = await exportInstitutionAndCoursesToFile();
-      console.log("Upload response:", uploadResponse);
-
-      //   if (!uploadResponse.success) {
-      //     alert(uploadResponse.message || "Failed to upload institution file.");
-      //   }
-
-      // Success → close dialog & reset form
-      setDialogOpen(false);
-      setSchoolFormErrors({});
-      onSuccess?.();
-    } catch (error) {
-        console.error("Error saving school details:", error);
-        alert("Failed to save school details locally. Please try again.");
-    } finally {
-        setIsLoading(false);
+    } else {
+      const id = await addInstitutionToDB(current);
+      effectiveId = id;
+      console.log("School saved locally with id:", id);
     }
+
+    if (typeof window !== "undefined" && effectiveId !== null) {
+      localStorage.setItem("institutionId", String(effectiveId));
+    }
+
+    const uploadResponse = await exportAndUploadInstitutionAndCourses();
+    console.log("Upload response:", uploadResponse);
+
+    setDialogOpen(false);
+    setSchoolFormErrors({});
+    onSuccess?.();
+    
+  } catch (error) {
+    console.error("Error saving school details:", error);
+    alert("Failed to save school details locally. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
 };
-  // const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
-  //   e.preventDefault();
-  //   // setSubmitted(true);
-
-  //   // ✅ Validate with Joi (or your validateForm util)
-  //   const errors = validateForm(SchoolSchema, schoolFormData);
-  //   setSchoolFormErrors(errors);
-
-  //   if (Object.keys(errors).length > 0) return; // stop if errors exist
-
-  //   setIsLoading(true);
-
-  //   try {
-  //     // Normalize Yes/No → booleans
-  //     const schoolFormDataWithBooleans = {
-  //       ...schoolFormData,
-  //       hostelFacility: schoolFormData.hostelFacility === "Yes",
-  //       playground: schoolFormData.playground === "Yes",
-  //       busService: schoolFormData.busService === "Yes",
-  //     };
-
-  //     // 1) Load existing schools
-  //     const schools = await getAllInstitutionsFromDB?.(); // ✅ you’ll need this in your localDb.ts
-
-  //     // Normalize for comparison
-  //     const normalize = (x: any) => ({
-  //       schoolType: x.schoolType || "",
-  //       schoolCategory: x.schoolCategory || "",
-  //       curriculumType: x.curriculumType || "",
-  //       operationalDays: x.operationalDays || [],
-  //       otherActivities: x.otherActivities || "",
-  //       hostelFacility: !!x.hostelFacility,
-  //       playground: !!x.playground,
-  //       busService: !!x.busService,
-  //     });
-
-  //     const latest =
-  //       schools && schools.length > 0
-  //         ? schools.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
-  //         : null;
-
-  //     const current = normalize(schoolFormDataWithBooleans);
-  //     let effectiveId: number | null = null;
-
-  //     if (latest) {
-  //       const latestNormalized = normalize(latest);
-  //       const isSame =
-  //         JSON.stringify(latestNormalized) === JSON.stringify(current);
-
-  //       if (isSame) {
-  //         // ✅ unchanged → skip saving
-  //         effectiveId = latest.id || null;
-  //       } else {
-  //         // ✅ update existing
-  //         await updateInstitutionInDB({
-  //           ...(latest as any),
-  //           ...current,
-  //           id: latest.id,
-  //         });
-  //         effectiveId = latest.id || null;
-  //       }
-  //     } else {
-  //       // ✅ insert new
-  //       const id = await addInstitutionToDB(current);
-  //       effectiveId = id;
-  //       console.log("School saved locally with id:", id);
-  //     }
-
-  //     // 2) Store reference in localStorage (optional)
-  //     if (typeof window !== "undefined") {
-  //       if (effectiveId !== null) {
-  //         localStorage.setItem("schoolId", String(effectiveId));
-  //       }
-  //     }
-
-  //     // 3) Success → close dialog & reset form
-  //     setDialogOpen(false);
-  //       // setSubmitted(false);
-  //     setSchoolFormErrors({});
-  //       setSchoolFormData({
-  //         schoolType: "",
-  //         schoolCategory: "",
-  //         curriculumType: "",
-  //         operationalDays: [],
-  //         otherActivities: "",
-  //         hostelFacility: "",
-  //         playground: "",
-  //         busService: "",
-  //       });
-
-  //     //   router.push("/dashboard");
-  //     const uploadResponse = await exportInstitutionAndCoursesToFile();
-  //     console.log("Upload response:", uploadResponse);
-
-  //     //   if (!uploadResponse.success) {
-  //     //     alert(uploadResponse.message || "Failed to upload institution file.");
-  //     //   }
-
-  //     // Success → close dialog & reset form
-  //     setDialogOpen(false);
-  //     setSchoolFormErrors({});
-  //     onSuccess?.();
-  //   } catch (error) {
-  //     console.error("Error saving school details:", error);
-  //     alert("Failed to save school details locally. Please try again.");
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const handleSchoolChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {

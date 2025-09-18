@@ -40,14 +40,6 @@ export const baseCourseSchema = Joi.object({
   createdBranch: createdBranchRule, 
 });
 
-// ✅ Coaching Centers
-// export const CoachingCenterSchema = baseCourseSchema.keys({
-//    categoriesType: categoriesTypeRule,
-//   domainType: domainTypeRule,
-//   classSize: Joi.number().required(),
-// });
-// 2. Create the `baseCourseSchema` from the plain object.
-// export const baseCourseSchema = Joi.object(baseCourseRules);
 export const CoachingCenterSchema = Joi.object({
   // --- Rules copied from baseCourseSchema (except aboutCourse) ---
   courseName: nameRule.required(),
@@ -69,20 +61,7 @@ export const CoachingCenterSchema = Joi.object({
   classSize: Joi.number().required(),
 });
 
-// ✅ Study Halls
-// export const StudyHallSchema = baseCourseSchema.keys({
-//   seatingOption: nameRule.required(),
-//   openingTime: Joi.string().required(),
-//   closingTime: Joi.string().required(),
-//   totalSeats: Joi.number().required(),
-//   availableSeats: Joi.number().required(),
-//   pricePerSeat: Joi.number().required(),
-//   hasWifi: Joi.boolean(),
-//   hasChargingPoints: Joi.boolean(),
-//   hasAC: Joi.boolean(),
-//   hasPersonalLocker: Joi.boolean(),
-// });
-// In your L2Schema.ts file
+
 
 export const StudyHallSchema = Joi.object({
   // This schema is now self-contained and does not inherit from baseCourseSchema
@@ -151,20 +130,6 @@ export const StudyHallSchema = Joi.object({
   createdBranch: createdBranchRule,
 });
 
-// ✅ Tuition Centers
-// export const TuitionCenterSchema = baseCourseSchema.keys({
-//   tuitionType: nameRule.required(),
-//   instructorProfile: nameRule.required(),
-//   subject: nameRule.required(),
-//   totalSeats: Joi.number().required(),
-//   availableSeats: Joi.number().required(),
-//   openingTime: Joi.string().required(),
-//   closingTime: Joi.string().required(),
-//   pricePerSeat: Joi.number().required(),
-// });
-// import Joi from "joi";
-// Assuming baseCourseSchema and nameRule are defined elsewhere
-// ✅ Corrected Tuition Centers Schema
 export const TuitionCenterSchema = Joi.object({
   // This schema is now defined from scratch to match your form exactly.
   
@@ -243,15 +208,7 @@ export const TuitionCenterSchema = Joi.object({
 });
 
 
-// ✅ UG/PG
-// export const UGPGSchema = baseCourseSchema.keys({
-//   graduationType: nameRule.required(),
-//   streamType: nameRule.required(),
-//  // selectBranch: nameRule.required(),
-//   aboutBranch: Joi.string().allow(""),
-//   educationType: Joi.string().valid("Full time", "part time", "Distance"),
-//   classSize: Joi.number().required(),
-// });
+
 
 export const UGPGSchema = Joi.object({
   // This schema is now defined from scratch and does NOT inherit from baseCourseSchema.
