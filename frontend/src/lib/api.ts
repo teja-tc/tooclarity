@@ -604,3 +604,134 @@ export const institutionDetailsAPI = {
     });
   },
 };
+
+// Payment API methods
+export interface PaymentInitPayload {
+  amount: number; // Payable amount in INR
+  planType?: string; // e.g., "yearly" | "monthly"
+  coupon?: string | null;
+  // institutionId: string;
+}
+
+export interface PaymentVerifyPayload {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+  planType?: string;
+  coupon?: string | null;
+  amount?: number;
+}
+
+export const paymentAPI = {
+  /**
+   * Initiate a payment on the backend
+   * - Sends the payable amount and optional context to create an order/session
+   */
+  initiatePayment: async (
+    payload: PaymentInitPayload
+  ): Promise<ApiResponse> => {
+    return apiRequest("/v1/payment/create-order", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Apply coupon to get discount amount from backend
+   */
+  applyCoupon: async (coupon: string): Promise<ApiResponse<{ discountAmount: number }>> => {
+    return apiRequest("/v1/payment/apply-coupon", {
+      method: "POST",
+      body: JSON.stringify({ coupon }),
+    });
+  },
+
+  /**
+   * Verify Razorpay payment on backend with polling until status is final
+   * - Polls the backend until message is "active" or "expired"
+   * - Treats intermediate "pending" as continue polling
+   */
+  verifyPayment: async (
+    payload: PaymentVerifyPayload,
+    options?: { intervalMs?: number; timeoutMs?: number }
+  ): Promise<ApiResponse> => {
+    const intervalMs = options?.intervalMs ?? 2000; // 2s poll interval
+    const timeoutMs = options?.timeoutMs ?? 120000; // 2 min timeout
+    const start = Date.now();
+    let lastRes: ApiResponse | null = null;
+
+    while (Date.now() - start < timeoutMs) {
+      // Build query string for GET verification (preserves original method)
+      const qs = new URLSearchParams({
+        orderId: payload.orderId,
+        paymentId: payload.paymentId,
+        signature: payload.signature,
+        ...(payload.planType ? { planType: payload.planType } : {}),
+        ...(payload.coupon ? { coupon: String(payload.coupon) } : {}),
+        ...(typeof payload.amount !== "undefined" ? { amount: String(payload.amount) } : {}),
+      }).toString();
+      const endpoint = `/v1/payment/verify-payment?${qs}`;
+
+      lastRes = await apiRequest(endpoint, {
+        method: "GET",
+      });
+
+      const statusMsg = (lastRes.message || "").toLowerCase();
+
+      // Break on final states
+      if (statusMsg === "active" || statusMsg === "expired") {
+        return lastRes;
+      }
+
+      // Continue polling on pending/unknown states
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+
+    // Timed out waiting for final status
+    return {
+      success: false,
+      message: "verification_timeout",
+      data: lastRes?.data,
+    };
+  },
+
+  /**
+   * Build receipt URL for opening/downloading receipt
+   */
+  getReceiptUrl: (q: { transactionId?: string | null; paymentId?: string | null; orderId?: string | null }): string => {
+    const params = new URLSearchParams({
+      ...(q.paymentId ? { paymentId: q.paymentId } : {}),
+      ...(q.orderId ? { orderId: q.orderId } : {}),
+      ...(q.transactionId ? { transactionId: q.transactionId } : {}),
+    }).toString();
+    return `${API_BASE_URL}/v1/payment/receipt?${params}`;
+  },
+
+  /**
+   * Optional helper to programmatically download receipt as file
+   */
+  downloadReceiptFile: async (
+    q: { transactionId?: string | null; paymentId?: string | null; orderId?: string | null },
+    filename = "receipt.pdf"
+  ): Promise<ApiResponse> => {
+    try {
+      const url = paymentAPI.getReceiptUrl(q);
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) {
+        return { success: false, message: `Failed to download receipt (${res.status})` };
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+      return { success: true, message: "Receipt downloaded" };
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : "Download failed" };
+    }
+  },
+};

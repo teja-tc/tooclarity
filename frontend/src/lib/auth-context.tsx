@@ -12,6 +12,7 @@ interface User {
   designation?: string;
   linkedin?: string;
   verified: boolean;
+  institution?: string;
 }
 
 interface AuthContextType {
@@ -92,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           linkedin: response.data.linkedin || "",
           verified: true,
           name: response.data.name,
+          institution: response.data.institution || ","
         });
       } else {
         setUser(null);

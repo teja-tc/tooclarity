@@ -1144,8 +1144,16 @@ export default function L2DialogBox({
   initialSection: initialSectionProp,
 }: L2DialogBoxProps) {
   const router = useRouter();
-  const isCoursrOrBranch = localStorage.getItem("selected");
-  const institutionType = localStorage.getItem("institutionType");
+  const [isCoursrOrBranch, setIsCourseOrBranch] = useState<string | null>(null);
+  const [institutionType, setInstitutionType] = useState<string | null>(null);
+  // const isCoursrOrBranch = localStorage.getItem("selected");
+  // const institutionType = localStorage.getItem("institutionType");
+
+  useEffect(() => {
+    // runs only in browser
+    setIsCourseOrBranch(localStorage.getItem("selected"));
+    setInstitutionType(localStorage.getItem("institutionType"));
+  }, []);
   const isUnderPostGraduate =
     institutionType === "Under Graduation/Post Graduation";
   const isCoachingCenter = institutionType === "Coaching centers";

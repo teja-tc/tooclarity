@@ -162,7 +162,11 @@ export default function L3DialogBox({
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const institutionType = localStorage.getItem("institutionType");
+  let institutionType: string | null = null;
+  // const institutionType = localStorage.getItem("institutionType");
+  if (typeof window !== "undefined") {
+    institutionType = localStorage.getItem("institutionType");
+  }
   // Check institution types - default to kindergarten if no type is set
   const isKindergarten =
     institutionType === "Kindergarten/childcare center" ||
@@ -416,32 +420,47 @@ export default function L3DialogBox({
             // Using "institutionId" for consistency with your working function
             localStorage.setItem("institutionId", String(effectiveId));
         }
+      } else {
+        // ✅ insert new
+        const id = await addInstitutionToDB(current);
+        effectiveId = id;
+        console.log("School saved locally with id:", id);
+      }
 
-        // ✅ 1. CORRECTED: Call the function that both exports AND uploads the file
-        const response = await exportAndUploadInstitutionAndCourses();
-        console.log("Upload response:", response);
-
-        // ✅ 2. ADDED: The logic to handle the backend response
-        if (response.success) {
-            // Success → close dialog, reset form, and navigate
-            setDialogOpen(false);
-            setSchoolFormErrors({});
-            setSchoolFormData({
-                schoolType: "",
-                schoolCategory: "",
-                curriculumType: "",
-                operationalDays: [],
-                otherActivities: "",
-                hostelFacility: "",
-                playground: "",
-                busService: "",
-            });
-            onSuccess?.();
-            router.push("/payment"); // This is the missing navigation step
-        } else {
-            alert(response.message || "Failed to upload school details.");
+      // 2) Store reference in localStorage (optional)
+      if (typeof window !== "undefined") {
+        if (effectiveId !== null) {
+          localStorage.setItem("schoolId", String(effectiveId));
         }
+      }
 
+      // 3) Success → close dialog & reset form
+      setDialogOpen(false);
+      // setSubmitted(false);
+      setSchoolFormErrors({});
+      setSchoolFormData({
+        schoolType: "",
+        schoolCategory: "",
+        curriculumType: "",
+        operationalDays: [],
+        otherActivities: "",
+        hostelFacility: "",
+        playground: "",
+        busService: "",
+      });
+
+      //   router.push("/dashboard");
+      const uploadResponse = await exportInstitutionAndCoursesToFile();
+      console.log("Upload response:", uploadResponse);
+
+      //   if (!uploadResponse.success) {
+      //     alert(uploadResponse.message || "Failed to upload institution file.");
+      //   }
+
+      // Success → close dialog & reset form
+      setDialogOpen(false);
+      setSchoolFormErrors({});
+      onSuccess?.();
     } catch (error) {
         console.error("Error saving school details:", error);
         alert("Failed to save school details locally. Please try again.");
