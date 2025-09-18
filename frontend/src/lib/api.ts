@@ -680,16 +680,40 @@ export const metricsAPI = {
   increment: async (institutionId: string, courseId: string, metric: 'views'|'comparisons'): Promise<ApiResponse> => {
     return apiRequest(`/v1/institutions/${institutionId}/courses/${courseId}/metrics?metric=${metric}`, { method: "POST" });
   },
-  getOwnerSummary: async (metric: 'views'|'comparisons'): Promise<ApiResponse> => {
-    return apiRequest(`/v1/institutions/summary/metrics/owner?metric=${metric}`, { method: "GET" });
+  // Accept optional institutionId; if missing, resolve via getMyInstitution()
+  getOwnerSummary: async (metric: 'views'|'comparisons', institutionId?: string): Promise<ApiResponse> => {
+    let iid = institutionId;
+    if (!iid) {
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+    }
+    if (!iid) throw new Error('institutionId not available');
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner?metric=${metric}`, { method: "GET" });
   },
-  getOwnerByRange: async (metric: 'views'|'comparisons'|'leads', range: 'weekly'|'monthly'|'yearly'): Promise<ApiResponse> => {
-    return apiRequest(`/v1/institutions/summary/metrics/owner/range?metric=${metric}&range=${range}`, { method: "GET" });
+  getOwnerByRange: async (
+    metric: 'views'|'comparisons'|'leads' | string,
+    range: 'weekly'|'monthly'|'yearly',
+    institutionId?: string
+  ): Promise<ApiResponse> => {
+    let iid = institutionId as string | undefined;
+    if (!iid) {
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+    }
+    if (!iid) throw new Error('institutionId not available');
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner/range?metric=${metric}&range=${range}`, { method: "GET" });
   },
-  getOwnerSeries: async (metric: 'views'|'comparisons'|'leads', year?: number): Promise<ApiResponse> => {
+  getOwnerSeries: async (
+    metric: 'views'|'comparisons'|'leads',
+    year?: number,
+    institutionId?: string
+  ): Promise<ApiResponse> => {
     const q = [`metric=${metric}`];
     if (year) q.push(`year=${year}`);
-    return apiRequest(`/v1/institutions/summary/metrics/owner/series?${q.join('&')}`, { method: "GET" });
+    let iid = institutionId;
+    if (!iid) {
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+    }
+    if (!iid) throw new Error('institutionId not available');
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner/series?${q.join('&')}`, { method: "GET" });
   }
 };
 
@@ -712,7 +736,7 @@ export const enquiriesAPI = {
   getTypeSummaryRollups: async (range: 'weekly'|'monthly'|'yearly', type?: 'callback'|'demo'): Promise<ApiResponse> => {
     const q = [`range=${range}`];
     if (type) q.push(`type=${type}`);
-    return apiRequest(`/v1/institutions/summary/enquiries/owner/range?${q.join('&')}`, { method: "GET" });
+    return apiRequest(`/v1/enquiries/summary/types/range?${q.join('&')}`, { method: "GET" });
   },
   createEnquiry: async (enquiryData: {
     customerName: string;

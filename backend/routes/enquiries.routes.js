@@ -6,7 +6,8 @@ const {
   getOwnerEnquiriesForChart,
   getOwnerRecentEnquiries,
   createEnquiry,
-  getOwnerEnquiryTypeSummary
+  getOwnerEnquiryTypeSummary,
+  getOwnerEnquiryTypeByRangeRollups
 } = require("../controllers/enquiries.controller");
 
 // All routes require authentication
@@ -23,6 +24,9 @@ router.get("/recent", getOwnerRecentEnquiries);
 
 // Summary by type for a time range
 router.get("/summary/types", getOwnerEnquiryTypeSummary);
+
+// Rollup-based range summary from Institution.callbackRollups/demoRollups
+router.get("/summary/types/range", getOwnerEnquiryTypeByRangeRollups);
 
 // Create new enquiry
 router.post("/createEnquiry", createEnquiry);
