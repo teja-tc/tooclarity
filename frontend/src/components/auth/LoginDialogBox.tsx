@@ -18,7 +18,7 @@ import { useAuth } from "../../lib/auth-context";
 
 export default function LoginDialogBox() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, user, refreshUser } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -60,9 +60,29 @@ export default function LoginDialogBox() {
         
         // Reset form
         setFormData({ email: "", password: "" });
-        
-        // Redirect to dashboard
-        router.push('/dashboard');
+
+        // Ensure we have the latest user profile
+        await refreshUser();
+
+        // Decide destination based on role and flags
+        const u = user as any;
+        if (u && u.role === "INSTITUTE_ADMIN") {
+          if (u.isPaymentDone === false && u.isProfileCompleted === false) {
+            router.push('/signup');
+            return;
+          }
+          if (u.isPaymentDone === false && u.isProfileCompleted === true) {
+            router.push('/payment');
+            return;
+          }
+          if (u.isPaymentDone === true && u.isProfileCompleted === true) {
+            router.push('/dashboard');
+            return;
+          }
+        }
+
+        // Fallback
+        router.push('/');
       } else {
         setErrors({ general: "Invalid email or password. Please try again." });
       }
