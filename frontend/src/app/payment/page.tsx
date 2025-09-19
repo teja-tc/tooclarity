@@ -3,13 +3,52 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import PaymentCheckout from "@/components/payment/PaymentCheckout";
 import PaymentSuccess from "@/components/payment/PaymentSuccess";
 import PaymentProcessing from "@/components/payment/PaymentProcessing";
 import PaymentFailed from "@/components/payment/PaymentFailed";
+import { useAuth } from "@/lib/auth-context";
 
 export default function PaymentPage() {
+  const router = useRouter();
+  const { user, isAuthenticated, loading } = useAuth();
+
+  // Determine if user is allowed to access payment route
+  const isAllowed = React.useMemo(() => {
+    if (!user) return false;
+    return (
+      user.role === "INSTITUTE_ADMIN" &&
+      user.isPaymentDone === false &&
+      user.isProfileCompleted === true
+    );
+  }, [user]);
+
+  // Redirect based on auth/permission state once loading completes
+  React.useEffect(() => {
+    if (loading) return;
+
+    if (!isAuthenticated) {
+      router.replace("/");
+      return;
+    }
+
+    if (!isAllowed) {
+      router.replace("/");
+      return;
+    }
+  }, [loading, isAuthenticated, isAllowed, router]);
+
+  // Show a simple loader while verifying or redirecting
+  if (loading || !isAuthenticated || !isAllowed) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   const phoneDisplay = "+91 9391160205";
   const phoneHref = "+919391160205";
 

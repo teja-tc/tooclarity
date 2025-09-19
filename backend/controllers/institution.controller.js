@@ -320,6 +320,7 @@ exports.uploadFileData = asyncHandler(async (req, res, next) => {
 
     // Link institution to admin
     institutionAdmin.institution = institutionId;
+    institutionAdmin.isProfileCompleted = true;
     await institutionAdmin.save({ session });
 
     // --- BULK BRANCH + COURSE HANDLING ---

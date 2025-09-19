@@ -11,7 +11,7 @@ const globalAuthMiddleware = async (req, res, next) => {
   try {
     console.log("➡️ Incoming request:", req.method, req.path);
 
-    const publicPaths = ["/login", "/register", "/otp", "/verify-email"];
+    const publicPaths = ["/login", "/register", "/otp", "/verify-email","/payment/verify"];
     if (publicPaths.includes(req.path)) {
       console.log("✅ Public path, skipping auth");
       return next();
@@ -102,7 +102,7 @@ const globalAuthMiddleware = async (req, res, next) => {
     }
 
     // 4️⃣ Issue new tokens
-    const newAccessToken = generateToken(userId, "access");
+    const newAccessToken = generateToken(userId, usernameCookie ,"access", decodedRefresh.role);
     CookieUtil.setCookie(res, "access_token", newAccessToken);
     console.log("🔹 New access token issued");
 
