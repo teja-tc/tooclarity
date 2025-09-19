@@ -3,6 +3,7 @@ const institutionController = require('../controllers/institution.controller');
 const { validateL1Creation, validateL2Update } = require('../middleware/validators')
 const { validateUploadedFile } = require('../middleware/validators');
 
+
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -25,10 +26,8 @@ router.route('/me')
 
 router.post('/upload',
     upload.single("file"),
-     validateUploadedFile, // Use the new, all-in-one validator
+    validateUploadedFile, // Use the new, all-in-one validator
     institutionController.uploadFileData
 );
-
-
 
 module.exports = router;

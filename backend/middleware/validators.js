@@ -61,68 +61,6 @@ exports.validateL1Creation = [
 
 
 // --- L2 INSTITUTION VALIDATOR---
-// const kindergartenL2Rules = [
-//     body('schoolType').isIn(['Public', 'Private (For-profit)', 'Private (Non-profit)', 'International', 'Home - based']).withMessage('Invalid school type.'),
-//     body('curriculumType').trim().notEmpty().withMessage('Curriculum type is required.').isLength({ max: 100 }).escape(),
-//     body('operationalDays').isArray({ min: 1 }).withMessage('At least one operational day is required.'),
-//     body('operationalDays.*').isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat']),
-// ];
-
-// const schoolRules = [
-//     // body('schoolType').trim().toLowerCase().isIn(['co-ed', 'boys only', 'girls only']).withMessage('Invalid school type.'),
-//     body('schoolType').trim().isIn(['Co-ed', 'Boys Only', 'Girls Only']).withMessage('Invalid school type.'),   
-//    // body('schoolType').trim().isIn(['Co-ed', 'Boys Only', 'Girls Only']).withMessage('Invalid school type.'),
-//     body('schoolCategory').isIn(['Public', 'Private', 'Charter', 'International']).withMessage('Invalid school category.'),
-//     body('curriculumType').isIn(['State Board', 'CBSE', 'ICSE', 'IB', 'IGCSE']).withMessage('Invalid curriculum type.'),
-//     body('operationalDays').isArray({ min: 1 }).withMessage('At least one operational day is required.'),
-//     body('operationalDays.*').isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun']),
-//     body('otherActivities').optional({ checkFalsy: true }).trim().isLength({ max: 500 }).escape(),
-//     body('hostelFacility').isBoolean().withMessage('Hostel facility must be true or false.'),
-//     body('playground').isBoolean().withMessage('Playground must be true or false.'),
-//     body('busService').isBoolean().withMessage('Bus service must be true or false.'),
-// ];
-
-// const intermediateCollegeL2Rules = [
-//   body('collegeType')
-//     .isIn(['Junior College', 'Senior Secondary', 'Higher Secondary', 'Intermediate', 'Pre-University'])
-//     .withMessage('Invalid college type.'),
-
-//   body('collegeCategory')
-//     .isIn(['Government', 'Semi-Government', 'Private', 'Aided', 'Unaided'])
-//     .withMessage('Invalid college category.'),
-
-//   body('curriculumType')
-//     .isIn(['State Board', 'CBSE', 'ICSE', 'IB', 'Cambridge', 'Other'])
-//     .withMessage('Invalid curriculum type.'),
-
-//   body('operationalDays')
-//     .isArray({ min: 1 })
-//     .withMessage('At least one operational day is required.'),
-
-//   body('operationalDays.*')
-//     .isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat'])
-//     .withMessage('Invalid operational day.'),
-
-//   body('otherActivities')
-//     .trim()
-//     .notEmpty()
-//     .withMessage('Other activities are required.')
-//     .isLength({ max: 500 })
-//     .escape(),
-
-//   body('hostelFacility')
-//     .isBoolean()
-//     .withMessage('Hostel facility must be true or false.'),
-
-//   body('playground')
-//     .isBoolean()
-//     .withMessage('Playground must be true or false.'),
-
-//   body('busService')
-//     .isBoolean()
-//     .withMessage('Bus service must be true or false.'),
-// ];
-
 
 const ugPgUniversityL2Rules = [
     body('ownershipType').isIn(['Government', 'Private', 'Public-Private Partnership']).withMessage('Invalid ownership type.'),
@@ -251,21 +189,99 @@ exports.validateCourseUpdate = [
 
 
 
+// // --- L1 INSTITUTION VALIDATOR ---
+// exports.validateL1Creation = [
+//     body('instituteName').notEmpty().withMessage('Institution name is required').trim().isLength({ max: 150 }).escape(),
+//     body('instituteType').isIn([
+//         'Kindergarten/childcare center', "School's", 'Intermediate college(K12)', 'Under Graduation/Post Graduation', 'Coaching centers', "Tution Center's", 'Study Halls', 'Study Abroad'
+//     ]).withMessage('A valid institute type is required.'),
+//     body('approvedBy').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).escape(),
+//     handleValidationErrors,
+// ];
+
 // --- L1 INSTITUTION VALIDATOR ---
 exports.validateL1Creation = [
-    body('instituteName').notEmpty().withMessage('Institution name is required').trim().isLength({ max: 150 }).escape(),
-    body('instituteType').isIn([
-        'Kindergarten/childcare center', "School's", 'Intermediate college(K12)', 'Under Graduation/Post Graduation', 'Coaching centers', "Tution Center's", 'Study Halls', 'Study Abroad'
-    ]).withMessage('A valid institute type is required.'),
-    body('approvedBy').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).escape(),
-    handleValidationErrors,
+  // --- Institute Type ---
+  body('instituteType')
+    .isIn([
+      'Kindergarten/childcare center', "School's", 'Intermediate college(K12)', 
+      'Under Graduation/Post Graduation', 'Coaching centers', "Tution Center's", 
+      'Study Halls', 'Study Abroad'
+    ])
+    .withMessage('A valid institute type is required.'),
+
+  // --- Institute Name ---
+  body('instituteName')
+    .notEmpty().withMessage('Institute Name is required')
+    .trim()
+    .isLength({ min: 3, max: 100 })
+    .withMessage('Institute Name must be between 3 and 100 characters')
+    .matches(/^[A-Za-z][A-Za-z\s.&'-]*$/)
+    .withMessage("Institute Name must start with a letter and can only contain letters, numbers, spaces, . & ' -")
+    .escape(),
+
+  // --- Conditional Validation for Approved By ---
+  body('approvedBy')
+    .if(body('instituteType').not().equals('Study Halls')) // Only validate if type is NOT 'Study Halls'
+    .notEmpty().withMessage('Approved By is required')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Approved By must be between 2 and 100 characters')
+    .matches(/^[A-Za-z][A-Za-z\s.&'-]*$/)
+    .withMessage("Approved By must start with a letter and can only contain letters, spaces, . & ' -")
+    .escape(),
+
+  // --- Conditional Validation for Establishment Date ---
+  body('establishmentDate')
+    .if(body('instituteType').not().equals('Study Halls')) // Only validate if type is NOT 'Study Halls'
+    .notEmpty().withMessage('Establishment Date is required')
+    .isISO8601().withMessage('Must be a valid date')
+    .custom((value) => {
+      const enteredDate = new Date(value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (enteredDate > today) {
+        throw new Error('Establishment Date cannot be in the future');
+      }
+      return true; // Indicates validation passed
+    }),
+
+  // --- Contact Info (Required) ---
+  body('contactInfo')
+    .notEmpty().withMessage('Contact info is required')
+    .isLength({ min: 10, max: 10 }).withMessage('Contact number must be exactly 10 digits')
+    .isNumeric().withMessage('Contact number must only contain digits'),
+
+  // --- Additional Contact Info (Optional) ---
+  body('additionalContactInfo')
+    .optional({ checkFalsy: true }) // Makes the field optional
+    .isLength({ min: 10, max: 10 }).withMessage('Additional contact must be 10 digits if provided')
+    .isNumeric().withMessage('Additional contact must only contain digits'),
+
+  // --- Address Details ---
+  body('headquartersAddress')
+    .notEmpty().withMessage('Headquarters Address is required'),
+
+  body('state')
+    .notEmpty().withMessage('State is required')
+    .isLength({ min: 2, max: 50 }).withMessage('State must be between 2 and 50 characters')
+    .matches(/^[A-Za-z][A-Za-z\s]*$/).withMessage('State name should only include alphabets and spaces'),
+
+  body('pincode')
+    .notEmpty().withMessage('Pincode is required')
+    .isLength({ min: 6, max: 6 }).withMessage('Pincode must be exactly 6 digits')
+    .isNumeric().withMessage('Pincode must only contain digits'),
+
+  // --- Location URL ---
+  body('locationURL')
+    .notEmpty().withMessage('Location URL is required')
+    .isURL().withMessage('Please enter a valid URL'),
+
+  handleValidationErrors, // Your existing error handler
 ];
 
 
-
-
 // --- L2 BRANCH & COURSE VALIDATORS (For File Upload) ---
-// In src/middleware/validators.js
 
 const l2BranchRules = [
     // Allow branchName to be an empty string (for the unassigned courses object),
@@ -328,7 +344,6 @@ const l2BaseCourseRules = [
     body('createdBranch').optional({ checkFalsy: true }).trim()
 ];
 
-// In src/middleware/validators.js
 
 const l2UgPgCourseRules = [
     body('graduationType')
@@ -371,7 +386,7 @@ const l2UgPgCourseRules = [
         .notEmpty().withMessage('The course must be assigned to a branch.'),
 ];
 
-// In src/middleware/validators.js
+
 
 const l2CoachingCourseRules = [
     // --- Base Course Rules ---
@@ -510,11 +525,12 @@ const l2StudyHallRules = [
         .notEmpty().withMessage('Price per seat is required.')
         .isFloat({ min: 0 }).withMessage('Price must be a non-negative number.'),
     
-    // Validates that a selection has been made for all boolean (Yes/No) fields
-    body('hasWifi').isBoolean().withMessage('A selection for Wi-Fi is required.'),
-    body('hasChargingPoints').isBoolean().withMessage('A selection for Charging Points is required.'),
-    body('hasAC').isBoolean().withMessage('A selection for Air Conditioner is required.'),
-    body('hasPersonalLocker').isBoolean().withMessage('A selection for Personal Lockers is required.'),
+     // ✅ Validates that the facility fields are either "yes" or "no"
+  body('hasWifi').isIn(['yes', 'no']).withMessage('A selection for Wi-Fi is required.'),
+  body('hasChargingPoints').isIn(['yes', 'no']).withMessage('A selection for Charging Points is required.'),
+  body('hasAC').isIn(['yes', 'no']).withMessage('A selection for Air Conditioner is required.'),
+  body('hasPersonalLocker').isIn(['yes', 'no']).withMessage('A selection for Personal Lockers is required.'),
+
 
     // Allows 'createdBranch' to be optional
     body('createdBranch').optional({ checkFalsy: true }).trim(),
@@ -630,7 +646,7 @@ const schoolL3Rules = [
     body('busService')
         .isBoolean().withMessage('A selection for Bus Service is required.'),
 ];
-// In src/middleware/validators.js
+
 
 const intermediateCollegeL3Rules = [
     // Validates the 'collegeType' dropdown selection
