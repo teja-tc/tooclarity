@@ -10,7 +10,9 @@ const authRoutes = require('./routes/auth.routes');
 const institutionRoutes = require('./routes/institution.routes');
 const branchRoutes = require('./routes/branch.routes');
 const courseRoutes = require('./routes/course.routes');
+const enquiriesRoutes = require('./routes/enquiries.routes');
 const profileRoutes = require('./routes/profile.routes');
+const notificationRoutes = require('./routes/notification.routes');
 const { publicRouter: paymentPublicRoutes, protectedRouter: paymentProtectedRoutes } = require('./routes/payment.routes');
 const { couponAdminRoute: adminRoute, couponInstitutionAdminRoute: InstitutionAdminRoute} = require("./routes/coupon.routes")
 const authorizeRoles = require("./middleware/role.middleware");
@@ -44,32 +46,39 @@ app.use(cookieParser());
 // app.use('/api', limiter);
 
 app.use(express.json({ limit: '10kb' }));
-
 const requireInstituteAdmin = [
-  globalAuthMiddleware,
-  authorizeRoles(["INSTITUTE_ADMIN"])
-];
-
-const requireAdmin = [
     globalAuthMiddleware,
-    authorizeRoles(["ADMIN"])
-]
+    authorizeRoles(["INSTITUTE_ADMIN"])
+  ];
+  
+  const requireAdmin = [
+      globalAuthMiddleware,
+      authorizeRoles(["ADMIN"])
+  ]
+  
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/payment/', paymentPublicRoutes);
 
+
+
 // 🚨 Apply Global Auth Middleware (for all routes below this line)
 app.use(globalAuthMiddleware);
-
 app.use('/api/v1/payment', requireInstituteAdmin, paymentProtectedRoutes);
 app.use("/api/v1/coupon/", requireAdmin, adminRoute);
 app.use("/api/v1/coupon",requireInstituteAdmin, InstitutionAdminRoute);
+
 app.use("/api/v1/", profileRoutes)
+
+app.use("/api/v1/enquiries", enquiriesRoutes);
 
 app.use('/api/v1/institutions', requireInstituteAdmin, institutionRoutes);
 
+
 app.use('/api/v1/institutions/:institutionId/branches', requireInstituteAdmin, branchRoutes);
 app.use('/api/v1/institutions/:institutionId/courses', requireInstituteAdmin, courseRoutes);
+
+app.use('/api/v1/notifications', notificationRoutes);
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
@@ -78,7 +87,7 @@ app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
     const message = statusCode === 500 ? 'An internal server error occured.' : err.message;
 
-    res.status(err.statusCode).json({
+    res.status(statusCode).json({
         status: 'error',
         message: (err.isOperational || process.env.NODE_ENV !== 'production') ? err.message : 'Something went very wrong!',
     });

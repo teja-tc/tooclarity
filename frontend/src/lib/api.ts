@@ -457,7 +457,7 @@ export const courseAPI = {
   updateCourse: async (
     courseId: number,
     courseData: Partial<CourseData>
-  ): Promise<ApiResponse> => {
+  ): Promise<ApiResponse> => {  
     const formData = new FormData();
 
     Object.entries(courseData).forEach(([key, value]) => {
@@ -605,6 +605,179 @@ export const institutionDetailsAPI = {
   },
 };
 
+// Dashboard data helpers (non-destructive additions)
+export const getMyInstitution = async (): Promise<any> => {
+  const res = await apiRequest<any>("/v1/institutions/me", { method: "GET" });
+  // Support both {success, data} and raw object responses
+  const payload: any = res as any;
+  return payload?.data || payload;
+};
+
+export const getInstitutionBranches = async (
+  institutionId: string
+): Promise<any[]> => {
+  const res = await apiRequest<any>(
+    `/v1/institutions/${institutionId}/branches`,
+    { method: "GET" }
+  );
+  const payload = res as any;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
+
+export const getInstitutionCourses = async (
+  institutionId: string
+): Promise<any[]> => {
+  const res = await apiRequest<any>(
+    `/v1/institutions/${institutionId}/courses`,
+    { method: "GET" }
+  );
+  const payload = res as any;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
+
+// Analytics API helpers
+export type TimeRangeParam = "weekly" | "monthly" | "yearly";
+
+export const analyticsAPI = {
+  getSummary: async (range: TimeRangeParam = "weekly"): Promise<ApiResponse> => {
+    return apiRequest(`/v1/analytics/summary?range=${range}`, { method: "GET" });
+  },
+  getCoursePerformance: async (range: TimeRangeParam = "weekly"): Promise<ApiResponse> => {
+    return apiRequest(`/v1/analytics/course-performance?range=${range}`, { method: "GET" });
+  },
+  getLeadTypes: async (range: TimeRangeParam = "weekly"): Promise<ApiResponse> => {
+    return apiRequest(`/v1/analytics/lead-types?range=${range}`, { method: "GET" });
+  },
+  getSummaryPrevious: async (range: TimeRangeParam = "weekly"): Promise<ApiResponse> => {
+    return apiRequest(`/v1/analytics/summary?range=${range}&compare=prev`, { method: "GET" });
+  }
+};
+
+// Unified metrics (views or comparisons)
+export const metricsAPI = {
+  increment: async (institutionId: string, courseId: string, metric: 'views'|'comparisons'): Promise<ApiResponse> => {
+    return apiRequest(`/v1/institutions/${institutionId}/courses/${courseId}/metrics?metric=${metric}`, { method: "POST" });
+  },
+  // Accept optional institutionId; if missing, resolve via getMyInstitution()
+  getOwnerSummary: async (metric: 'views'|'comparisons', institutionId?: string): Promise<ApiResponse> => {
+    let iid = institutionId;
+    if (!iid) {
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+    }
+    if (!iid) throw new Error('institutionId not available');
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner?metric=${metric}`, { method: "GET" });
+  },
+  getOwnerByRange: async (
+    metric: 'views'|'comparisons'|'leads' | string,
+    range: 'weekly'|'monthly'|'yearly',
+    institutionId?: string
+  ): Promise<ApiResponse> => {
+    let iid = institutionId as string | undefined;
+    if (!iid) {
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+    }
+    if (!iid) throw new Error('institutionId not available');
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner/range?metric=${metric}&range=${range}`, { method: "GET" });
+  },
+  getOwnerSeries: async (
+    metric: 'views'|'comparisons'|'leads',
+    year?: number,
+    institutionId?: string
+  ): Promise<ApiResponse> => {
+    const q = [`metric=${metric}`];
+    if (year) q.push(`year=${year}`);
+    let iid = institutionId;
+    if (!iid) {
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+    }
+    if (!iid) throw new Error('institutionId not available');
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner/series?${q.join('&')}`, { method: "GET" });
+  }
+};
+
+// Enquiries API helpers (leads generated and recent enquiries)
+export const enquiriesAPI = {
+  getLeadsSummary: async (): Promise<ApiResponse> => {
+    return apiRequest(`/v1/enquiries/summary/leads`, { method: "GET" });
+  },
+  getEnquiriesForChart: async (year?: number): Promise<ApiResponse> => {
+    const yearParam = year ? `?year=${year}` : "";
+    return apiRequest(`/v1/enquiries/chart${yearParam}`, { method: "GET" });
+  },
+  getRecentEnquiries: async (): Promise<ApiResponse> => {
+    return apiRequest(`/v1/enquiries/recent`, { method: "GET" });
+  },
+  getTypeSummary: async (range: 'weekly'|'monthly'|'yearly'): Promise<ApiResponse> => {
+    return apiRequest(`/v1/enquiries/summary/types?range=${range}`, { method: "GET" });
+  },
+  getTypeSummaryRollups: async (range: 'weekly'|'monthly'|'yearly', type?: 'callback'|'demo'): Promise<ApiResponse> => {
+    const q = [`range=${range}`];
+    if (type) q.push(`type=${type}`);
+    return apiRequest(`/v1/enquiries/summary/types/range?${q.join('&')}`, { method: "GET" });
+  },
+  createEnquiry: async (enquiryData: {
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    institution: string;
+    programInterest: string;
+    enquiryType: string;
+  }): Promise<ApiResponse> => {
+    return apiRequest(`/v1/enquiries`, { 
+      method: "POST",
+      body: JSON.stringify(enquiryData)
+    });
+  }
+};
+
+// Notifications API helpers
+export const notificationsAPI = {
+  list: async (params: {
+    scope?: 'customer'|'institution'|'branch'|'admin';
+    customerId?: string;
+    institutionId?: string;
+    branchId?: string;
+    ownerId?: string;
+    page?: number;
+    limit?: number;
+    unread?: boolean;
+    category?: string;
+  } = {}): Promise<ApiResponse> => {
+    const q: string[] = [];
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) q.push(`${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`);
+    });
+    const qs = q.length ? `?${q.join('&')}` : '';
+    return apiRequest(`/v1/notifications${qs}`, { method: 'GET' });
+  },
+  create: async (payload: {
+    title: string;
+    description?: string;
+    category?: string;
+    recipientType: 'CUSTOMER'|'INSTITUTION'|'BRANCH'|'ADMIN'|'SYSTEM';
+    customer?: string;
+    institution?: string;
+    branch?: string;
+    owner?: string;
+    metadata?: any;
+  }): Promise<ApiResponse> => {
+    return apiRequest(`/v1/notifications`, { method: 'POST', body: JSON.stringify(payload) });
+  },
+  markRead: async (ids: string[]): Promise<ApiResponse> => {
+    return apiRequest(`/v1/notifications/read`, { method: 'POST', body: JSON.stringify({ ids }) });
+  },
+  markUnread: async (ids: string[]): Promise<ApiResponse> => {
+    return apiRequest(`/v1/notifications/unread`, { method: 'POST', body: JSON.stringify({ ids }) });
+  },
+  remove: async (ids: string[]): Promise<ApiResponse> => {
+    return apiRequest(`/v1/notifications`, { method: 'DELETE', body: JSON.stringify({ ids }) });
+  }
+};
+
 // Payment API methods
 export interface PaymentInitPayload {
   amount: number; // Payable amount in INR
@@ -658,7 +831,8 @@ export const paymentAPI = {
     const intervalMs = options?.intervalMs ?? 2000; // 2s poll interval
     const timeoutMs = options?.timeoutMs ?? 120000; // 2 min timeout
     const start = Date.now();
-    let lastRes: ApiResponse | null = null;
+    let lastRes: ApiResponse | null = null; //commented
+  
 
     while (Date.now() - start < timeoutMs) {
       // Build query string for GET verification (preserves original method)

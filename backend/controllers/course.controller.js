@@ -1,8 +1,206 @@
 const Course = require("../models/Course");
 const { Institution } = require("../models/Institution");
+const Customer = require("../models/Customer");
 const AppError = require("../utils/appError");
 const asyncHandler = require("express-async-handler");
 const { uploadStream } = require("../services/upload.service");
+
+// Generic helpers
+async function incrementMetricGeneric(req, res, next, cfg) {
+  const { institutionId, courseId } = req.params;
+  const { metricField, rollupField, updatedEvent, ownerTotalEvent } = cfg;
+
+  const incUpdate = {}; incUpdate[metricField] = 1;
+  const course = await Course.findOneAndUpdate(
+    { _id: courseId, institution: institutionId },
+    { $inc: incUpdate },
+    { new: true }
+  );
+  if (!course) return next(new AppError("Course not found", 404));
+
+  // rollup upsert for today
+  try {
+    const now = new Date();
+    const yyyy = now.getUTCFullYear();
+    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(now.getUTCDate()).padStart(2, '0');
+    const dayKey = `${yyyy}-${mm}-${dd}`;
+
+    const incPath = `${rollupField}.$.count`;
+    const queryHas = { _id: courseId }; queryHas[`${rollupField}.day`] = dayKey;
+    const queryPush = { _id: courseId }; queryPush[`${rollupField}.day`] = { $ne: dayKey };
+
+    await Course.updateOne(queryHas, { $inc: { [incPath]: 1 } });
+    await Course.updateOne(queryPush, { $push: { [rollupField]: { day: dayKey, count: 1 } } });
+  } catch {}
+
+  // Emit socket events with fresh owner total
+  try {
+    const io = req.app.get("io");
+    if (io) {
+      const payload = { institutionId, courseId };
+      payload[metricField] = course[metricField];
+      io.to(`institution:${institutionId}`).emit(updatedEvent, payload);
+
+      const inst = await Institution.findById(institutionId).select("owner");
+      if (inst?.owner) {
+        const ownerId = String(inst.owner);
+        io.to(`owner:${ownerId}`).emit(updatedEvent, payload);
+        const institutions = await Institution.find({ owner: ownerId }).select('_id');
+        const ids = institutions.map(i => i._id);
+        if (ids.length > 0) {
+          const groupField = {}; groupField[`total`] = { $sum: { $ifNull: [ `$${metricField}`, 0 ] } };
+          const agg = await Course.aggregate([
+            { $match: { institution: { $in: ids } } },
+            { $group: Object.assign({ _id: null }, groupField) }
+          ]);
+          const total = (agg[0]?.total) || 0;
+          const totalPayload = metricField === 'courseViews' ? { totalViews: total } : 
+                              metricField === 'comparisons' ? { totalComparisons: total } : 
+                              { totalLeads: total };
+          io.to(`owner:${ownerId}`).emit(ownerTotalEvent, totalPayload);
+        }
+      }
+    }
+  } catch {}
+
+  return res.status(200).json({ success: true, data: { courseId, [metricField]: course[metricField] } });
+}
+
+async function ownerTotalGeneric(userId, metricField) {
+  const institutions = await Institution.find({ owner: userId }).select('_id');
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) return 0;
+  const agg = await Course.aggregate([
+    { $match: { institution: { $in: ids } } },
+    { $group: { _id: null, total: { $sum: { $ifNull: [ `$${metricField}`, 0 ] } } } }
+  ]);
+  return agg[0]?.total || 0;
+}
+
+// Customer-based leads helpers
+async function ownerLeadsRangeCurrent(userId, range) {
+  const institutions = await Institution.find({ owner: userId }).select('_id');
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) return 0;
+  const now = new Date();
+  let startDate, endDate;
+  if (range === 'weekly') {
+    startDate = new Date(now); startDate.setUTCDate(startDate.getUTCDate() - 6); endDate = new Date(now);
+  } else if (range === 'monthly') {
+    startDate = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1); endDate = new Date(now);
+  } else if (range === 'yearly') {
+    startDate = new Date(now.getUTCFullYear(), 0, 1); endDate = new Date(now);
+  } else { return 0; }
+  return Customer.countDocuments({ institution: { $in: ids }, createdAt: { $gte: startDate, $lte: endDate } });
+}
+
+async function ownerLeadsRangePrevious(userId, range) {
+  const institutions = await Institution.find({ owner: userId }).select('_id');
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) return 0;
+  const now = new Date();
+  let startDate, endDate;
+  if (range === 'weekly') {
+    endDate = new Date(now); endDate.setUTCDate(endDate.getUTCDate() - 7); startDate = new Date(endDate); startDate.setUTCDate(startDate.getUTCDate() - 6);
+  } else if (range === 'monthly') {
+    startDate = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1); endDate = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+  } else if (range === 'yearly') {
+    startDate = new Date(now.getUTCFullYear() - 1, 0, 1); endDate = new Date(now.getUTCFullYear(), 0, 1);
+  } else { return 0; }
+  return Customer.countDocuments({ institution: { $in: ids }, createdAt: { $gte: startDate, $lt: endDate } });
+}
+
+// Fixed range calculation function with proper date handling
+async function ownerRangeGeneric(userId, rollupField, range) {
+  const institutions = await Institution.find({ owner: userId }).select('_id');
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) return 0;
+  
+  const now = new Date();
+  let startDate, endDate;
+  
+  if (range === 'weekly') {
+    // Last 7 days (including today)
+    startDate = new Date(now);
+    startDate.setUTCDate(startDate.getUTCDate() - 6);
+    endDate = new Date(now);
+  } else if (range === 'monthly') {
+    // Current month (from 1st to today)
+    startDate = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+    endDate = new Date(now);
+  } else if (range === 'yearly') {
+    // Current year (from Jan 1st to today)
+    startDate = new Date(now.getUTCFullYear(), 0, 1);
+    endDate = new Date(now);
+  } else {
+    return 0;
+  }
+  
+  // Format dates for comparison (YYYY-MM-DD format)
+  const startKey = startDate.toISOString().split('T')[0];
+  const endKey = endDate.toISOString().split('T')[0];
+
+  const agg = await Course.aggregate([
+    { $match: { institution: { $in: ids } } },
+    { $unwind: { path: `$${rollupField}`, preserveNullAndEmptyArrays: false } },
+    { $match: { 
+      [`${rollupField}.day`]: { 
+        $gte: startKey, 
+        $lte: endKey 
+      } 
+    }},
+    { $group: { _id: null, total: { $sum: `$${rollupField}.count` } } }
+  ]);
+  
+  return agg[0]?.total || 0;
+}
+
+// Fixed previous range calculation function with proper date handling
+async function ownerPreviousRangeGeneric(userId, rollupField, range) {
+  const institutions = await Institution.find({ owner: userId }).select('_id');
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) return 0;
+  
+  const now = new Date();
+  let startDate, endDate;
+  
+  if (range === 'weekly') {
+    // Previous week (7 days before current week)
+    endDate = new Date(now);
+    endDate.setUTCDate(endDate.getUTCDate() - 7);
+    startDate = new Date(endDate);
+    startDate.setUTCDate(startDate.getUTCDate() - 6);
+  } else if (range === 'monthly') {
+    // Previous month
+    startDate = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1);
+    endDate = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+  } else if (range === 'yearly') {
+    // Previous year
+    startDate = new Date(now.getUTCFullYear() - 1, 0, 1);
+    endDate = new Date(now.getUTCFullYear(), 0, 1);
+  } else {
+    return 0;
+  }
+  
+  // Format dates for comparison (YYYY-MM-DD format)
+  const startKey = startDate.toISOString().split('T')[0];
+  const endKey = endDate.toISOString().split('T')[0];
+
+  const agg = await Course.aggregate([
+    { $match: { institution: { $in: ids } } },
+    { $unwind: { path: `$${rollupField}`, preserveNullAndEmptyArrays: false } },
+    { $match: { 
+      [`${rollupField}.day`]: { 
+        $gte: startKey, 
+        $lt: endKey 
+      } 
+    }},
+    { $group: { _id: null, total: { $sum: `$${rollupField}.count` } } }
+  ]);
+  
+  return agg[0]?.total || 0;
+}
 
 const checkOwnership = async (institutionId, userId) => {
   const institution = await Institution.findById(institutionId);
@@ -51,7 +249,7 @@ exports.createCourse = asyncHandler(async (req, res, next) => {
 exports.getAllCoursesForInstitution = asyncHandler(async (req, res, next) => {
   const { institutionId } = req.params;
 
-  await checkOwnership(institutionId, req.user.id);
+  await checkOwnership(institutionId, req.userId);
 
   const courses = await Course.find({ institution: institutionId });
 
@@ -64,7 +262,7 @@ exports.getAllCoursesForInstitution = asyncHandler(async (req, res, next) => {
 
 exports.getCourseById = asyncHandler(async (req, res, next) => {
   const { institutionId, courseId } = req.params;
-  await checkOwnership(institutionId, req.user.id);
+  await checkOwnership(institutionId, req.userId);
 
   const course = await Course.findById(courseId);
 
@@ -85,7 +283,7 @@ exports.getCourseById = asyncHandler(async (req, res, next) => {
 
 exports.updateCourse = asyncHandler(async (req, res, next) => {
   const { institutionId, courseId } = req.params;
-  await checkOwnership(institutionId, req.user.id);
+  await checkOwnership(institutionId, req.userId);
 
   let course = await Course.findById(courseId);
   if (!course || course.institution.toString() !== institutionId) {
@@ -135,7 +333,7 @@ exports.updateCourse = asyncHandler(async (req, res, next) => {
 exports.deleteCourse = asyncHandler(async (req, res, next) => {
   const { institutionId, courseId } = req.params;
 
-  await checkOwnership(institutionId, req.user.id);
+  await checkOwnership(institutionId, req.userId);
 
   const course = await Course.findById(courseId);
   if (!course || course.institution.toString() !== institutionId) {
@@ -153,4 +351,203 @@ exports.deleteCourse = asyncHandler(async (req, res, next) => {
     success: true,
     data: {},
   });
+});
+
+// Unified metric increment: /:courseId/metrics?metric=views|comparisons|leads
+exports.incrementMetricUnified = asyncHandler(async (req, res, next) => {
+  const raw = (req.query.metric || req.body.metric || '').toString().toLowerCase();
+  const isViews = raw === 'views' || raw === 'courseviews';
+  const isComparisons = raw === 'comparisons' || raw === 'comparison';
+  const isLeads = raw === 'leads' || raw === 'leadsgenerated';
+  
+  if (!isViews && !isComparisons && !isLeads) {
+    return next(new AppError('Invalid metric. Use metric=views|comparisons|leads', 400));
+  }
+  
+  const cfg = isViews
+    ? { metricField: 'courseViews', rollupField: 'viewsRollups', updatedEvent: 'courseViewsUpdated', ownerTotalEvent: 'ownerTotalViews' }
+    : isComparisons
+    ? { metricField: 'comparisons', rollupField: 'comparisonRollups', updatedEvent: 'comparisonsUpdated', ownerTotalEvent: 'ownerTotalComparisons' }
+    : { metricField: 'leadsGenerated', rollupField: 'leadsRollups', updatedEvent: 'leadsUpdated', ownerTotalEvent: 'ownerTotalLeads' };
+    
+  return incrementMetricGeneric(req, res, next, cfg);
+});
+
+// ----- Helpers: periods -----
+function getCurrentPeriod(range) {
+  const now = new Date();
+  let startDate, endDate;
+  if (range === 'weekly') {
+    startDate = new Date(now); startDate.setUTCDate(startDate.getUTCDate() - 6); endDate = new Date(now);
+  } else if (range === 'monthly') {
+    startDate = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1); endDate = new Date(now);
+  } else if (range === 'yearly') {
+    startDate = new Date(now.getUTCFullYear(), 0, 1); endDate = new Date(now);
+  } else {
+    startDate = new Date(now); startDate.setUTCDate(startDate.getUTCDate() - 6); endDate = new Date(now);
+  }
+  return { startDate, endDate };
+}
+
+function getPreviousPeriod(range) {
+  const now = new Date();
+  let startDate, endDate;
+  if (range === 'weekly') {
+    endDate = new Date(now); endDate.setUTCDate(endDate.getUTCDate() - 7);
+    startDate = new Date(endDate); startDate.setUTCDate(startDate.getUTCDate() - 6);
+  } else if (range === 'monthly') {
+    startDate = new Date(now.getUTCFullYear(), now.getUTCMonth() - 1, 1);
+    endDate = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+  } else if (range === 'yearly') {
+    startDate = new Date(now.getUTCFullYear() - 1, 0, 1);
+    endDate = new Date(now.getUTCFullYear(), 0, 1);
+  } else {
+    endDate = new Date(now); endDate.setUTCDate(endDate.getUTCDate() - 7);
+    startDate = new Date(endDate); startDate.setUTCDate(startDate.getUTCDate() - 6);
+  }
+  return { startDate, endDate };
+}
+
+// ----- Helpers: Course rollups aggregation -----
+async function aggregateRollupsTotal(userId, rollupField, startDate, endDate) {
+  const institutions = await Institution.find({ owner: userId }).select('_id');
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) return 0;
+  const startKey = startDate.toISOString().split('T')[0];
+  const endKey = endDate.toISOString().split('T')[0];
+  const agg = await Course.aggregate([
+    { $match: { institution: { $in: ids } } },
+    { $unwind: { path: `$${rollupField}`, preserveNullAndEmptyArrays: false } },
+    { $match: { [`${rollupField}.day`]: { $gte: startKey, $lte: endKey } } },
+    { $group: { _id: null, total: { $sum: `$${rollupField}.count` } } }
+  ]);
+  return agg[0]?.total || 0;
+}
+
+// ----- Helpers: Customer-based leads -----
+async function countCustomersInRange(userId, startDate, endDate) {
+  const institutions = await Institution.find({ owner: userId }).select('_id');
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) return 0;
+  return Customer.countDocuments({ institution: { $in: ids }, createdAt: { $gte: startDate, $lte: endDate } });
+}
+
+async function countCustomersTotal(userId) {
+  const institutions = await Institution.find({ owner: userId }).select('_id');
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) return 0;
+  return Customer.countDocuments({ institution: { $in: ids } });
+}
+
+// ----- Unified owner metric summary -----
+// GET /summary/metrics/owner?metric=views|comparisons|leads
+exports.getOwnerMetricSummaryUnified = asyncHandler(async (req, res, next) => {
+  const raw = (req.query.metric || '').toString().toLowerCase();
+  const isViews = raw === 'views' || raw === 'courseviews';
+  const isComparisons = raw === 'comparisons' || raw === 'comparison';
+  const isLeads = raw === 'leads' || raw === 'leadsgenerated';
+
+  if (!isViews && !isComparisons && !isLeads) return next(new AppError('Invalid metric. Use metric=views|comparisons|leads', 400));
+
+  if (isLeads) {
+    const totalLeads = await countCustomersTotal(req.userId);
+    return res.status(200).json({ success: true, data: { totalLeads } });
+  }
+
+  // Fallback totals from Course
+  const institutions = await Institution.find({ owner: req.userId }).select('_id');
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) {
+    if (isViews) return res.status(200).json({ success: true, data: { totalViews: 0 } });
+    return res.status(200).json({ success: true, data: { totalComparisons: 0 } });
+  }
+  const groupField = isViews ? '$courseViews' : '$comparisons';
+  const agg = await Course.aggregate([
+    { $match: { institution: { $in: ids } } },
+    { $group: { _id: null, total: { $sum: { $ifNull: [ groupField, 0 ] } } } }
+  ]);
+  const total = agg[0]?.total || 0;
+  if (isViews) return res.status(200).json({ success: true, data: { totalViews: total } });
+  return res.status(200).json({ success: true, data: { totalComparisons: total } });
+});
+
+// ----- Unified owner metric by range -----
+// GET /summary/metrics/owner/range?metric=views|comparisons|leads&range=weekly|monthly|yearly
+exports.getOwnerMetricByRangeUnified = asyncHandler(async (req, res, next) => {
+  const raw = (req.query.metric || '').toString().toLowerCase();
+  const range = (req.query.range || 'weekly').toString().toLowerCase();
+  const isViews = raw === 'views' || raw === 'courseviews';
+  const isComparisons = raw === 'comparisons' || raw === 'comparison';
+  const isLeads = raw === 'leads' || raw === 'leadsgenerated';
+
+  if (!isViews && !isComparisons && !isLeads) return next(new AppError('Invalid metric. Use metric=views|comparisons|leads', 400));
+
+  if (isLeads) {
+    const { startDate: cs, endDate: ce } = getCurrentPeriod(range);
+    const { startDate: ps, endDate: pe } = getPreviousPeriod(range);
+    const current = await countCustomersInRange(req.userId, cs, ce);
+    const previous = await countCustomersInRange(req.userId, ps, pe);
+    const trend = previous > 0 ? ((current - previous) / previous) * 100 : 0;
+    return res.status(200).json({ success: true, data: { totalLeads: current, trend: { value: Math.abs(trend), isPositive: trend >= 0 } } });
+  }
+
+  const rollupField = isViews ? 'viewsRollups' : 'comparisonRollups';
+  const { startDate: cs, endDate: ce } = getCurrentPeriod(range);
+  const { startDate: ps, endDate: pe } = getPreviousPeriod(range);
+  const current = await aggregateRollupsTotal(req.userId, rollupField, cs, ce);
+  const previous = await aggregateRollupsTotal(req.userId, rollupField, ps, pe);
+  const trend = previous > 0 ? ((current - previous) / previous) * 100 : 0;
+  if (isViews) return res.status(200).json({ success: true, data: { totalViews: current, trend: { value: Math.abs(trend), isPositive: trend >= 0 } } });
+  return res.status(200).json({ success: true, data: { totalComparisons: current, trend: { value: Math.abs(trend), isPositive: trend >= 0 } } });
+});
+
+// ----- Series: monthly counts for a given year -----
+exports.getOwnerMetricSeriesUnified = asyncHandler(async (req, res, next) => {
+  const raw = (req.query.metric || '').toString().toLowerCase();
+  const year = parseInt(req.query.year, 10) || new Date().getUTCFullYear();
+  const isViews = raw === 'views' || raw === 'courseviews';
+  const isComparisons = raw === 'comparisons' || raw === 'comparison';
+  const isLeads = raw === 'leads' || raw === 'leadsgenerated';
+  if (!isViews && !isComparisons && !isLeads) {
+    return next(new AppError('Invalid metric. Use metric=views|comparisons|leads', 400));
+  }
+
+  const institutions = await Institution.find({ owner: req.userId }).select('_id');
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) {
+    return res.status(200).json({ success: true, data: { series: new Array(12).fill(0) } });
+  }
+
+  if (isLeads) {
+    const series = [];
+    for (let m = 0; m < 12; m++) {
+      const startDate = new Date(Date.UTC(year, m, 1));
+      const endDate = new Date(Date.UTC(year, m + 1, 0, 23, 59, 59, 999));
+      // inclusive end
+      const count = await Customer.countDocuments({
+        institution: { $in: ids },
+        createdAt: { $gte: startDate, $lte: endDate }
+      });
+      series.push(count);
+    }
+    return res.status(200).json({ success: true, data: { series } });
+  }
+
+  // Views or comparisons via rollups
+  const rollupField = isViews ? 'viewsRollups' : 'comparisonRollups';
+  const series = [];
+  for (let m = 0; m < 12; m++) {
+    const startDate = new Date(Date.UTC(year, m, 1));
+    const endDate = new Date(Date.UTC(year, m + 1, 0, 23, 59, 59, 999));
+    const startKey = startDate.toISOString().split('T')[0];
+    const endKey = endDate.toISOString().split('T')[0];
+    const agg = await Course.aggregate([
+      { $match: { institution: { $in: ids } } },
+      { $unwind: { path: `$${rollupField}`, preserveNullAndEmptyArrays: false } },
+      { $match: { [`${rollupField}.day`]: { $gte: startKey, $lte: endKey } } },
+      { $group: { _id: null, total: { $sum: `$${rollupField}.count` } } }
+    ]);
+    series.push(agg[0]?.total || 0);
+  }
+  return res.status(200).json({ success: true, data: { series } });
 });

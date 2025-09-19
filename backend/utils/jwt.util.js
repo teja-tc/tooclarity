@@ -10,7 +10,7 @@ const { saveRefreshToken } = require("./redis.util");
  * @returns {string} JWT token
  */
 const generateToken = (userId, username, type = "access", role, expiresIn) => {
-  if (!userId || !username) {
+    if (!userId || !username) {
     throw new Error("UserId and username are required for token generation");
   }
 
@@ -55,18 +55,6 @@ const decodeToken = (token) => {
 };
 
 /**
- * Extract access_token from cookies
- * @param {object} req - Express request
- * @returns {string|null}
- */
-const extractTokenFromCookies = (req) => {
-  if (req.cookies && req.cookies.access_token) {
-    return req.cookies.access_token;
-  }
-  return null;
-};
-
-/**
  * Extract user role from token
  * @param {string} token
  * @returns {string|null}
@@ -79,6 +67,21 @@ const extractUserRole = (token) => {
     return null;
   }
 };
+
+
+/**
+ * Extract access_token from cookies
+ * @param {object} req - Express request
+ * @returns {string|null}
+ */
+const extractTokenFromCookies = (req) => {
+  if (req.cookies && req.cookies.access_token) {
+    return req.cookies.access_token;
+  }
+  return null;
+};
+
+
 
 /**
  * Extract username from a cookie (like Spring version)
