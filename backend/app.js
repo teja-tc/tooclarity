@@ -72,11 +72,14 @@ app.use("/api/v1/", profileRoutes)
 
 app.use("/api/v1/enquiries", enquiriesRoutes);
 
+
 app.use('/api/v1/institutions', requireInstituteAdmin, institutionRoutes);
 
 
 app.use('/api/v1/institutions/:institutionId/branches', requireInstituteAdmin, branchRoutes);
 app.use('/api/v1/institutions/:institutionId/courses', requireInstituteAdmin, courseRoutes);
+
+app.use('/api/v1/notifications', notificationRoutes);
 
 app.use('/api/v1/notifications', notificationRoutes);
 

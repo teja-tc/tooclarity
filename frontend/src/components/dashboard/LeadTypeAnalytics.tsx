@@ -140,7 +140,8 @@ const HalfDonut: React.FC<HalfDonutProps> = ({ values, colors, centerText, subTe
   return (
     <div className="dark:text-gray-100 flex flex-col items-center w-full">
       <div className="relative w-full max-w-sm ">
-        <svg width="100%" height="130" viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
+        <svg width="100%" height="auto" viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
+
           {/* Colored segments */}
           {segments.map((segment, index) => (
             <path
