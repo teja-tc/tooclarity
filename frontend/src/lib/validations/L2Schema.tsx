@@ -173,14 +173,16 @@ export const TuitionCenterSchema = Joi.object({
     "number.min": "Total Seats cannot be negative.",
     "any.required": "Total Seats is required.",
   }),
-
-  // ✅ Validation for available seats <= total seats is re-added
-  availableSeats: Joi.number().min(0).required().messages({
-    "number.base": "Value must be a number.",
-    "number.min": "Avaible Seats cannot be negative.",
-    "any.required": "Avaible Seats is required.",
-  }),
-  
+  availableSeats: Joi.number()
+    .min(0)
+    .required()
+    .max(Joi.ref('totalSeats')) // Ensures available seats is not greater than total seats
+    .messages({
+      "number.base": "Value must be a number.",
+      "number.min": "Available Seats cannot be negative.", // Fixed typo
+      "any.required": "Available Seats is required.",     // Fixed typo
+      "number.max": "Available seats cannot be greater than total seats.", // New error message
+    }), 
   operationalDays: Joi.array().items(Joi.string()).min(1).required().messages({
       // ✅ Added custom messages for operational days
       "array.min": "At least one operational day must be selected.",
