@@ -322,4 +322,3 @@ export const UndergraduateSchema = Joi.object({
       "string.empty": "Bus Service selection is required",
     }),
 });
-
