@@ -221,104 +221,125 @@ export const CoachingSchema = Joi.object({
     }),
 });
 
+
 export const UndergraduateSchema = Joi.object({
-  ownershipType: Joi.string()
-    .valid("Government", "Private", "Public-Private Partnership")
-    .required()
-    .messages({
-      "any.only": "Invalid ownership type.",
-      "string.empty": "Ownership Type is required",
-    }),
-  collegeCategory: Joi.string()
-    .valid("Engineering", "Medical", "Arts & Science", "Management", "Law")
-    .required()
-    .messages({
-      "any.only": "Invalid college category.",
-      "string.empty": "College Category is required",
-    }),
-  affiliationType: Joi.string()
-    .trim()
-    .max(100)
-    .required()
-    .messages({
-      "string.empty": "Affiliation type is required.",
-      "string.max": "Affiliation type must not exceed 100 characters.",
-    }),
-  placementDrives: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for Placement Drives",
-      "string.empty": "Placement Drives selection is required",
-    }),
-  mockInterviews: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for Mock Interviews",
-      "string.empty": "Mock Interviews selection is required",
-    }),
-  resumeBuilding: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for Resume Building",
-      "string.empty": "Resume Building selection is required",
-    }),
-  linkedinOptimization: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for LinkedIn Optimization",
-      "string.empty": "LinkedIn Optimization selection is required",
-    }),
-  exclusiveJobPortal: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for Exclusive Job Portal access",
-      "string.empty": "Exclusive Job Portal selection is required",
-    }),
-  library: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for Library",
-      "string.empty": "Library selection is required",
-    }),
-  hostelFacility: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for Hostel Facility",
-      "string.empty": "Hostel Facility selection is required",
-    }),
-  entranceExam: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for Entrance Exam",
-      "string.empty": "Entrance Exam selection is required",
-    }),
-  managementQuota: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for Management Quota",
-      "string.empty": "Management Quota selection is required",
-    }),
-  playground: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for Playground",
-      "string.empty": "Playground selection is required",
-    }),
-  busService: Joi.string()
-    .valid("Yes", "No")
-    .required()
-    .messages({
-      "any.only": "Please select Yes or No for Bus Service",
-      "string.empty": "Bus Service selection is required",
-    }),
+    ownershipType: Joi.string()
+        // ✅ Updated to match your frontend options
+        .valid("Government", "Private", "Semi-Government", "Aided", "Unaided")
+        .required()
+        .label("Ownership Type")
+        .messages({
+            "any.only": "Invalid Ownership Type.",
+            "string.empty": "Ownership Type is required",
+        }),
+
+    collegeCategory: Joi.string()
+        // ✅ Updated to match your frontend options
+        .valid("Engineering", "Medical", "Arts & Science", "Commerce", "Management", "Law", "Other")
+        .required()
+        .label("College Category")
+        .messages({
+            "any.only": "Invalid College Category.",
+            "string.empty": "College Category is required",
+        }),
+        
+    affiliationType: Joi.string()
+        // ✅ Updated to match your frontend options
+        .valid("University", "Autonomous", "Affiliated", "Deemed University", "Other")
+        .required()
+        .label("Affiliation Type")
+        .messages({
+            "any.only": "Invalid Affiliation Type.",
+            "string.empty": "Affiliation Type is required.",
+        }),
+
+    // --- All "Yes/No" fields remain the same ---
+    placementDrives: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("Placement Drives")
+        .messages({
+            "any.only": "Please select Yes or No for Placement Drives",
+            "string.empty": "Placement Drives is required",
+        }),
+    mockInterviews: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("Mock Interviews")
+        .messages({
+            "any.only": "Please select Yes or No for Mock Interviews",
+            "string.empty": "Mock Interviews is required",
+        }),
+    resumeBuilding: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("Resume Building")
+        .messages({
+            "any.only": "Please select Yes or No for Resume Building",
+            "string.empty": "Resume Building is required",
+        }),
+    linkedinOptimization: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("LinkedIn Optimization")
+        .messages({
+            "any.only": "Please select Yes or No for LinkedIn Optimization",
+            "string.empty": "LinkedIn Optimization is required",
+        }),
+    exclusiveJobPortal: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("Exclusive Job Portal")
+        .messages({
+            "any.only": "Please select Yes or No for Exclusive Job Portal access",
+            "string.empty": "Exclusive Job Portal is required",
+        }),
+    library: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("Library")
+        .messages({
+            "any.only": "Please select Yes or No for Library",
+            "string.empty": "Library is required",
+        }),
+    hostelFacility: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("Hostel Facility")
+        .messages({
+            "any.only": "Please select Yes or No for Hostel Facility",
+            "string.empty": "Hostel Facility is required",
+        }),
+    entranceExam: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("Entrance Exam")
+        .messages({
+            "any.only": "Please select Yes or No for Entrance Exam",
+            "string.empty": "Entrance Exam is required",
+        }),
+    managementQuota: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("Management Quota")
+        .messages({
+            "any.only": "Please select Yes or No for Management Quota",
+            "string.empty": "Management Quota is required",
+        }),
+    playground: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("Playground")
+        .messages({
+            "any.only": "Please select Yes or No for Playground",
+            "string.empty": "Playground is required",
+        }),
+    busService: Joi.string()
+        .valid("Yes", "No")
+        .required()
+        .label("Bus Service")
+        .messages({
+            "any.only": "Please select Yes or No for Bus Service",
+            "string.empty": "Bus Service is required",
+        }),
 });

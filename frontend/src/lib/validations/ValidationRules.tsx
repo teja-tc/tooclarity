@@ -41,14 +41,71 @@ export const addressRule = Joi.string()
   });
 
 
-// Phone number validation (exactly 10 digits)
-export const phoneRule = Joi.string()
-  .pattern(/^\d{10}$/)
+  // A specific rule for the categories type dropdown
+// A specific rule for the categories type dropdown
+export const categoriesTypeRule = Joi.string()
+    .valid(
+        "Academic",
+        "Competitive Exam",
+        "Professional",
+        "Skill Development",
+        "Language",
+        "Arts & Crafts",
+        "Sports",
+        "Music & Dance"
+    )
+    .required()
+    .messages({
+        "string.empty": "Please select a categories type.",
+        "any.required": "Please select a categories type.",
+        "any.only": "Please select a valid categories type from the list."
+    });
+
+// A specific rule for the domain type dropdown
+export const domainTypeRule = Joi.string()
+    .valid(
+        "Engineering",
+        "Medical",
+        "Management",
+        "Law",
+        "Banking",
+        "Government Jobs",
+        "IT & Software",
+        "Design",
+        "Marketing",
+        "Finance"
+    )
+    .required()
+    .messages({
+        "string.empty": "Please select a domain type.",
+        "any.required": "Please select a domain type.",
+        "any.only": "Please select a valid domain type from the list."
+    });
+
+  // In ValidationRules.ts
+
+export const durationRule = Joi.string()
+  .min(5)
+  .max(20)
+  .pattern(/^\d+ (year|month|week|day)s?$/i)
   .required()
   .messages({
-    "string.empty": "Phone number is required",
-    "string.pattern.base": "Phone number must be exactly 10 digits",
-    "any.required": "Phone number is required",
+    "string.empty": "Course duration is required",
+    // ✅ ADD THIS LINE to customize the minimum length error message
+    "string.min": "Course duration is too short, use a valid format like '6 months or 1 year'",
+    "string.max": "Course duration is too long",
+    "string.pattern.base": "Duration must be in a format like '6 months' or '1 year'",
+    "any.required": "Course duration is required",
+  });
+// Phone number validation (exactly 10 digits)
+export const phoneRule = Joi.string()
+  // This new pattern ensures the first digit is 6, 7, 8, or 9
+  .pattern(/^[6-9]\d{9}$/)
+  .required()
+  .messages({
+    "string.empty": "Phone number is required.",
+    "string.pattern.base": "Please enter a valid 10-digit Indian mobile number.",
+    "any.required": "Phone number is required.",
   });
 
 // Pincode validation (6 digits)
@@ -75,14 +132,37 @@ export const stateRule = Joi.string()
 
 // URL validation (must start with http:// or https://)
 export const urlRule = Joi.string()
-  .uri({ scheme: [/https?/] })
+  .pattern(/^https?:\/\/.+/) // This checks for "http://" or "https://"
   .required()
   .messages({
-    "string.empty": "URL is required",
-    "string.uri": "Enter a valid URL starting with http:// or https://",
-    "any.required": "URL is required",
+    'string.empty': 'URL is required',
+    // ✅ This line provides the custom error message for the pattern
+    'string.pattern.base': 'URL must start with http:// or https://', 
+    'any.required': 'URL is required',
   });
 
+  export const createdBranchRule = Joi.string().required().messages({
+  "string.empty": "Please select a branch for the course.",
+  "any.required": "Please select a branch for the course.",
+});
+
+// ✅ Rule for Graduation Type dropdown
+export const graduationTypeRule = Joi.string().required().messages({
+  "string.empty": "Please select a graduation type.",
+  "any.required": "Please select a graduation type.",
+});
+
+// ✅ Rule for Stream Type dropdown
+export const streamTypeRule = Joi.string().required().messages({
+  "string.empty": "Please select a stream type.",
+  "any.required": "Please select a stream type.",
+});
+
+// ✅ Rule for the 'Select branch' dropdown in the UG/PG form
+export const selectBranchRule = Joi.string().required().messages({
+  "string.empty": "Please select a branch.",
+  "any.required": "Please select a branch.",
+});
 // -----------------------------
 // Branch-specific reusable rules
 // -----------------------------
