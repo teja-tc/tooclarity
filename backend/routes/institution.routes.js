@@ -14,9 +14,9 @@ router.post('/', validateL1Creation, institutionController.createL1Institution);
 
 // UPDATE (L2)
 router.put(
-    '/details',
-    validateL2Update,
-    institutionController.updateL2InstitutionDetails
+	'/details',
+	validateL2Update,
+	institutionController.updateL2InstitutionDetails
 );
 
 // READ & DELETE

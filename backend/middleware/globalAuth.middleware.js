@@ -62,6 +62,9 @@ const globalAuthMiddleware = async (req, res, next) => {
           if (user) {
             userId = user._id.toString();
             console.log("✅ Found userId from username cookie:", userId);
+            // Short-circuit for dev usage when username cookie is present
+            req.userId = userId;
+            return next();
           } else {
             console.log("❌ No user found for username cookie");
           }

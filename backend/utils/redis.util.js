@@ -108,6 +108,7 @@ class RedisUtil {
       console.log("key not found")
     }
   }
+  
 }
 
 module.exports = RedisUtil;

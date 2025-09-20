@@ -142,7 +142,16 @@ exports.updateL2InstitutionDetails = asyncHandler(async (req, res, next) => {
  * @access  Private
  */
 exports.getMyInstitution = asyncHandler(async (req, res, next) => {
-  const institution = await Institution.findById(req.user.institution);
+
+  // Try from user document, else by owner
+  const user = await InstituteAdmin.findById(req.userId).select("institution");
+  let institution = null;
+  if (user?.institution) {
+    institution = await Institution.findById(user.institution);
+  } else {
+    institution = await Institution.findOne({ owner: req.userId });
+  }
+
   if (!institution) {
     return res.status(404).json({
       status: "fail",
@@ -150,8 +159,8 @@ exports.getMyInstitution = asyncHandler(async (req, res, next) => {
     });
   }
   res.status(200).json({
-    status: "success",
-    data: { institution },
+    success: true,
+    data: institution,
   });
 });
 
