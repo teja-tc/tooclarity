@@ -6,6 +6,7 @@ const {
   deleteRefreshToken,
 } = require("../utils/redis.util");
 const User = require("../models/InstituteAdmin"); // 👈 import your User model
+const { decode } = require("jsonwebtoken");
 
 const globalAuthMiddleware = async (req, res, next) => {
   try {
@@ -35,6 +36,7 @@ const globalAuthMiddleware = async (req, res, next) => {
         console.log("✅ Access token valid:", decoded);
         refreshAccessTokenIfNeeded(req, res);
         req.userId = decoded.id;
+        req.userRole=decoded.role
         return next(); // valid access token
       } catch (err) {
         if (err.name !== "TokenExpiredError") {
@@ -91,6 +93,7 @@ const globalAuthMiddleware = async (req, res, next) => {
     try {
       decodedRefresh = verifyToken(refreshToken);
       userId = decodedRefresh.id;
+      req.userRole=decoded.role
       req.userId = userId;
       console.log("userId set to req:", userId);
       await refreshRefreshTokenIfNeeded(userId, usernameCookie, refreshToken);
@@ -109,6 +112,7 @@ const globalAuthMiddleware = async (req, res, next) => {
     await refreshRefreshTokenIfNeeded(userId, usernameCookie, refreshToken);
 
     req.userId = userId;
+    req.userRole=decoded.role
     return next();
   } catch (err) {
     console.error("🔥 Auth Middleware Error:", err);

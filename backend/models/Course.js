@@ -80,10 +80,11 @@ const courseSchema = new mongoose.Schema(
     totalSeats: { type: String },
     availableSeats: { type: String },
     pricePerSeat: { type: String },
-    hasWifi: { type: Boolean },
-    hasChargingPoints: { type: Boolean },
-    hasAC: { type: Boolean },
-    hasPersonalLocker: { type: Boolean },
+    hasWifi: { type: String, enum: ["yes", "no"] }, // ✅ Changed to String to match form
+    hasChargingPoints: { type: String, enum: ["yes", "no"] }, // ✅ Changed to String
+    hasAC: { type: String, enum: ["yes", "no"] },       // ✅ Changed to String
+    hasPersonalLocker: { type: String, enum: ["yes", "no"] }, // ✅ Changed to String
+
 
     // Additional fields for Tuition Centers
     tuitionType: { type: String },

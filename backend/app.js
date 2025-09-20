@@ -35,16 +35,6 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(cookieParser());
 
-// The limiter middleware has been commented out as requested.
-// const limiter = rateLimit({
-//     windowMs: 15 * 60 * 1000,
-//     max: 100,
-//     standardHeaders: true,
-//     legacyHeaders: false,
-//     message: 'Too many requests from this IP, please try again after 15 minutes',
-// });
-// app.use('/api', limiter);
-
 app.use(express.json({ limit: '10kb' }));
 const requireInstituteAdmin = [
     globalAuthMiddleware,
@@ -84,6 +74,19 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 
 app.get('/health', (req, res) => res.status(200).send('OK'));
+
+
+app.use((err, req, res, next) => {
+  console.error("Global error handler:", err);
+
+  const statusCode = err.statusCode || err.status || 500;
+  const message = err.message || "Internal Server Error";
+
+  res.status(Number(statusCode)).json({
+    status: "error",
+    message,
+  });
+});
 
 app.use((err, req, res, next) => {
     req.log.error(err, 'An unhandled error occured');
