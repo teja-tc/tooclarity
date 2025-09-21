@@ -12,6 +12,7 @@ import { faSun,faSearch, faTimes, faCheck } from "@fortawesome/free-solid-svg-ic
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { notificationsAPI, authAPI } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
 
 interface TopbarProps {
   userName?: string;
@@ -42,9 +43,13 @@ const Topbar: React.FC<TopbarProps> = ({
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
 
   const [allNotifications, setAllNotifications] = useState<NotificationItem[]>([]);
   const [unreadTop, setUnreadTop] = useState<NotificationItem[]>([]);
+
+  const hideTimerRef = useRef<number | null>(null);
 
   const timeAgo = (ts: number): string => {
     const diff = Date.now() - ts;
@@ -77,29 +82,18 @@ const Topbar: React.FC<TopbarProps> = ({
   const loadFromStorage = () => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed: NotificationItem[] = raw ? JSON.parse(raw) : [];
-      const sorted = parsed.slice().sort((a, b) => (b.time || 0) - (a.time || 0));
+      const items: NotificationItem[] = raw ? JSON.parse(raw) : [];
+      const sorted = items.sort((a, b) => b.time - a.time);
       const unread = sorted.filter(n => !n.read);
       setAllNotifications(sorted);
       setNotificationCount(unread.length);
       setUnreadTop(unread.slice(0, 3));
-    } catch {
-      // ignore
-    }
-  };
-
-  const saveToStorage = (items: NotificationItem[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
     } catch {}
   };
 
-  // Dropdown hover control
-  const [showDropdown, setShowDropdown] = useState(false);
-  const hideTimerRef = useRef<number | null>(null);
   const clearHideTimer = () => {
-    if (hideTimerRef.current) {
-      window.clearTimeout(hideTimerRef.current);
+    if (hideTimerRef.current !== null) {
+      clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
     }
   };
@@ -115,6 +109,7 @@ const Topbar: React.FC<TopbarProps> = ({
         if (role && role.toString().toUpperCase().includes('ADMIN')) {
           scopeParams.scope = 'admin';
           scopeParams.ownerId = id;
+          setOwnerId(id);
         }
       } catch {}
       const res = await notificationsAPI.list({ ...scopeParams, page: 1, limit: 10 });
@@ -136,12 +131,82 @@ const Topbar: React.FC<TopbarProps> = ({
     } catch {}
   };
 
+  // Setup Socket.IO for real-time notifications
+  useEffect(() => {
+    let socket: any;
+    
+    const setupSocket = async () => {
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
+        let origin = apiBase.replace('/api','');
+        if (!origin) origin = typeof window !== 'undefined' ? window.location.origin : '';
+        
+        socket = await getSocket(origin);
+        
+        socket.on('connect', async () => {
+          // Join owner room for notifications
+          if (ownerId) {
+            socket.emit('joinOwner', ownerId);
+          }
+        });
+
+        // Listen for new notifications
+        socket.on('notificationCreated', (data: { notification: any }) => {
+          const newNotification: NotificationItem = {
+            id: data.notification._id,
+            title: data.notification.title,
+            description: data.notification.description,
+            time: data.notification.createdAt ? new Date(data.notification.createdAt).getTime() : Date.now(),
+            read: false,
+            category: data.notification.category,
+          };
+          
+          setAllNotifications(prev => {
+            const updated = [newNotification, ...prev].sort((a, b) => b.time - a.time);
+            return updated;
+          });
+          
+          setNotificationCount(prev => prev + 1);
+          setUnreadTop(prev => {
+            const updated = [newNotification, ...prev].slice(0, 3);
+            return updated;
+          });
+        });
+
+        // Listen for notification updates (mark as read)
+        socket.on('notificationUpdated', (data: { notificationId: string, read: boolean }) => {
+          setAllNotifications(prev => 
+            prev.map(n => n.id === data.notificationId ? { ...n, read: data.read } : n)
+          );
+          
+          if (data.read) {
+            setNotificationCount(prev => Math.max(0, prev - 1));
+            setUnreadTop(prev => prev.filter(n => n.id !== data.notificationId));
+          }
+        });
+
+      } catch (error) {
+        console.error('Socket setup error:', error);
+      }
+    };
+
+    setupSocket();
+
+    return () => {
+      if (socket) {
+        socket.off('notificationCreated');
+        socket.off('notificationUpdated');
+      }
+    };
+  }, [ownerId]);
+
   const openDropdown = () => {
     clearHideTimer();
     setShowDropdown(true);
     // refresh from backend when opening
     loadFromBackend();
   };
+  
   const closeDropdownSoon = () => {
     clearHideTimer();
     hideTimerRef.current = window.setTimeout(() => {
@@ -149,22 +214,22 @@ const Topbar: React.FC<TopbarProps> = ({
       hideTimerRef.current = null;
     }, 120);
   };
+  
   useEffect(() => () => clearHideTimer(), []);
 
   // Initialize theme
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("theme");
       const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const shouldDark = stored ? stored === "dark" : prefersDark;
-      setIsDarkMode(shouldDark);
-      const root = document.documentElement;
-      if (shouldDark) {
-        root.classList.add("dark");
-      } else {
-        root.classList.remove("dark");
-      }
+      setIsDarkMode(prefersDark);
     } catch {}
+  }, []);
+
+  // Load notifications on mount
+  useEffect(() => {
+    seedIfEmpty();
+    loadFromStorage();
+    loadFromBackend();
   }, []);
 
   const topbarVariants = {
@@ -207,7 +272,7 @@ const Topbar: React.FC<TopbarProps> = ({
   const markOneUnreadAsRead = (id: string) => {
     const updated = allNotifications.map(n => n.id === id ? { ...n, read: true } : n);
     setAllNotifications(updated);
-    saveToStorage(updated);
+    // saveToStorage(updated); // Socket.IO handles updates
     const unread = updated.filter(n => !n.read).sort((a, b) => (b.time || 0) - (a.time || 0));
     setNotificationCount(unread.length);
     setUnreadTop(unread.slice(0, 3));
