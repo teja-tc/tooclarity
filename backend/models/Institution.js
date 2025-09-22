@@ -67,6 +67,22 @@ const institutionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+
+    // Optional aggregated totals and daily rollups for enquiry types
+    callbackLeadsTotal: { type: Number, default: 0 },
+    demoLeadsTotal: { type: Number, default: 0 },
+    callbackRollups: [
+      {
+        day: { type: String, trim: true }, // YYYY-MM-DD
+        count: { type: Number, default: 0 },
+      }
+    ],
+    demoRollups: [
+      {
+        day: { type: String, trim: true }, // YYYY-MM-DD
+        count: { type: Number, default: 0 },
+      }
+    ],
   },
   baseOptions
 );
@@ -144,7 +160,7 @@ const CoachingCenter = Institution.discriminator(
 );
 
 
-const schoolAndIntermediateSchema = new mongoose.Schema({
+const schoolSchema = new mongoose.Schema({
   schoolType: {
     type: String,
     required: true,
@@ -180,14 +196,70 @@ const schoolAndIntermediateSchema = new mongoose.Schema({
   busService: { type: Boolean, required: true, default: false },
 });
 
-const School = Institution.discriminator(
-  "School's",
-  schoolAndIntermediateSchema
-);
+const intermediateCollegeSchema = new mongoose.Schema({
+  collegeType: {
+    type: String,
+    required: true,
+    enum: [
+      "Junior College",
+      "Senior College",
+      "Senior Secondary",
+      "Higher Secondary",
+      "Intermediate",
+      "Pre-University",
+    ],
+    default: "",
+  },
+  collegeCategory: {
+    type: String,
+    required: true,
+    enum: [
+      "Private",
+      "Government",
+      "Semi-Government",
+      "Aided",
+      "Unaided",
+      "Public",
+      "Government Aided",
+      "Autonomous",
+    ],
+    default: "",
+  },
+  curriculumType: {
+    type: String,
+    required: true,
+    enum: ["State Board", "CBSE", "ICSE", "IB", "IGCSE", "Cambridge", "Other"],
+    default: "",
+  },
+  operationalDays: {
+    type: [String],
+    required: true,
+    enum: ["Mon", "Tues", "Wed", "Thur", "Fri", "Sat", "Sun"],
+    default: [],
+  },
+  otherActivities: {
+    type: String,
+    trim: true,
+    maxlength: 500,
+    default: "",
+  },
+  hostelFacility: { type: Boolean, required: true, default: false },
+  playground: { type: Boolean, required: true, default: false },
+  busService: { type: Boolean, required: true, default: false },
+});
+
+// 👇 Use this schema instead
 const IntermediateCollege = Institution.discriminator(
   "Intermediate college(K12)",
-  schoolAndIntermediateSchema
+  intermediateCollegeSchema
 );
+
+
+const School = Institution.discriminator(
+  "School's",
+  schoolSchema
+);
+
 
 const ugPgUniversitySchema = new mongoose.Schema({
   ownershipType: {

@@ -1,316 +1,327 @@
 "use client";
 
-import { useAuth, withAuth } from "../../lib/auth-context";
+
+import React from "react";
+import { useRouter } from "next/navigation";
+import { withAuth } from "../../lib/auth-context";
 import { motion } from "framer-motion";
 import { useState, useEffect, useCallback } from "react";
-import Sidebar from "@/components/dashboard/sidebar";
-import Topbar from "@/components/dashboard/Topbar";
-import SettingsPage from "@/components/dashboard/settings";
-import SubscriptionGauge from "@/components/dashboard/subscription";
+import DashboardStats from "@/components/dashboard/DashboardStats";
+import AdCard from "@/components/dashboard/AdCard";
+import CustomerList, { CustomerItem } from "@/components/dashboard/CustomerList";
+import CourseReachChart from "@/components/dashboard/CourseReachChart";
+import { getMyInstitution, getInstitutionBranches, getInstitutionCourses } from "@/lib/api";
+import { authAPI, metricsAPI, enquiriesAPI } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
 
-// import DashboardStats from "@/components/dashboard/DashboardStats";
-// import AdCard from "@/components/dashboard/AdCard";
-// import CustomerList, { CustomerItem } from "@/components/dashboard/CustomerList";
-// import SubscriptionGauge from "@/components/dashboard/SubscriptionGauge";
-// import CourseReachChart from "@/components/dashboard/CourseReachChart";
-// import { getMyInstitution, getInstitutionBranches, getInstitutionCourses, authAPI } from "@/lib/api";
-
-// Types for dynamic data
 interface DashboardStatsData {
-  courseViews: number;
-  courseComparisons: number;
-  contactRequests: number;
-  courseViewsTrend: { value: number; isPositive: boolean };
-  courseComparisonsTrend: { value: number; isPositive: boolean };
-  contactRequestsTrend: { value: number; isPositive: boolean };
+	courseViews: number;
+	courseComparisons: number;
+	contactRequests: number;
+	courseViewsTrend: { value: number; isPositive: boolean };
+	courseComparisonsTrend: { value: number; isPositive: boolean };
+	contactRequestsTrend: { value: number; isPositive: boolean };
 }
 
 interface FilterState {
-  course: string;
-  timeRange: string;
+	course: string;
+	timeRange: 'weekly' | 'monthly' | 'yearly';
 }
 
-// Animation variants
 const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      duration: 0.3
-    }
-  }
+	hidden: { opacity: 0 },
+	visible: {
+		opacity: 1,
+		transition: { staggerChildren: 0.1, duration: 0.3 }
+	}
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.5 }
-  }
+	hidden: { opacity: 0, y: 20 },
+	visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 };
 
 function DashboardPage() {
-  const { user, logout } = useAuth();
-  
-  // Dynamic state management
-  const [stats, setStats] = useState<DashboardStatsData>({
-    courseViews: 0,
-    courseComparisons: 0,
-    contactRequests: 0,
-    courseViewsTrend: { value: 0, isPositive: true },
-    courseComparisonsTrend: { value: 0, isPositive: true },
-    contactRequestsTrend: { value: 0, isPositive: true }
-  });
+	const [stats, setStats] = useState<DashboardStatsData>({
+		courseViews: 0,
+		courseComparisons: 0,
+		contactRequests: 0,
+		courseViewsTrend: { value: 0, isPositive: true },
+		courseComparisonsTrend: { value: 0, isPositive: true },
+		contactRequestsTrend: { value: 0, isPositive: true }
+	});
+	const [filters, setFilters] = useState<FilterState>({ course: "All Courses", timeRange: 'weekly' });
+	const [customers, setCustomers] = useState<CustomerItem[]>([]);
+	const [isStatsLoading, setIsStatsLoading] = useState(true);
+	const [isListLoading, setIsListLoading] = useState(true);
+	const [institutionId, setInstitutionId] = useState<string | null>(null);
+	const [ownerId, setOwnerId] = useState<string | null>(null);
+	const [chartValues, setChartValues] = useState<number[] | null>(null);
+	const [baselineCourseViews, setBaselineCourseViews] = useState<number>(0);
+	const [rangeBaseline, setRangeBaseline] = useState<number>(0);
 
-  const [filters, setFilters] = useState<FilterState>({
-    course: "All Courses",
-    timeRange: "Weekly"
-  });
+	const generateCustomers = useCallback(() => {
+		const names = [
+			"Raghavendar Reddy", "Sarah Johnson", "Michael Chen", "Emily Davis",
+			"David Wilson", "Lisa Anderson", "James Brown", "Maria Garcia",
+			"Robert Taylor", "Jennifer Martinez", "William Jones", "Ashley White"
+		];
+		const statuses = [
+			"Requested for callback", "Requested for demo",
+		];
+		const programs = [
+			"BTech Computer Science", "MBA Marketing", "BSc Data Science", "BCom Finance",
+			"BTech Mechanical", "MSc AI", "BA Economics"
+		];
+		const newCustomers: CustomerItem[] = Array.from({ length: 4 }, (_, i) => ({
+			date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB'),
+			name: names[Math.floor(Math.random() * names.length)],
+			id: (181200 + i).toString(),
+			status: statuses[Math.floor(Math.random() * statuses.length)],
+			programInterests: [programs[Math.floor(Math.random() * programs.length)]]
+		}));
+		setCustomers(newCustomers);
+	}, []);
 
-  // const [customers, setCustomers] = useState<CustomerItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [subscriptionDays, setSubscriptionDays] = useState(0);
-  const [activeSidebarItem, setActiveSidebarItem] = useState(0);
-  const [institutionId, setInstitutionId] = useState<string | null>(null);
-  const [chartValues, setChartValues] = useState<number[] | null>(null);
-  const [profileName, setProfileName] = useState<string | undefined>(undefined);
-  const [institutionCreatedAt, setInstitutionCreatedAt] = useState<string | null>(null);
+	// Fetch KPI stats only (views, comparisons, leads) for a given range
+	const fetchDataWithTrends = useCallback(async (range: 'weekly' | 'monthly' | 'yearly') => {
+		try {
+			const [viewsData, comparisonsData, leadsData] = await Promise.all([
+				metricsAPI.getOwnerByRange('views', range),
+				metricsAPI.getOwnerByRange('comparisons', range),
+				metricsAPI.getOwnerByRange('leads', range)
+			]);
 
-  // Poll backend to keep subscriptionDays in sync (real-time) without UI changes
-  useEffect(() => {
-    if (!institutionId) return;
-    const interval = setInterval(async () => {
-      try {
-        // Recompute days left from institution createdAt to avoid placeholder logic
-        if (institutionCreatedAt) {
-          const created = new Date(institutionCreatedAt);
-          const now = new Date();
-          const diffMs = now.getTime() - created.getTime();
-          const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-          const daysLeftCalc = Math.max(0, 30 - diffDays);
-          setSubscriptionDays(daysLeftCalc);
-        } else {
-          // Fallback: use courses length if createdAt not known
-          // const courses = await getInstitutionCourses(institutionId);
-          // if (Array.isArray(courses)) {
-          //   setSubscriptionDays(Math.max(0, 30 - (courses.length % 30)));
-          // }
-        }
-      } catch {}
-    }, 10000); // every 10s
-    return () => clearInterval(interval);
-  }, [institutionId, institutionCreatedAt]);
+			if ((viewsData as any)?.success) {
+				const data = (viewsData as any).data;
+				setStats(prev => ({ 
+					...prev, 
+					courseViews: data.totalViews || 0,
+					courseViewsTrend: data.trend || { value: 0, isPositive: true }
+				}));
+			}
+			
+			if ((comparisonsData as any)?.success) {
+				const data = (comparisonsData as any).data;
+				setStats(prev => ({ 
+					...prev, 
+					courseComparisons: data.totalComparisons || 0,
+					courseComparisonsTrend: data.trend || { value: 0, isPositive: true }
+				}));
+			}
+			
+			if ((leadsData as any)?.success) {
+				const data = (leadsData as any).data;
+				setStats(prev => ({ 
+					...prev, 
+					contactRequests: data.totalLeads || 0,
+					contactRequestsTrend: data.trend || { value: 0, isPositive: true }
+				}));
+			}
+		} catch (err) {
+			console.error('❌ Failed to fetch trends data:', err);
+		}
+	}, []);
 
-  // Generate fallback customer data (will be replaced by branches once loaded)
-  const generateCustomers = useCallback(() => {
-    const names = [
-      "Raghavendar Reddy", "Sarah Johnson", "Michael Chen", "Emily Davis",
-      "David Wilson", "Lisa Anderson", "James Brown", "Maria Garcia",
-      "Robert Taylor", "Jennifer Martinez", "William Jones", "Ashley White"
-    ];
-    const statuses = [
-      "Requested for call back", "Requested for demo", "Interested in pricing",
-      "Follow up needed", "Hot lead", "Qualified prospect", "Demo scheduled"
-    ];
-    // const newCustomers: CustomerItem[] = Array.from({ length: 8 }, (_, i) => ({
-    //   date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB'),
-    //   name: names[Math.floor(Math.random() * names.length)],
-    //   id: (181200 + i).toString(),
-    //   status: statuses[Math.floor(Math.random() * statuses.length)]
-    // }));
-    // setCustomers(newCustomers);
-  }, []);
+	// Fetch recent enquiries and chart (independent of range)
+	const fetchRecentAndChart = useCallback(async () => {
+		try {
+			const [recentEnquiries, seriesRes] = await Promise.all([
+				enquiriesAPI.getRecentEnquiries(),
+				metricsAPI.getOwnerSeries('views', new Date().getFullYear())
+			]);
 
-  // Fetch institution, profile and related data
-  // useEffect(() => {
-  //   let mounted = true;
-  //   async function fetchData() {
-  //     try {
-  //       // Profile for Topbar
-  //       const profile = await authAPI.getProfile();
-  //       if ((profile as any)?.data?.name && mounted) {
-  //         setProfileName((profile as any).data.name);
-  //       }
+			if ((recentEnquiries as any)?.success && Array.isArray((recentEnquiries as any).data?.enquiries)) {
+				const enquiries = (recentEnquiries as any).data.enquiries;
+				const mapped: CustomerItem[] = enquiries.map((enquiry: any, idx: number) => ({
+					date: new Date(enquiry.createdAt || Date.now() - idx * 86400000).toLocaleDateString('en-GB'),
+					name: enquiry.customerName || `Customer ${idx + 1}`,
+					id: String(enquiry._id || idx),
+					status: enquiry.enquiryType || "Requested for callback",
+					programInterests: [enquiry.programInterest || "General Interest"]
+				}));
+				setCustomers(mapped.slice(0, 4));
+			}
 
-  //       const inst = await getMyInstitution();
-  //       if (!mounted || !inst?._id) {
-  //         setIsLoading(false);
-  //         return;
-  //       }
-  //       setInstitutionId(inst._id);
-  //       // Capture createdAt for production-safe subscription calc
-  //       if (inst?.createdAt) setInstitutionCreatedAt(inst.createdAt);
+			if ((seriesRes as any)?.success && Array.isArray((seriesRes as any).data?.series)) {
+				const series = (seriesRes as any).data.series as number[];
+				const arr = new Array(12).fill(0);
+				series.forEach((count, monthIdx) => {
+					if (monthIdx >= 0 && monthIdx < 12) arr[monthIdx] = count || 0;
+				});
+				setChartValues(arr);
+			}
+		} catch (e) {
+			console.error('❌ Failed to fetch recent enquiries/chart:', e);
+		}
+	}, []);
 
-  //       const [branches, courses] = await Promise.all([
-  //         getInstitutionBranches(inst._id),
-  //         getInstitutionCourses(inst._id)
-  //       ]);
+	useEffect(() => {
+		let mounted = true;
+		async function fetchData() {
+			try {
+				const inst = await getMyInstitution();
+				if (!mounted || !inst?._id) {
+					setIsStatsLoading(false);
+					setIsListLoading(false);
+					return;
+				}
+				setInstitutionId(inst._id);
+				if (inst.owner) setOwnerId(String(inst.owner));
+				setIsStatsLoading(true);
+				setIsListLoading(true);
+				await Promise.all([
+					fetchDataWithTrends(filters.timeRange),
+					fetchRecentAndChart()
+				]);
+				setIsStatsLoading(false);
+				setIsListLoading(false);
+			} catch (err) {
+				console.error('Failed to fetch backend data:', err);
+				generateCustomers();
+				setIsStatsLoading(false);
+				setIsListLoading(false);
+			}
+		}
+		fetchData();
+		return () => { mounted = false; };
+	}, [generateCustomers, fetchDataWithTrends, fetchRecentAndChart]);
 
-  //       // Map branches to customer list entries
-  //       if (Array.isArray(branches)) {
-  //         const mapped: CustomerItem[] = branches
-  //           .sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-  //           .slice(0, 8)
-  //           .map((b: any, idx: number) => ({
-  //             date: new Date(b.createdAt || Date.now() - idx * 86400000).toLocaleDateString('en-GB'),
-  //             name: b.branchName || Branch ${idx + 1},
-  //             id: String(b._id || idx),
-  //             status: b.contactInfo ? "Requested for call back" : "Interested in pricing"
-  //           }));
-  //         setCustomers(mapped);
-  //       }
+	// Setup socket for live updates (only adjust recent list and stats as needed)
+	useEffect(() => {
+		if (!institutionId) return;
+		let s: any;
+		(async () => {
+			try {
+				const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
+				let origin = apiBase.replace('/api','');
+				if (!origin) origin = typeof window !== 'undefined' ? window.location.origin : '';
+				s = await getSocket(origin);
+				s.on('connect', async () => {
+					s.emit('joinInstitution', institutionId);
+					let oid = ownerId;
+					if (!oid) {
+						try {
+							const prof = await authAPI.getProfile();
+							oid = (prof as any)?.data?.id;
+							setOwnerId(oid || null);
+						} catch {}
+					}
+					if (oid) s.emit('joinOwner', oid);
+				});
+				s.on('courseViewsUpdated', async () => {
+					try {
+						const [latest, series] = await Promise.all([
+							metricsAPI.getOwnerByRange('views', filters.timeRange),
+							metricsAPI.getOwnerSeries('views', new Date().getFullYear())
+						]);
+						if ((latest as any)?.success) {
+							const current = (latest as any).data?.totalViews ?? 0;
+							setStats(prev => ({ ...prev, courseViews: current }));
+						}
+						if ((series as any)?.success && Array.isArray((series as any).data?.series)) {
+							const arr = new Array(12).fill(0);
+							(series as any).data.series.forEach((count: number, idx: number) => { if (idx >= 0 && idx < 12) arr[idx] = count || 0; });
+							setChartValues(arr);
+						}
+					} catch {}
+				});
+				s.on('comparisonsUpdated', async () => {
+					try {
+						const latest = await metricsAPI.getOwnerByRange('comparisons', filters.timeRange);
+						if ((latest as any)?.success) {
+							const current = (latest as any).data?.totalComparisons ?? 0;
+							setStats(prev => ({ ...prev, courseComparisons: current }));
+						}
+					} catch {}
+				});
+				s.on('enquiryCreated', async () => {
+					try {
+						// Refresh recent list only
+						setIsListLoading(true);
+						await fetchRecentAndChart();
+						setIsListLoading(false);
+					} catch {}
+				});
+				s.on('ownerTotalLeads', async () => {
+					try {
+						const latest = await metricsAPI.getOwnerByRange('leads', filters.timeRange);
+						if ((latest as any)?.success) {
+							const current = (latest as any).data?.totalLeads ?? 0;
+							setStats(prev => ({ ...prev, contactRequests: current }));
+						}
+					} catch {}
+				});
+				s.on('connect_error', () => {});
+			} catch {}
+		})();
+		return () => { try { s?.off('courseViewsUpdated'); s?.off('comparisonsUpdated'); s?.off('enquiryCreated'); s?.off('ownerTotalLeads'); } catch {} };
+	}, [institutionId, ownerId, filters.timeRange, fetchRecentAndChart]);
 
-        // Build a 12-month series from course createdAt timestamps
-  //       if (Array.isArray(courses)) {
-  //         const arr = new Array(12).fill(0);
-  //         courses.forEach((c: any) => {
-  //           const d = new Date(c.createdAt || Date.now());
-  //           const m = d.getMonth();
-  //           arr[m] += 1;
-  //         });
-  //         const scaled = arr.map(v => v * 20); // keep visual scale
-  //         setChartValues(scaled);
-  //       }
+	const handleFilterChange = async (newFilters: FilterState) => {
+		const normalized: FilterState = { ...newFilters, timeRange: (newFilters.timeRange || 'weekly') };
+		setFilters(normalized);
+		// Refresh KPIs only; do not refresh recent enquiries list on range change
+		setIsStatsLoading(true);
+		await fetchDataWithTrends(normalized.timeRange);
+		setIsStatsLoading(false);
+	};
 
-  //       // Production-safe stats without arbitrary multipliers
-  //       const courseCount = Array.isArray(courses) ? courses.length : 0;
-  //       const branchCount = Array.isArray(branches) ? branches.length : 0;
-  //       const comparisonCount = Array.isArray(courses)
-  //         ? new Set(courses.map((c: any) => ${c.streamType || ''}|${c.graduationType || ''})).size
-  //         : 0;
+	return (
+		<motion.div 
+			className="w-full"
+			variants={containerVariants}
+			initial="hidden"
+			animate="visible"
+		>
+			<motion.div 
+				className="grid grid-cols-1 xl:grid-cols-3 gap-3 sm:gap-6 mb-4 sm:mb-6 mt-2 sm:mt-5 rounded-2xl"
+				variants={itemVariants}
+			>
+				<div className="xl:col-span-2 bg-gray-50 dark:bg-gray-900 rounded-2xl mt-0">
+					<DashboardStats
+						stats={stats}
+						filters={filters}
+						isLoading={isStatsLoading}
+						onFilterChange={handleFilterChange}
+					/>
+				</div>
+				<div className="xl:col-span-1">
+					<AdCard onShare={() => {}} />
+				</div>
+			</motion.div>
 
-  //       setStats({
-  //         courseViews: courseCount,
-  //         courseComparisons: comparisonCount,
-  //         contactRequests: branchCount,
-  //         courseViewsTrend: { value: 0, isPositive: true },
-  //         courseComparisonsTrend: { value: 0, isPositive: true },
-  //         contactRequestsTrend: { value: 0, isPositive: true },
-  //       });
+			<motion.div 
+				className="grid grid-cols-1 mb-4 sm:mb-6"
+				variants={itemVariants}
+			>
+				<div className="xl:col-span-2">
+					<CustomerList 
+						items={customers} 
+						isLoading={isListLoading}
+						title="Recent enquiries"
+						statusLabel="Inquiry type"
+						useDashboardColumns
+						onCustomerClick={() => {}}
+						onStatusChange={() => {}}
+					/>
+				</div>
+			</motion.div>
 
-  //       // Derive subscription days from institution.createdAt when available
-  //       if (inst?.createdAt) {
-  //         const created = new Date(inst.createdAt);
-  //         const now = new Date();
-  //         const diffMs = now.getTime() - created.getTime();
-  //         const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  //         const daysLeftCalc = Math.max(0, 30 - diffDays);
-  //         setSubscriptionDays(daysLeftCalc);
-  //       } else if (Array.isArray(courses)) {
-  //         setSubscriptionDays(Math.max(0, 30 - (courses.length % 30)));
-  //       }
-
-  //       setIsLoading(false);
-  //     } catch (err) {
-  //       console.error('Failed to fetch backend data:', err);
-  //       // Fallback customers if needed
-  //       generateCustomers();
-  //       setIsLoading(false);
-  //     }
-  //   }
-  //   fetchData();
-  //   return () => { mounted = false; };
-  // }, [generateCustomers]);
-
-  // Filter change handler (reserved for future backend filtering)
-  const handleFilterChange = (newFilters: FilterState) => {
-    setFilters(newFilters);
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    window.location.href = "/";
-  };
-
-  return (
-    <div className="min-h-screen w-full">
-      <div className="flex gap-0">
-        <Sidebar 
-          activeItem={activeSidebarItem} 
-          onItemClick={setActiveSidebarItem}
-        />
-        <motion.main 
-  className="flex-1 max-w-[1400px] mr-5 px-4 lg:px-6 ml-0 h-[100dvh] overflow-y-auto scrollbar-hide"
-  variants={containerVariants}
-  initial="hidden"
-  animate="visible"
->
-  <Topbar 
-    userName={profileName || user?.name || user?.admin} 
-    onSearch={(query) => console.log('Search:', query)}
-    onNotificationClick={() => console.log('Notifications clicked')}
-    onProfileClick={() => console.log('Profile clicked')}
-  />
-
-  {/* Added consistent margin-top for sections below Topbar */}
-  <div className="mt-6">
-    {activeSidebarItem === 0 && (
-      <>
-        {/* Top Row: Dashboard Stats + Ad Card */}
-        <motion.div 
-          className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6 p-2 rounded-2xl"
-          variants={itemVariants}
-        >
-          <div className="xl:col-span-2 bg-gray-50 rounded-2xl p-6">
-            {/* <DashboardStats
-              stats={stats}
-              filters={filters}
-              isLoading={isLoading}
-              onFilterChange={handleFilterChange}
-            /> */}
-          </div>
-          <div className="xl:col-span-1 bg-gray-50 rounded-2xl p-6">
-            {/* <AdCard onShare={(platform) => console.log('Share to:', platform)} /> */}
-          </div>
-        </motion.div>
-
-        {/* Middle: customer list + subscription */}
-        <motion.div 
-          className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6"
-          variants={itemVariants}
-        >
-          <div className="xl:col-span-2 bg-gray-50 rounded-2xl p-6">
-            {/* <CustomerList ... /> */}
-          </div>
-          <div className="xl:col-span-1 bg-gray-50 rounded-2xl p-6">
-            {/* <SubscriptionGauge ... /> */}
-          </div>
-        </motion.div>
-      </>
-    )}
-
-    {activeSidebarItem === 3 && (
-      <motion.div 
-        className="grid grid-cols-1 gap-6 mb-6 p-2 mt-6 rounded-2xl"
-        variants={itemVariants}
-      >
-        <div className="bg-gray-50 rounded-2xl p-6">
-          <SubscriptionGauge 
-            // daysLeft={Math.floor(subscriptionDays)} 
-            // onUpgrade={() => console.log('Upgrade clicked')}
-          />
-        </div>
-      </motion.div>
-    )}
-
-    {activeSidebarItem === 4 && (
-      <motion.div 
-        className="grid grid-cols-1 gap-6 mb-6 p-2 mt-6 rounded-2xl"
-        variants={itemVariants}
-      >
-        <div className="bg-gray-50 rounded-2xl p-6">
-          <SettingsPage />
-        </div>
-      </motion.div>
-    )}
-  </div>
-</motion.main>
-
-      </div>
-    </div>
-  );
+			<motion.div 
+				variants={itemVariants}
+				className="-mx-2 sm:-mx-4 lg:-mx-6"
+			>
+				<CourseReachChart 
+					timeRange={filters.timeRange}
+					course={filters.course}
+					values={chartValues ?? new Array(12).fill(0)}
+					onDataPointClick={() => {}}
+					yTicksOverride={[0,50000,100000,150000,200000,250000]}
+				/>
+			</motion.div>
+		</motion.div>
+	);
 }
 
-export default withAuth(DashboardPage);
+export default withAuth(DashboardPage); 

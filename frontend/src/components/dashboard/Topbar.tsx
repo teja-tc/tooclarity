@@ -1,15 +1,18 @@
-import React, { useState } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
+import { 
   faBell, 
-  faSun, 
   faMoon, 
   faUser
 } from "@fortawesome/free-regular-svg-icons";
-import { faSearch, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faSun,faSearch, faTimes, faCheck } from "@fortawesome/free-solid-svg-icons";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { notificationsAPI, authAPI } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
 
 interface TopbarProps {
   userName?: string;
@@ -18,15 +21,216 @@ interface TopbarProps {
   onProfileClick?: () => void;
 }
 
+type NotificationItem = {
+  id: string;
+  title: string;
+  description?: string;
+  time: number; // epoch
+  read: boolean;
+  category?: "system" | "billing" | "user" | "security" | "other";
+};
+
+const STORAGE_KEY = "app_notifications_v1";
+
 const Topbar: React.FC<TopbarProps> = ({ 
   userName, 
   onSearch, 
   onNotificationClick,
   onProfileClick 
 }) => {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(3);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+
+  const [allNotifications, setAllNotifications] = useState<NotificationItem[]>([]);
+  const [unreadTop, setUnreadTop] = useState<NotificationItem[]>([]);
+
+  const hideTimerRef = useRef<number | null>(null);
+
+  const timeAgo = (ts: number): string => {
+    const diff = Date.now() - ts;
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    return `${d}d ago`;
+  };
+
+  const seedIfEmpty = () => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const existing: NotificationItem[] = raw ? JSON.parse(raw) : [];
+      if (!existing || existing.length === 0) {
+        const now = Date.now();
+        const seed: NotificationItem[] = [
+          { id: "n1", title: "Welcome to TooClarity", description: "Thanks for joining!", time: now - 2 * 60 * 1000, read: false, category: "user" },
+          { id: "n2", title: "Subscription renewed", description: "Your Pro plan was renewed.", time: now - 60 * 60 * 1000, read: false, category: "billing" },
+          { id: "n3", title: "Maintenance complete", description: "Servers are back online.", time: now - 3 * 60 * 60 * 1000, read: true, category: "system" },
+          { id: "n4", title: "Backup completed", description: "Nightly backup finished.", time: now - 26 * 60 * 60 * 1000, read: true, category: "system" },
+        ];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
+      }
+    } catch {}
+  };
+
+  const loadFromStorage = () => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const items: NotificationItem[] = raw ? JSON.parse(raw) : [];
+      const sorted = items.sort((a, b) => b.time - a.time);
+      const unread = sorted.filter(n => !n.read);
+      setAllNotifications(sorted);
+      setNotificationCount(unread.length);
+      setUnreadTop(unread.slice(0, 3));
+    } catch {}
+  };
+
+  const clearHideTimer = () => {
+    if (hideTimerRef.current !== null) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  };
+
+  const loadFromBackend = async () => {
+    try {
+      // Default admin scope if available
+      let scopeParams: any = {};
+      try {
+        const prof = await authAPI.getProfile();
+        const role = (prof as any)?.data?.role;
+        const id = (prof as any)?.data?.id;
+        if (role && role.toString().toUpperCase().includes('ADMIN')) {
+          scopeParams.scope = 'admin';
+          scopeParams.ownerId = id;
+          setOwnerId(id);
+        }
+      } catch {}
+      const res = await notificationsAPI.list({ ...scopeParams, page: 1, limit: 10 });
+      if ((res as any)?.success) {
+        const items = ((res as any).data?.items || []).map((n: any) => ({
+          id: n._id,
+          title: n.title,
+          description: n.description,
+          time: n.createdAt ? new Date(n.createdAt).getTime() : Date.now(),
+          read: !!n.read,
+          category: n.category,
+        })) as NotificationItem[];
+        const sorted = items.sort((a, b) => b.time - a.time);
+        const unread = sorted.filter(n => !n.read);
+        setAllNotifications(sorted);
+        setNotificationCount(unread.length);
+        setUnreadTop(unread.slice(0, 3));
+      }
+    } catch {}
+  };
+
+  // Setup Socket.IO for real-time notifications
+  useEffect(() => {
+    let socket: any;
+    
+    const setupSocket = async () => {
+      try {
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "";
+        let origin = apiBase.replace('/api','');
+        if (!origin) origin = typeof window !== 'undefined' ? window.location.origin : '';
+        
+        socket = await getSocket(origin);
+        
+        socket.on('connect', async () => {
+          // Join owner room for notifications
+          if (ownerId) {
+            socket.emit('joinOwner', ownerId);
+          }
+        });
+
+        // Listen for new notifications
+        socket.on('notificationCreated', (data: { notification: any }) => {
+          const newNotification: NotificationItem = {
+            id: data.notification._id,
+            title: data.notification.title,
+            description: data.notification.description,
+            time: data.notification.createdAt ? new Date(data.notification.createdAt).getTime() : Date.now(),
+            read: false,
+            category: data.notification.category,
+          };
+          
+          setAllNotifications(prev => {
+            const updated = [newNotification, ...prev].sort((a, b) => b.time - a.time);
+            return updated;
+          });
+          
+          setNotificationCount(prev => prev + 1);
+          setUnreadTop(prev => {
+            const updated = [newNotification, ...prev].slice(0, 3);
+            return updated;
+          });
+        });
+
+        // Listen for notification updates (mark as read)
+        socket.on('notificationUpdated', (data: { notificationId: string, read: boolean }) => {
+          setAllNotifications(prev => 
+            prev.map(n => n.id === data.notificationId ? { ...n, read: data.read } : n)
+          );
+          
+          if (data.read) {
+            setNotificationCount(prev => Math.max(0, prev - 1));
+            setUnreadTop(prev => prev.filter(n => n.id !== data.notificationId));
+          }
+        });
+
+      } catch (error) {
+        console.error('Socket setup error:', error);
+      }
+    };
+
+    setupSocket();
+
+    return () => {
+      if (socket) {
+        socket.off('notificationCreated');
+        socket.off('notificationUpdated');
+      }
+    };
+  }, [ownerId]);
+
+  const openDropdown = () => {
+    clearHideTimer();
+    setShowDropdown(true);
+    // refresh from backend when opening
+    loadFromBackend();
+  };
+  
+  const closeDropdownSoon = () => {
+    clearHideTimer();
+    hideTimerRef.current = window.setTimeout(() => {
+      setShowDropdown(false);
+      hideTimerRef.current = null;
+    }, 120);
+  };
+  
+  useEffect(() => () => clearHideTimer(), []);
+
+  // Initialize theme
+  useEffect(() => {
+    try {
+      const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+      setIsDarkMode(prefersDark);
+    } catch {}
+  }, []);
+
+  // Load notifications on mount
+  useEffect(() => {
+    seedIfEmpty();
+    loadFromStorage();
+    loadFromBackend();
+  }, []);
 
   const topbarVariants = {
     hidden: { y: -50, opacity: 0 },
@@ -35,124 +239,274 @@ const Topbar: React.FC<TopbarProps> = ({
       opacity: 1,
       transition: { duration: 0.5 }
     }
-  };
+  } as const;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch?.(searchQuery);
+    if (onSearch) {
+      onSearch(searchQuery);
+    }
+  };
+
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+    if (isSearchOpen) {
+      setSearchQuery("");
+    }
   };
 
   const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
+    const newDarkMode = !isDarkMode;
+    setIsDarkMode(newDarkMode);
+    try {
+      localStorage.setItem("theme", newDarkMode ? "dark" : "light");
+      const root = document.documentElement;
+      if (newDarkMode) {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+    } catch {}
   };
 
-  const clearNotifications = () => {
-    setNotificationCount(0);
-    onNotificationClick?.();
+  const markOneUnreadAsRead = (id: string) => {
+    const updated = allNotifications.map(n => n.id === id ? { ...n, read: true } : n);
+    setAllNotifications(updated);
+    // saveToStorage(updated); // Socket.IO handles updates
+    const unread = updated.filter(n => !n.read).sort((a, b) => (b.time || 0) - (a.time || 0));
+    setNotificationCount(unread.length);
+    setUnreadTop(unread.slice(0, 3));
   };
+
+  const badge = notificationCount > 99 ? "99+" : String(notificationCount);
 
   return (
-    <motion.header 
-      className="sticky top-0 z-40 flex items-center gap-2 py-4 justify-between bg-white w-100vw"
-      variants={topbarVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      <div className="flex-1 max-w-lg">
-        <form onSubmit={handleSearch} className="relative">
-          <Input
-            placeholder="Search here"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-11 rounded-2xl pl-11 pr-4 bg-white w-full border-gray-200 focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
-          />
-          <FontAwesomeIcon 
-            icon={faSearch} 
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          {searchQuery && (
-            <motion.button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0 }}
-            >
-              <FontAwesomeIcon icon={faTimes} />
-            </motion.button>
-          )}
-        </form>
-      </div>
-      
-      <div className="flex items-center gap-3 md:mr-[170px]">
-        <motion.div
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          className="relative"
-        >
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            className="h-11 w-11 rounded-full border border-gray-200 hover:bg-gray-50"
-            onClick={clearNotifications}
-          >
-            <FontAwesomeIcon icon={faBell} className="text-lg" />
-          </Button>
-          <AnimatePresence>
-            {notificationCount > 0 && (
-              <motion.span
-                className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-              >
-                {notificationCount}
-              </motion.span>
-            )}
-          </AnimatePresence>
-        </motion.div>
-        
-        <motion.div
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            className="h-11 w-11 rounded-full border border-gray-200 hover:bg-gray-50"
-            onClick={toggleDarkMode}
-          >
-            <FontAwesomeIcon 
-              icon={isDarkMode ? faSun : faMoon} 
-              className="text-lg" 
+    <>
+      <motion.header 
+        className="sticky top-0 z-40 flex items-center justify-between pl-3 rounded-lg py-4 bg-white/80 dark:bg-gray-900/70 backdrop-blur border-b border-gray-100 dark:border-gray-800"
+        variants={topbarVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        {/* Left: Search - Desktop only */}
+        <div className="hidden sm:flex items-center gap-3">
+          <form onSubmit={handleSearch} className="relative">
+            <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Input 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search"
+              className="pl-10 md:w-[400px] w-[220px]" 
             />
-          </Button>
-        </motion.div>
+            {searchQuery && (
+              <button 
+                type="button" 
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
+                onClick={() => setSearchQuery("")}
+              >
+                <FontAwesomeIcon icon={faTimes} />
+              </button>
+            )}
+          </form>
+        </div>
+
+        {/* Mobile: Logo */}
+        <div className="flex sm:hidden items-center">
+          <Link href="/dashboard" className="text-blue-600 font-bold text-lg">
+            TooClarity
+          </Link>
+        </div>
         
-        <div className="h-9 w-px bg-gray-400 mx-2 border border-gray-400" />
-        
-        <motion.div 
-          className="flex items-center gap-3 cursor-pointer"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          transition={{ duration: 0.2 }}
-          onClick={onProfileClick}
-        >
-          <motion.div 
-            className="h-11 w-11 rounded-full bg-yellow-400 flex items-center justify-center text-gray-600"
-            whileHover={{ rotate: 360 }}
-            transition={{ duration: 0.5 }}
-          >
-            <FontAwesomeIcon icon={faUser} className="text-xl" />
+        {/* Right Side Icons and Profile */}
+        <div className="flex items-center gap-2 sm:gap-3 md:mr-[170px]">
+          {/* Mobile Search Icon */}
+          <motion.div className="sm:hidden">
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              className="h-8 w-8 rounded-full border border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+              onClick={toggleSearch}
+              aria-label="Search"
+            >
+              <FontAwesomeIcon icon={faSearch} className="text-sm dark:text-gray-100" />
+            </Button>
           </motion.div>
-          <div className="leading-tight">
-            <div className="text-sm font-bold text-gray-900">{userName || "Raghavendar Reddy"}</div>
-            <div className="text-xs text-gray-500">Admin</div>
-          </div>
-        </motion.div>
-      </div>
-    </motion.header>
+
+          {/* Notification Icon with hover dropdown */}
+          <motion.div
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.96 }}
+            className="relative"
+            onMouseEnter={openDropdown}
+            onMouseLeave={closeDropdownSoon}
+          >
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              className="h-8 w-8 sm:h-11 sm:w-11 rounded-full border border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+              onClick={() => router.push("/notifications")}
+              aria-label="Notifications"
+            >
+              <FontAwesomeIcon icon={faBell} className="text-sm sm:text-lg dark:text-gray-100" />
+            </Button>
+            <AnimatePresence>
+              {notificationCount > 0 && (
+                <motion.span
+                  className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 sm:h-5 sm:min-w-5 px-0 sm:px-1 flex items-center justify-center font-medium"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  exit={{ scale: 0 }}
+                >
+                  {badge}
+                </motion.span>
+              )}
+            </AnimatePresence>
+
+            {/* Hover dropdown - Mobile Responsive */}
+            <AnimatePresence>
+              {showDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.18, ease: [0.4, 0.0, 0.2, 1] }}
+                  className="absolute right-2 sm:right-0 mt-2 w-[50vw] md:w-[80vw] max-w-[20rem] sm:w-96 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-xl rounded-xl overflow-hidden z-50"
+                  onMouseEnter={openDropdown}
+                  onMouseLeave={closeDropdownSoon}
+                >
+                  <div className="p-2 sm:p-4 border-b border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs sm:text-base font-semibold text-gray-900 dark:text-gray-100">Notifications</h3>
+                      <span className="text-[10px] sm:text-sm text-gray-500 dark:text-gray-400">{notificationCount} unread</span>
+                    </div>
+                  </div>
+                  
+                  <div className="max-h-[55vh] sm:max-h-80 overflow-y-auto">
+                    {unreadTop.length === 0 ? (
+                      <div className="p-3 sm:p-4 text-center text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                        No new notifications
+                      </div>
+                    ) : (
+                      unreadTop.map((notification) => (
+                        <motion.div
+                          key={notification.id}
+                          className="p-2 sm:p-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                          whileHover={{ backgroundColor: "rgba(0,0,0,0.05)" }}
+                        >
+                          <div className="flex items-start gap-2 sm:gap-3">
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                                {notification.title}
+                              </p>
+                              {notification.description && (
+                                <p className="text-[11px] sm:text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                                  {notification.description}
+                                </p>
+                              )}
+                              <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                {timeAgo(notification.time)}
+                              </p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                  
+                  <div className="p-2 sm:p-3 border-t border-gray-100 dark:border-gray-800">
+                    <button 
+                      className="w-full text-center text-xs sm:text-base text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                      onClick={() => {
+                        router.push("/notifications");
+                        setShowDropdown(false);
+                      }}
+                    >
+                      View all notifications
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Dark Mode Toggle */}
+          <motion.div
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.96 }}
+          >
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              className="h-8 w-8 sm:h-11 sm:w-11 rounded-full border border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+              onClick={toggleDarkMode}
+              aria-label="Toggle Dark Mode"
+            >
+              <FontAwesomeIcon 
+                icon={isDarkMode ? faSun : faMoon} 
+                className="text-sm sm:text-lg dark:text-gray-100" 
+              />
+            </Button>
+          </motion.div>
+          
+          <div className="h-6 w-px sm:h-9 bg-gray-400 mx-1 sm:mx-2 border border-gray-400 dark:bg-gray-600 dark:border-gray-600" />
+          
+          {/* User Profile */}
+          <motion.div 
+            className="flex items-center gap-2 sm:gap-3 cursor-pointer"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.2 }}
+            onClick={onProfileClick}
+          >
+            <motion.div 
+              className="h-8 w-8 sm:h-11 sm:w-11 rounded-full bg-yellow-400 flex items-center justify-center text-gray-600"
+              whileHover={{ rotate: 360 }}
+              transition={{ duration: 0.5 }}
+            >
+              <FontAwesomeIcon icon={faUser} className="text-sm sm:text-xl" />
+            </motion.div>
+            <div className="leading-tight hidden sm:block">
+              <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{userName || "Raghavendar Reddy"}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-300">Admin</div>
+            </div>
+          </motion.div>
+        </div>
+      </motion.header>
+
+      {/* Mobile Search Bar - Expandable */}
+      <AnimatePresence>
+        {isSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="sm:hidden bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-3 py-3"
+          >
+            <form onSubmit={handleSearch} className="relative">
+              <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Input 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="pl-10 w-full h-10" 
+                autoFocus
+              />
+              {searchQuery && (
+                <button 
+                  type="button" 
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <FontAwesomeIcon icon={faTimes} />
+                </button>
+              )}
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 

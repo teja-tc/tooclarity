@@ -6,12 +6,13 @@ const {
   deleteRefreshToken,
 } = require("../utils/redis.util");
 const User = require("../models/InstituteAdmin"); // 👈 import your User model
+const { decode } = require("jsonwebtoken");
 
 const globalAuthMiddleware = async (req, res, next) => {
   try {
     console.log("➡️ Incoming request:", req.method, req.path);
 
-    const publicPaths = ["/login", "/register", "/otp", "/verify-email"];
+    const publicPaths = ["/login", "/register", "/otp", "/verify-email","/payment/verify"];
     if (publicPaths.includes(req.path)) {
       console.log("✅ Public path, skipping auth");
       return next();
@@ -35,6 +36,7 @@ const globalAuthMiddleware = async (req, res, next) => {
         console.log("✅ Access token valid:", decoded);
         refreshAccessTokenIfNeeded(req, res);
         req.userId = decoded.id;
+        req.userRole=decoded.role
         return next(); // valid access token
       } catch (err) {
         if (err.name !== "TokenExpiredError") {
@@ -60,6 +62,9 @@ const globalAuthMiddleware = async (req, res, next) => {
           if (user) {
             userId = user._id.toString();
             console.log("✅ Found userId from username cookie:", userId);
+            // Short-circuit for dev usage when username cookie is present
+            req.userId = userId;
+            return next();
           } else {
             console.log("❌ No user found for username cookie");
           }
@@ -88,6 +93,7 @@ const globalAuthMiddleware = async (req, res, next) => {
     try {
       decodedRefresh = verifyToken(refreshToken);
       userId = decodedRefresh.id;
+      req.userRole=decoded.role
       req.userId = userId;
       console.log("userId set to req:", userId);
       await refreshRefreshTokenIfNeeded(userId, usernameCookie, refreshToken);
@@ -99,13 +105,14 @@ const globalAuthMiddleware = async (req, res, next) => {
     }
 
     // 4️⃣ Issue new tokens
-    const newAccessToken = generateToken(userId, "access");
+    const newAccessToken = generateToken(userId, usernameCookie ,"access", decodedRefresh.role);
     CookieUtil.setCookie(res, "access_token", newAccessToken);
     console.log("🔹 New access token issued");
 
     await refreshRefreshTokenIfNeeded(userId, usernameCookie, refreshToken);
 
     req.userId = userId;
+    req.userRole=decoded.role
     return next();
   } catch (err) {
     console.error("🔥 Auth Middleware Error:", err);

@@ -95,11 +95,6 @@ export default function OtpDialogBox({
       });
 
       if (response.success) {
-        // Store token if provided
-        // if (response.data?.token && typeof window !== "undefined") {
-        //   localStorage.setItem('authToken', response.data.token);
-        // }
-        
         onVerificationSuccess();
         setOpen(false);
       } else {

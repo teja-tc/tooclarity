@@ -12,6 +12,10 @@ interface User {
   designation?: string;
   linkedin?: string;
   verified: boolean;
+  institution?: string;
+  isPaymentDone?: boolean;
+  isProfileCompleted?: boolean;
+  role: string;
 }
 
 interface AuthContextType {
@@ -92,6 +96,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           linkedin: response.data.linkedin || "",
           verified: true,
           name: response.data.name,
+          institution: response.data.institution || ",",
+          isPaymentDone: response.data.isPaymentDone || false,
+          isProfileCompleted: response.data.isProfileCompleted || false,
+          role: response.data.role || "",
         });
       } else {
         setUser(null);

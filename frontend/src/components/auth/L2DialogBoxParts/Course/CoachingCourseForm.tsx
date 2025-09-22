@@ -5,8 +5,6 @@ import InputField from "@/components/ui/InputField";
 import SlidingIndicator from "@/components/ui/SlidingIndicator";
 import { Course } from "../../L2DialogBox";
 
-
-
 interface CoachingCourseFormProps {
   currentCourse: Course;
   handleCourseChange: (
@@ -15,7 +13,8 @@ interface CoachingCourseFormProps {
   setCourses: React.Dispatch<React.SetStateAction<Course[]>>;
   courses: Course[];
   selectedCourseId: number;
-  
+  // ✅ Add courseErrors prop to receive validation errors
+  courseErrors?: Record<string, string>; 
 }
 
 export default function CoachingCourseForm({
@@ -24,6 +23,8 @@ export default function CoachingCourseForm({
   setCourses,
   courses,
   selectedCourseId,
+  // ✅ Destructure courseErrors with a default empty object
+  courseErrors = {},
 }: CoachingCourseFormProps) {
   return (
     <div className="grid md:grid-cols-2 gap-6">
@@ -45,6 +46,8 @@ export default function CoachingCourseForm({
         ]}
         placeholder="Select Categories type"
         required
+        // ✅ Display validation error for this field
+        error={courseErrors.categoriesType}
       />
 
       <InputField
@@ -67,6 +70,8 @@ export default function CoachingCourseForm({
         ]}
         placeholder="Select domain type"
         required
+        // ✅ Display validation error for this field
+        error={courseErrors.domainType}
       />
 
       <InputField
@@ -76,6 +81,8 @@ export default function CoachingCourseForm({
         onChange={handleCourseChange}
         placeholder="Enter course name"
         required
+        // ✅ Display validation error for this field
+        error={courseErrors.courseName}
       />
 
       <div className="flex flex-col gap-2">
@@ -92,6 +99,8 @@ export default function CoachingCourseForm({
           }
           size="md"
         />
+         {/* You can add a text element here for errors if SlidingIndicator doesn't support it */}
+         {courseErrors.mode && <p className="text-sm text-red-500">{courseErrors.mode}</p>}
       </div>
 
       <InputField
@@ -101,6 +110,8 @@ export default function CoachingCourseForm({
         onChange={handleCourseChange}
         placeholder="e.g, 3 months"
         required
+        // ✅ Display validation error for this field
+        error={courseErrors.courseDuration}
       />
 
       <InputField
@@ -111,6 +122,8 @@ export default function CoachingCourseForm({
         placeholder="Enter Course price"
         type="number"
         required
+        // ✅ Display validation error for this field
+        error={courseErrors.priceOfCourse}
       />
 
       <InputField
@@ -118,8 +131,10 @@ export default function CoachingCourseForm({
         name="location"
         value={currentCourse.location}
         onChange={handleCourseChange}
-        placeholder="Enter Place name"
+        placeholder="Enter a valid URL (e.g., https://...)"
         required
+        // ✅ Display validation error for this field
+        error={courseErrors.location}
       />
 
       <InputField
@@ -129,8 +144,9 @@ export default function CoachingCourseForm({
         onChange={handleCourseChange}
         placeholder="Enter no of students per class"
         type="number"
+        // ✅ Display validation error for this field
+        error={courseErrors.classSize}
       />
     </div>
   );
 }
-

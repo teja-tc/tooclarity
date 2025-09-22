@@ -1,18 +1,10 @@
 const { decodeToken } = require("./jwt.util");
 
 class CookieUtil {
-  // static defaultOptions = {
-  //   httpOnly: true,
-  //   secure: process.env.NODE_ENV === "production",
-  //   sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-  //   path: "/", // default root path
-  // };
-
   static defaultOptions = {
-    httpOnly: true,
-    secure: false, // because you're on http://localhost
-    sameSite: "lax", // required for cross-origin (3000 -> 3001)
-    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "none",
+    path: "/", // default root path
     maxAge: 15 * 60 * 1000,
   };
 
@@ -23,12 +15,6 @@ class CookieUtil {
    * @param {string} value - Cookie value
    * @param {Object} options - Extra cookie options (e.g. maxAge, expires, path)
    */
-  // static setCookie(res, name, value, options = {}) {
-  //   res.cookie(name, value, {
-  //     ...this.defaultOptions,
-  //     ...options,
-  //   });
-  // }
 
   static setCookie(res, name, value, options = {}) {
     const finalOptions = { ...this.defaultOptions, ...options };

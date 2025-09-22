@@ -10,10 +10,12 @@ const sendTokens = async (user, res, message) => {
 
   const userId = user._id;
   const username = user.name;
+  const role=user.role
 
   // 1. generate tokens
-  const accessToken = JwtUtil.generateToken(userId, username, "access");
-  const refreshToken = JwtUtil.generateToken(userId, username, "refresh");
+  const accessToken = JwtUtil.generateToken(userId, username, "access",role);
+  const refreshToken = JwtUtil.generateToken(userId, username, "refresh",role);
+
 
   // 2. decode refresh to calculate expiry
   const decodedRefresh = JwtUtil.decodeToken(refreshToken);
@@ -55,6 +57,9 @@ exports.register = async (req, res, next) => {
       contactNumber,
       designation,
       linkedinUrl,
+      role: "INSTITUTE_ADMIN",
+      isPaymentDone: false,
+      isProfileCompleted: false,
     });
 
     // send OTP for phone verification

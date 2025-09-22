@@ -1,0 +1,20 @@
+const express = require('express');
+const router = express.Router();
+const notificationController = require('../controllers/notification.controller');
+
+// GET /v1/notifications?scope=customer|institution|branch|admin&customerId=...&institutionId=...&branchId=...&ownerId=...&page=1&limit=20&unread=true
+router.get('/', notificationController.list);
+
+// POST /v1/notifications
+router.post('/', notificationController.create);
+
+// POST /v1/notifications/read
+router.post('/read', notificationController.markRead);
+
+// POST /v1/notifications/unread
+router.post('/unread', notificationController.markUnread);
+
+// DELETE /v1/notifications
+router.delete('/', notificationController.remove);
+
+module.exports = router; 
