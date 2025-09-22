@@ -320,6 +320,7 @@ import L2DialogBox from "@/components/auth/L2DialogBox";
 import L3DialogBox from "@/components/auth/L3DialogBox";
 import CourseOrBranchSelectionDialog from "@/components/auth/CourseOrBranchSelectionDialog";
 import Stepper from "@/components/ui/Stepper";
+import TermsConditionsPage from "../TermsConditions/page";
 
 export default function SignupPage() {
   const [l1DialogOpen, setL1DialogOpen] = useState(false);
