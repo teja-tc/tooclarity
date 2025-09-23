@@ -50,7 +50,6 @@ const Topbar: React.FC<TopbarProps> = ({
   const [unreadTop, setUnreadTop] = useState<NotificationItem[]>([]);
 
   const hideTimerRef = useRef<number | null>(null);
-
   const timeAgo = (ts: number): string => {
     const diff = Date.now() - ts;
     const m = Math.floor(diff / 60000);
@@ -206,6 +205,7 @@ const Topbar: React.FC<TopbarProps> = ({
     // refresh from backend when opening
     loadFromBackend();
   };
+
   
   const closeDropdownSoon = () => {
     clearHideTimer();
@@ -214,7 +214,6 @@ const Topbar: React.FC<TopbarProps> = ({
       hideTimerRef.current = null;
     }, 120);
   };
-  
   useEffect(() => () => clearHideTimer(), []);
 
   // Initialize theme

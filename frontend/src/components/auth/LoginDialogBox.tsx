@@ -15,10 +15,13 @@ import {
 import { Label } from "@/components/ui/label";
 import InputField from "@/components/ui/InputField";
 import { useAuth } from "../../lib/auth-context";
+import { useUserStore } from "@/lib/user-store";
 
-export default function LoginDialogBox() {
+type LoginCaller = "admin" | "institution";
+
+export default function LoginDialogBox({ caller = "institution", onSuccess }: { caller?: LoginCaller; onSuccess?: () => void }) {
   const router = useRouter();
-  const { login, user, refreshUser } = useAuth();
+  const { login, refreshUser } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -52,37 +55,49 @@ export default function LoginDialogBox() {
     setErrors({});
 
     try {
-      const success = await login(formData.email, formData.password);
+      const success = await login(formData.email, formData.password, caller);
 
       if (success) {
-        // Close dialog
-        setOpen(false);
-        
-        // Reset form
-        setFormData({ email: "", password: "" });
-
-        // Ensure we have the latest user profile
+        // Ensure we have the latest user profile in store
         await refreshUser();
 
+        // Read fresh snapshot from Zustand store (avoid stale closure)
+        const latestUser = useUserStore.getState().user;
+        console.log("[Login] Zustand user after login:", latestUser);
+
+        // Close dialog and reset form
+        setOpen(false);
+        setFormData({ email: "", password: "" });
+
+        // If parent provided a success handler (e.g., admin-login), use it
+        if (onSuccess) {
+          onSuccess();
+          return;
+        }
+
         // Decide destination based on role and flags
-        const u = user as any;
-        if (u && u.role === "INSTITUTE_ADMIN") {
-          if (u.isPaymentDone === false && u.isProfileCompleted === false) {
-            router.push('/signup');
+        const role = latestUser?.role;
+        const isPaymentDone = !!latestUser?.isPaymentDone;
+        const isProfileCompleted = !!latestUser?.isProfileCompleted;
+        console.log("[Login] Flags:", { role, isPaymentDone, isProfileCompleted });
+
+        if (role === "INSTITUTE_ADMIN") {
+          if (!isPaymentDone && !isProfileCompleted) {
+            router.push("/signup");
             return;
           }
-          if (u.isPaymentDone === false && u.isProfileCompleted === true) {
-            router.push('/payment');
+          if (!isPaymentDone && isProfileCompleted) {
+            router.push("/payment");
             return;
           }
-          if (u.isPaymentDone === true && u.isProfileCompleted === true) {
-            router.push('/dashboard');
+          if (isPaymentDone && isProfileCompleted) {
+            router.push("/dashboard");
             return;
           }
         }
 
         // Fallback
-        router.push('/');
+        router.push("/");
       } else {
         setErrors({ general: "Invalid email or password. Please try again." });
       }

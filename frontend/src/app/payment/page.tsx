@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React from "react";
 import Image from "next/image";
@@ -12,10 +12,28 @@ import PaymentFailed from "@/components/payment/PaymentFailed";
 import { useAuth } from "@/lib/auth-context";
 
 export default function PaymentPage() {
+
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
 
-  // Determine if user is allowed to access payment route
+  // ✅ Hooks must always run before any return
+  const [processing, setProcessing] = React.useState<{
+    paymentId?: string | null;
+    orderId?: string | null;
+  } | null>(null);
+
+  const [success, setSuccess] = React.useState<{
+    transactionId?: string | null;
+    paymentId?: string | null;
+    orderId?: string | null;
+  } | null>(null);
+
+  const [failed, setFailed] = React.useState<{
+    paymentId?: string | null;
+    orderId?: string | null;
+  } | null>(null);
+
+  // ✅ Determine if user is allowed
   const isAllowed = React.useMemo(() => {
     if (!user) return false;
     return (
@@ -25,22 +43,26 @@ export default function PaymentPage() {
     );
   }, [user]);
 
-  // Redirect based on auth/permission state once loading completes
+  // ✅ Redirect if not allowed
   React.useEffect(() => {
     if (loading) return;
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !isAllowed) {
       router.replace("/");
-      return;
-    }
-
-    if (!isAllowed) {
-      router.replace("/");
-      return;
     }
   }, [loading, isAuthenticated, isAllowed, router]);
 
-  // Show a simple loader while verifying or redirecting
+  
+  const phoneDisplay = "+91 9391160205";
+  const phoneHref = "+919391160205";
+  
+  const clearStatuses = () => {
+    setProcessing(null);
+    setSuccess(null);
+    setFailed(null);
+  };
+  
+  // ✅ Loader stays after hooks
   if (loading || !isAuthenticated || !isAllowed) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -48,21 +70,6 @@ export default function PaymentPage() {
       </div>
     );
   }
-
-  const phoneDisplay = "+91 9391160205";
-  const phoneHref = "+919391160205";
-
-  // local state to render status components in this page
-  const [processing, setProcessing] = React.useState<{ paymentId?: string | null; orderId?: string | null } | null>(null);
-  const [success, setSuccess] = React.useState<{ transactionId?: string | null; paymentId?: string | null; orderId?: string | null } | null>(null);
-  const [failed, setFailed] = React.useState<{ paymentId?: string | null; orderId?: string | null } | null>(null);
-
-  const clearStatuses = () => {
-    setProcessing(null);
-    setSuccess(null);
-    setFailed(null);
-  };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Thin purple top border like in the screenshot */}
@@ -73,12 +80,21 @@ export default function PaymentPage() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <Image src="/Too Clarity.png" alt="Too Clarity" width={140} height={32} priority />
+            <Image
+              src="/Too Clarity.png"
+              alt="Too Clarity"
+              width={140}
+              height={32}
+              priority
+            />
           </div>
 
           {/* Desktop help */}
           <div className="hidden md:flex items-center gap-2 text-sm">
-            <Link href={`tel:${phoneHref}`} className="font-medium text-[#0222D7] underline-offset-2 hover:underline">
+            <Link
+              href={`tel:${phoneHref}`}
+              className="font-medium text-[#0222D7] underline-offset-2 hover:underline"
+            >
               Need help? Call {phoneDisplay}
             </Link>
             <Link
@@ -106,7 +122,10 @@ export default function PaymentPage() {
 
         {/* Mobile help text under header */}
         <div className="mt-2 md:hidden text-xs">
-          <Link href={`tel:${phoneHref}`} className="font-medium text-[#0222D7] underline-offset-2 hover:underline">
+          <Link
+            href={`tel:${phoneHref}`}
+            className="font-medium text-[#0222D7] underline-offset-2 hover:underline"
+          >
             Need help? Call {phoneDisplay}
           </Link>
         </div>
@@ -115,11 +134,22 @@ export default function PaymentPage() {
       <main className="mx-auto w-full max-w-7xl">
         {/* Render status UIs in page */}
         {success ? (
-          <PaymentSuccess transactionId={success.transactionId ?? null} paymentId={success.paymentId ?? null} orderId={success.orderId ?? null} />
+          <PaymentSuccess
+            transactionId={success.transactionId ?? null}
+            paymentId={success.paymentId ?? null}
+            orderId={success.orderId ?? null}
+          />
         ) : processing ? (
-          <PaymentProcessing paymentId={processing.paymentId ?? null} orderId={processing.orderId ?? null} />
+          <PaymentProcessing
+            paymentId={processing.paymentId ?? null}
+            orderId={processing.orderId ?? null}
+          />
         ) : failed ? (
-          <PaymentFailed paymentId={failed.paymentId ?? null} orderId={failed.orderId ?? null} onRetry={() => setFailed(null)} />
+          <PaymentFailed
+            paymentId={failed.paymentId ?? null}
+            orderId={failed.orderId ?? null}
+            onRetry={() => setFailed(null)}
+          />
         ) : (
           <PaymentCheckout
             onProcessing={(d) => {

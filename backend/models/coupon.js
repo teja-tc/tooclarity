@@ -1,4 +1,3 @@
-// models/coupon.model.js
 const mongoose = require("mongoose");
 
 const couponSchema = new mongoose.Schema(
@@ -36,8 +35,32 @@ const couponSchema = new mongoose.Schema(
       type: Boolean,
       default: true, // helps for deactivating coupons without deleting
     },
+    // --- Usage Tracking ---
+    maxUses: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+    useCount: {
+      type: Number,
+      default: 0,
+    },
+    // --- Audit Trail ---
+    redeemedBy: [{
+      institutionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Institution' },
+      redeemedAt: { type: Date, default: Date.now }
+    }],
+    // TODO: Admin id tracking
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin',
+      required: [true, "Admin ID is required to create a coupon"]
+    }
   },
   { timestamps: true }
 );
+
+// Compound index for performance on the apply/validate query
+couponSchema.index({ code: 1, isActive: 1 });
 
 module.exports = mongoose.model("Coupon", couponSchema);

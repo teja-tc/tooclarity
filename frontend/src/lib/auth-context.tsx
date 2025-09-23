@@ -1,124 +1,51 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { authAPI } from "./api";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  admin: string;
-  phone?: string;
-  designation?: string;
-  linkedin?: string;
-  verified: boolean;
-  institution?: string;
-  isPaymentDone?: boolean;
-  isProfileCompleted?: boolean;
-  role: string;
-}
+import React, { createContext, useContext, useEffect } from "react";
+import { useUserStore, type User } from "./user-store";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string, type?: "admin" | "institution") => Promise<boolean>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
+  updateUser: (updates: Partial<User>) => void;
+  setPaymentStatus: (isPaymentDone: boolean) => void;
+  setProfileCompleted: (isProfileCompleted: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const {
+    user,
+    loading,
+    isAuthenticated,
+    login,
+    logout,
+    refreshUser,
+    updateUser,
+    setPaymentStatus,
+    setProfileCompleted,
+  } = useUserStore();
 
-  const isAuthenticated = !!user;
-
-  // Check if user is logged in on app start
+  // Initialize user on app start
   useEffect(() => {
-    const initAuth = async () => {
-      // Try to get user profile - if backend has valid cookie, it will succeed
-      await refreshUser();
-    };
-
-    initAuth();
-  }, []);
-
-  const login = async (email: string, password: string): Promise<boolean> => {
-    try {
-      const response = await authAPI.login({ email, password });
-      console.log("Login response:", response); // Debug log
-
-      if (response.success) {
-        // Check if user data is in response.data.user or directly in response.data
-        const userData = response.data?.user || response.data;
-
-        if (userData && userData.id) {
-          setUser(userData);
-          return true;
-        } else {
-          // If no user data but login was successful, try to fetch user profile
-          await refreshUser();
-          return true;
-        }
-      }
-
-      return false;
-    } catch (error) {
-      console.error("Login error:", error);
-      return false;
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await authAPI.logout();
-    } catch (error) {
-      console.error("Logout error:", error);
-    } finally {
-      setUser(null);
-    }
-  };
-
-  const refreshUser = async () => {
-    try {
-      setLoading(true);
-      const response = await authAPI.getProfile();
-
-      if (response.success && response.data) {
-        setUser({
-          id: "",
-          email: response.data.email,
-          admin: "",
-          phone: response.data.contactNumber,
-          designation: response.data.designation || "",
-          linkedin: response.data.linkedin || "",
-          verified: true,
-          name: response.data.name,
-          institution: response.data.institution || ",",
-          isPaymentDone: response.data.isPaymentDone || false,
-          isProfileCompleted: response.data.isProfileCompleted || false,
-          role: response.data.role || "",
-        });
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      console.error("Refresh user error:", error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Try to get user profile - if backend has valid cookie, it will succeed
+    refreshUser();
+  }, [refreshUser]);
 
   const value: AuthContextType = {
     user,
     loading,
-    login,
+    login: (email, password, type) => login(email, password, type),
     logout,
     refreshUser,
     isAuthenticated,
+    updateUser,
+    setPaymentStatus,
+    setProfileCompleted,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

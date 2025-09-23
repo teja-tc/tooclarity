@@ -37,8 +37,8 @@ const instituteAdminSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['INSTITUTE_ADMIN', 'ADMIN'],
-        default: 'INSTITUTE_ADMIN',
+        enum: ['INSTITUTE_ADMIN', 'ADMIN', 'STUDENT'],
+        required: true,
     },
     institution: {
         type: mongoose.Schema.Types.ObjectId,
@@ -52,12 +52,12 @@ const instituteAdminSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    role:{
-        type:String,
-        enum:['INSTITUTE_ADMIN','ADMIN','STUDENT'],
-        // default:'INSTITUTE_ADMIN',
-        required:true
-    },
+    // role:{
+    //     type:String,
+    //     enum:['INSTITUTE_ADMIN','ADMIN','STUDENT'],
+    //     // default:'INSTITUTE_ADMIN',
+    //     required:true
+    // },
     isPaymentDone:{
         type:Boolean,
         default:false
