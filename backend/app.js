@@ -52,7 +52,6 @@ app.use(cookieParser());
 
 app.use(express.json({ limit: "10kb" }));
 
-
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/payment/", paymentPublicRoutes);
 
@@ -115,6 +114,7 @@ app.use((err, req, res, next) => {
         ? err.message
         : "Something went very wrong!",
   });
+
 });
 
 module.exports = app;
