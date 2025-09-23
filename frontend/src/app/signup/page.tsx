@@ -10,23 +10,30 @@ import CourseOrBranchSelectionDialog from "@/components/auth/CourseOrBranchSelec
 import Stepper from "@/components/ui/Stepper";
 
 export default function SignupPage() {
+  // ✅ ALL HOOKS ARE NOW AT THE TOP LEVEL, BEFORE ANY CONDITIONAL RETURNS
   const router = useRouter();
   const { user, isAuthenticated, loading } = useAuth();
 
-  // Allow only INSTITUTE_ADMIN with both flags false
+  const [l1DialogOpen, setL1DialogOpen] = useState(false);
+  const [selectionOpen, setSelectionOpen] = useState(false);
+  const [l2DialogOpen, setL2DialogOpen] = useState(false);
+  const [l3DialogOpen, setL3DialogOpen] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [l2Section, setL2Section] = useState<"course" | "branch">("course");
+  const [formData, setFormData] = useState<{ instituteType?: string }>({});
+
   const isAllowed = useMemo(() => {
     if (!user) return false;
     return (
       user.role === "INSTITUTE_ADMIN" &&
-      user.isPaymentDone === false &&
-      user.isProfileCompleted === false
+      !user.isPaymentDone &&
+      !user.isProfileCompleted
     );
   }, [user]);
 
   // Redirect if not eligible for signup route
   useEffect(() => {
     if (loading) return;
-
     if (!isAuthenticated) {
       router.replace("/");
       return;
@@ -39,28 +46,18 @@ export default function SignupPage() {
 
     if (!isAllowed) {
       if (user?.role === "INSTITUTE_ADMIN") {
-        if (user.isPaymentDone === false && user.isProfileCompleted === true) {
+        if (!user.isPaymentDone && user.isProfileCompleted) {
           router.replace("/payment");
           return;
         }
-        if (user.isPaymentDone === true && user.isProfileCompleted === true) {
+        if (user.isPaymentDone && user.isProfileCompleted) {
           router.replace("/dashboard");
           return;
         }
       }
-      // Fallback
-      router.replace("/");
+      router.replace("/"); // Fallback
     }
   }, [loading, isAuthenticated, isAllowed, user, router]);
-
-  const [l1DialogOpen, setL1DialogOpen] = useState(false);
-  const [selectionOpen, setSelectionOpen] = useState(false);
-  const [l2DialogOpen, setL2DialogOpen] = useState(false);
-  const [l3DialogOpen, setL3DialogOpen] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-
-  const [l2Section, setL2Section] = useState<"course" | "branch">("course");
-  const [formData, setFormData] = useState<{ instituteType?: string }>({});
 
   // ✅ Dynamic steps
   const steps =
@@ -84,64 +81,67 @@ export default function SignupPage() {
     if (savedStep) {
       const step = parseInt(savedStep, 10);
       setCurrentStep(step);
-
-      // restore dialog state
       if (step === 1) setL1DialogOpen(true);
-      if (step === 2) setSelectionOpen(true); // open selection before L2
+      if (step === 2) setSelectionOpen(true);
       if (step === 3) setL3DialogOpen(true);
     } else {
-      setL1DialogOpen(true); // default
+      setL1DialogOpen(true);
     }
   }, []);
 
-  // 🔹 Save step whenever it changes
+  // Save step whenever it changes
   useEffect(() => {
     if (typeof window === "undefined") return;
     localStorage.setItem("signupStep", String(currentStep));
   }, [currentStep]);
 
-  // 🔹 Save formData whenever it changes
+  // Save formData whenever it changes
   useEffect(() => {
     if (typeof window === "undefined") return;
     localStorage.setItem("signupFormData", JSON.stringify(formData));
     console.log(localStorage.getItem("signupFormData"));
   }, [formData]);
 
+  // ✅ THIS CONDITIONAL RETURN IS NOW AFTER ALL HOOKS
+  if (loading || !isAuthenticated || !isAllowed) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Your component logic and handlers can now safely be below the conditional return
   const handleInstituteTypeChange = (type: string) => {
     setFormData((prev) => ({ ...prev, instituteType: type }));
   };
 
-  // Handle L1 success → open selection dialog
   const handleL1Success = () => {
     setL1DialogOpen(false);
     setSelectionOpen(true);
     setCurrentStep(2);
   };
 
-  // Handle L2 success → open L3
   const handleL2Success = () => {
     setL2DialogOpen(false);
     setL3DialogOpen(true);
     setCurrentStep(3);
   };
 
-  // Handle L2 previous → back to L1
   const handleL2Previous = () => {
     setL2DialogOpen(false);
     setL1DialogOpen(true);
     setCurrentStep(1);
   };
 
-  // Handle L3 success → finish flow
   const handleL3Success = () => {
     if (typeof window === "undefined") return;
     console.log("Signup completed!");
     setCurrentStep(steps.length);
-    localStorage.removeItem("signupStep"); // optional: clear after finish
+    localStorage.removeItem("signupStep");
     localStorage.removeItem("signupFormData");
   };
 
-  // Handle L3 previous → back to L2
   const handleL3Previous = () => {
     setL3DialogOpen(false);
     setL2DialogOpen(true);
@@ -158,7 +158,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#FBF9F5]">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#FBF9F5] pt-[104px]">
       {/* Top navigation bar */}
       <div className="w-full h-auto sm:h-[64px] md:h-[80px] flex flex-col sm:flex-row justify-between items-center px-4 sm:px-6 md:px-20 z-10 fixed top-0 left-0 py-3 sm:py-0">
         <img
@@ -176,11 +176,10 @@ export default function SignupPage() {
         </a>
       </div>
 
-      {/* Stepper fixed between navbar and dialogs */}
-      <div className="fixed top-[64px] md:top-[80px] left-0 right-0 z-40">
+      <div className="fixed top-[56px] md:top-[72px] left-0 right-0 z-40">
         <div className="w-full px-4 sm:px-6 md:px-8">
-          <div className="w-full max-w-full sm:max-w-4xl mx-auto rounded-xl bg-[#FBF9F5]/95 backdrop-blur-sm">
-            <Stepper steps={steps} currentStep={currentStep} />
+          <div className="mt-[8px] sm:mt-[12px]">
+            <Stepper currentStep={currentStep} steps={steps} />
           </div>
         </div>
       </div>

@@ -1,98 +1,143 @@
 "use client";
 
-import InputField from "@/components/ui/InputField";
-import { Upload } from "lucide-react";
+// Assuming you have these icons installed from lucide-react
+import { Upload, User, Book, Building, Clock, IndianRupee } from "lucide-react";
 import type { Course } from "../../L2DialogBox";
+// InputField is no longer used for this specific form, but kept in case other forms need it
+import InputField from "@/components/ui/InputField";
+import { Dispatch, SetStateAction } from "react";
 
-// interface Course {
-//   id: number;
-//   tuitionType: string;
-//   instructorProfile: string;
-//   subject: string;
-//   totalSeats: string;
-//   availableSeats: string;
-//   operationalDays: string[];
-//   openingTime: string;
-//   closingTime: string;
-//   pricePerSeat: string;
-//   image: File | null;
-// }
 
 interface TuitionCenterFormProps {
   currentCourse: Course;
   handleCourseChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
   ) => void;
   handleOperationalDayChange: (day: string) => void;
   handleFileChange: (
     e: React.ChangeEvent<HTMLInputElement>,
     type: "image" | "brochure"
   ) => void;
-  setCourses: React.Dispatch<React.SetStateAction<Course[]>>;
+  courseErrors: Record<string, string>;
+  // ✅ ADD THESE MISSING PROPS BACK
+  setCourses: Dispatch<SetStateAction<Course[]>>;
   courses: Course[];
   selectedCourseId: number;
 }
+
+// A helper component for inputs with icons to keep the code clean
+const IconInput = ({ icon, children }: { icon: React.ReactNode, children: React.ReactNode }) => (
+  <div className="relative flex items-center">
+    <span className="absolute left-3 text-gray-400">{icon}</span>
+    {children}
+  </div>
+);
+
+
+
 
 export default function TuitionCenterForm({
   currentCourse,
   handleCourseChange,
   handleOperationalDayChange,
   handleFileChange,
+  courseErrors = {},
+  
 }: TuitionCenterFormProps) {
   return (
     <div className="grid md:grid-cols-2 gap-6">
+      
+      {/* ✅ MODIFICATION: Replaced InputField with a styled <select> for consistent width */}
+     {/* Wrapper for the custom styled dropdown */}
       <InputField
-        label="Tuition type"
-        name="tuitionType"
-        value={currentCourse.tuitionType}
-        onChange={handleCourseChange}
-        isSelect
-        options={["Individual", "Group", "Online", "Hybrid"]}
-        placeholder="Select tuition type"
-      />
+  label="Tuition type"
+  name="tuitionType"
+  value={currentCourse.tuitionType}
+  onChange={handleCourseChange}
+  isSelect
+  options={["Home Tuition", "Center Tuition"]}
+  placeholder="Select tuition type"
+  required
+  error={courseErrors.tuitionType}
+/>
 
-      <InputField
-        label="Instructor Profile"
-        name="instructorProfile"
-        value={currentCourse.instructorProfile}
-        onChange={handleCourseChange}
-        placeholder="Instructor name"
-      />
 
-      <InputField
-        label="Subject"
-        name="subject"
-        value={currentCourse.subject}
-        onChange={handleCourseChange}
-        placeholder="Enter subject name"
-      />
-
-      {/* Seats */}
+      {/* Instructor Profile with Icon */}
       <div className="flex flex-col gap-2">
-        <label className="font-medium text-[16px]">Total Seats</label>
+        <label className="font-medium text-[16px]">Instructor Profile<span className="text-red-500 ml-1">*</span></label>
+        <IconInput icon={<User size={18} />}>
+            <input
+                name="instructorProfile"
+                value={currentCourse.instructorProfile}
+                onChange={handleCourseChange}
+                placeholder="Instructor name"
+                className={`w-full pl-10 pr-3 py-2 border rounded-lg bg-white text-sm ${
+                    courseErrors.instructorProfile ? "border-red-500" : "border-gray-300"
+                }`}
+            />
+        </IconInput>
+        {courseErrors.instructorProfile && <p className="text-sm text-red-600 mt-1">{courseErrors.instructorProfile}</p>}
+      </div>
+
+      {/* Subject with Icon */}
+       <div className="flex flex-col gap-2">
+        <label className="font-medium text-[16px]">Subject<span className="text-red-500 ml-1">*</span></label>
+        <IconInput icon={<Book size={18} />}>
+             <input
+                name="subject"
+                value={currentCourse.subject}
+                onChange={handleCourseChange}
+                placeholder="Enter subject name"
+                className={`w-full pl-10 pr-3 py-2 border rounded-lg bg-white text-sm ${
+                    courseErrors.subject ? "border-red-500" : "border-gray-300"
+                }`}
+            />
+        </IconInput>
+        {courseErrors.subject && <p className="text-sm text-red-600 mt-1">{courseErrors.subject}</p>}
+      </div>
+
+      {/* Total Seats */}
+      <div className="flex flex-col gap-2">
+        <label className="font-medium text-[16px]">Total Seats<span className="text-red-500 ml-1">*</span></label>
         <div className="grid grid-cols-2 gap-2">
-          <input
-            type="number"
-            name="totalSeats"
-            value={currentCourse.totalSeats}
-            onChange={handleCourseChange}
-            placeholder="Total seats"
-            className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-          />
-          <input
-            type="number"
-            name="availableSeats"
-            value={currentCourse.availableSeats}
-            onChange={handleCourseChange}
-            placeholder="Available seats"
-            className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-          />
+          <div>
+            <IconInput icon={<Building size={18} />}>
+                <input
+                    type="number"
+                    name="totalSeats"
+                    value={currentCourse.totalSeats}
+                    onChange={handleCourseChange}
+                    placeholder="Total seats"
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg bg-white text-sm ${
+                        courseErrors.totalSeats ? "border-red-500" : "border-gray-300"
+                    }`}
+                />
+            </IconInput>
+            {courseErrors.totalSeats && <p className="text-sm text-red-600 mt-1">{courseErrors.totalSeats}</p>}
+          </div>
+          <div>
+            <IconInput icon={<Building size={18} />}>
+                 <input
+                    type="number"
+                    name="availableSeats"
+                    value={currentCourse.availableSeats}
+                    onChange={handleCourseChange}
+                    placeholder="Available seats"
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg bg-white text-sm ${
+                        courseErrors.availableSeats ? "border-red-500" : "border-gray-300"
+                    }`}
+                />
+            </IconInput>
+            {courseErrors.availableSeats && <p className="text-sm text-red-600 mt-1">{courseErrors.availableSeats}</p>}
+          </div>
         </div>
       </div>
 
       {/* Operational Days */}
       <div className="flex flex-col gap-2">
-        <label className="font-medium text-[16px]">Operational Day's</label>
+        <label className="font-medium text-[16px]">Operational Day's<span className="text-red-500 ml-1">*</span></label>
         <div className="flex flex-wrap gap-2">
           {["Mon", "Tues", "Wed", "Thur", "Fri", "Sat"].map((day) => (
             <button
@@ -109,53 +154,87 @@ export default function TuitionCenterForm({
             </button>
           ))}
         </div>
+        {courseErrors.operationalDays && <p className="text-sm text-red-600 mt-1">{courseErrors.operationalDays}</p>}
       </div>
 
       {/* Operational Times */}
       <div className="flex flex-col gap-2">
-        <label className="font-medium text-[16px]">Operational Time's</label>
+        <label className="font-medium text-[16px]">Operational Time's<span className="text-red-500 ml-1">*</span></label>
         <div className="grid grid-cols-2 gap-2">
-          <input
-            type="time"
-            name="openingTime"
-            value={currentCourse.openingTime}
-            onChange={handleCourseChange}
-            className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-          />
-          <input
-            type="time"
-            name="closingTime"
-            value={currentCourse.closingTime}
-            onChange={handleCourseChange}
-            className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
-          />
+          <div>
+            <IconInput icon={<Clock size={18} />}>
+                <input
+                    type="time"
+                    name="openingTime"
+                    placeholder="From"
+                    value={currentCourse.openingTime}
+                    onChange={handleCourseChange}
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg bg-white text-sm ${
+                        courseErrors.openingTime ? "border-red-500" : "border-gray-300"
+                    }`}
+                />
+            </IconInput>
+            {courseErrors.openingTime && <p className="text-sm text-red-600 mt-1">{courseErrors.openingTime}</p>}
+          </div>
+          <div>
+            <IconInput icon={<Clock size={18} />}>
+                 <input
+                    type="time"
+                    name="closingTime"
+                    placeholder="To"
+                    value={currentCourse.closingTime}
+                    onChange={handleCourseChange}
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg bg-white text-sm ${
+                        courseErrors.closingTime ? "border-red-500" : "border-gray-300"
+                    }`}
+                />
+            </IconInput>
+            {courseErrors.closingTime && <p className="text-sm text-red-600 mt-1">{courseErrors.closingTime}</p>}
+          </div>
         </div>
       </div>
 
-      <InputField
-        label="Price of the Seat"
-        name="pricePerSeat"
-        value={currentCourse.pricePerSeat}
-        onChange={handleCourseChange}
-        placeholder="Enter price per seat"
-        type="number"
-      />
+      {/* Price of the Seat with Rupee Icon */}
+      <div className="flex flex-col gap-2">
+        <label className="font-medium text-[16px]">Price of the Seat<span className="text-red-500 ml-1">*</span></label>
+        <IconInput icon={<IndianRupee size={18} />}>
+            <input
+                type="number"
+                name="pricePerSeat"
+                value={currentCourse.pricePerSeat}
+                onChange={handleCourseChange}
+                placeholder="Enter price per seat"
+                className={`w-full pl-10 pr-3 py-2 border rounded-lg bg-white text-sm ${
+                    courseErrors.pricePerSeat ? "border-red-500" : "border-gray-300"
+                }`}
+            />
+        </IconInput>
+        {courseErrors.pricePerSeat && <p className="text-sm text-red-600 mt-1">{courseErrors.pricePerSeat}</p>}
+      </div>
 
       {/* Upload Image */}
       <div className="flex flex-col gap-2">
-        <label className="font-medium text-[16px]">Add Image</label>
-        <label className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors">
+        <label className="font-medium text-[16px]">Add Image<span className="text-red-500 ml-1">*</span></label>
+        <label
+          className={`w-full h-[120px] rounded-[12px] border-2 border-dashed bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors ${
+            courseErrors.image ? "border-red-500" : "border-[#DADADD]"
+          }`}
+        >
           <Upload size={24} className="text-gray-400 mb-2" />
           <span className="text-sm text-gray-500">
-            {currentCourse.image ? (currentCourse.image as File).name : "Upload Course Image (jpg / jpeg)"}
+            {currentCourse.image
+              ? (currentCourse.image as File).name
+              : "Upload Course Image (jpg / jpeg)"}
           </span>
           <input
             type="file"
+            name="image"
             accept="image/jpeg,image/jpg"
             className="hidden"
             onChange={(e) => handleFileChange(e, "image")}
           />
         </label>
+        {courseErrors.image && <p className="text-sm text-red-600 mt-1">{courseErrors.image}</p>}
       </div>
     </div>
   );

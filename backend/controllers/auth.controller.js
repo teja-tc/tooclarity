@@ -34,46 +34,6 @@ const sendTokens = async (user, res, message) => {
   });
 };
 
-// exports.register = async (req, res, next) => {
-//   try {
-//     const { name, email, password, contactNumber, designation, linkedinUrl, type } =
-//       req.body;
-
-//     const existingUser = await InstituteAdmin.findOne({
-//       $or: [{ email }, { contactNumber }],
-//     });
-//     if (existingUser) {
-//       return res.status(409).json({
-//         status: "fail",
-//         message: "Email or contact number already in use.",
-//       });
-//     }
-
-//     const newInstituteAdmin = await InstituteAdmin.create({
-//       name,
-//       email,
-//       password,
-//       contactNumber,
-//       designation,
-//       linkedinUrl,
-//       role: "INSTITUTE_ADMIN",
-//       isPaymentDone: false,
-//       isProfileCompleted: false,
-//     });
-
-//     // send OTP for phone verification
-//     await otpService.sendVerificationToken(email);
-
-//     return res.status(201).json({
-//       status: "success",
-//       message:
-//         "User registered successfully. An OTP has been sent to your contact number for verification.",
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
 
 exports.register = async (req, res, next) => {
   try {
@@ -126,10 +86,6 @@ exports.register = async (req, res, next) => {
       });
 
       return await sendTokens(newUser, res, "ADMIN REGISTERED SUCCESSFULLY");
-      // return res.status(201).json({
-      //   status: "success",
-      //   message: "Admin registered successfully.",
-      // });
     } else {
       return res.status(400).json({
         status: "fail",
@@ -140,46 +96,6 @@ exports.register = async (req, res, next) => {
     next(error);
   }
 };
-
-
-// exports.verifyPhoneOtp = async (req, res, next) => {
-//   try {
-//     const { contactNumber, otp } = req.body;
-//     const isOtpValid = await otpService.checkVerificationToken(
-//       contactNumber,
-//       otp
-//     );
-//     if (!isOtpValid) {
-//       return res
-//         .status(400)
-//         .json({ status: "fail", message: "Incorrect or expired OTP." });
-//     }
-
-//     const user = await InstituteAdmin.findOne({ contactNumber });
-//     if (!user) {
-//       return res
-//         .status(404)
-//         .json({ status: "fail", message: "User not found" });
-//     }
-//     if (user.isPhoneVerified) {
-//       return res
-//         .status(400)
-//         .json({ status: "fail", message: "Phone number is already verified." });
-//     }
-
-//     user.isPhoneVerified = true;
-//     await user.save();
-
-//     // issue tokens
-//     return await sendTokens(
-//       user._id,
-//       res,
-//       "Phone number verified successfully."
-//     );
-//   } catch (error) {
-//     next(error);
-//   }
-// };
 
 exports.verifyEmailOtp = async (req, res, next) => {
   try {

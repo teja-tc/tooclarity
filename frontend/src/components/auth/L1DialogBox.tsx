@@ -24,6 +24,7 @@ import {
 import InputField from "@/components/ui/InputField";
 // import { institutionAPI, clearInstitutionData } from "@/lib/api";
 import { L1Schema } from "@/lib/validations/L1Schema";
+import { toast } from "react-toastify";
 
 interface FormData {
   instituteType: string;
@@ -131,25 +132,45 @@ export default function L1DialogBox({
       isMounted = false;
     };
   }, [dialogOpen]);
+// L1DialogBox.tsx
 
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    const { name, value } = e.target;
+const handleChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+) => {
+  const { name, value } = e.target;
 
-    // update formData
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // validate this single field while typing
-    const fieldError = validateField(L1Schema, name, value);
-    setErrors((prev) => ({
-      ...prev,
-      [name]: fieldError,
-    }));
+  if (name === "instituteType" && value === "Study Abroad") {
+    toast.error("Please select another type. 'Study Abroad' is not allowed.");
+    return; // stop updating form
+  }
+  // 1. Create an updated copy of the form data with the new value
+  const updatedFormData = {
+    ...formData,
+    [name]: value,
   };
 
+  // 2. Update the component's state to reflect the change in the UI
+  setFormData(updatedFormData);
+
+  // 3. Validate the *entire updated form object* to give Joi the full context
+  const { error } = L1Schema.validate(updatedFormData, { abortEarly: false });
+
+  // 4. Find the specific error message only for the field that was just changed
+  const fieldError = error?.details.find((detail) => detail.path[0] === name);
+
+  // 5. Update the errors state for the current field
+  //    - If an error is found for this field, set it.
+  //    - If no error is found for this field (meaning it's now valid), clear it.
+  setErrors((prev) => ({
+    ...prev,
+    [name]: fieldError ? fieldError.message : undefined,
+  }));
+
+  // Also, handle the side-effect for onInstituteTypeChange
+  if (name === "instituteType" && onInstituteTypeChange) {
+    onInstituteTypeChange(value);
+  }
+};
   interface CountryOption {
     code: string;
     dialCode: string;
@@ -191,34 +212,45 @@ export default function L1DialogBox({
       }));
     }
   };
+// This effect runs whenever the institute type changes
+// L1DialogBox.tsx
 
-  // Reset approvedBy & establishmentDate if instituteType = "Study Halls"
-  useEffect(() => {
-    if (formData.instituteType === "Study Halls") {
-      setFormData((prev) => ({
-        ...prev,
-        approvedBy: "",
-        establishmentDate: "",
-      }));
-    }
-  }, [formData.instituteType]);
+// L1DialogBox.tsx
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setSubmitted(true);
+useEffect(() => {
+  if (formData.instituteType === "Study Halls") {
+    setFormData((prev) => ({
+      ...prev,
+      approvedBy: "", // Use the correct field name
+      establishmentDate: "",
+    }));
 
-    // ✅ Validate with Joi
-    const { error } = activeSchema.validate(formData, { abortEarly: false });
+    setErrors((prev) => ({
+      ...prev,
+      approvedBy: undefined, // Use the correct field name
+      establishmentDate: undefined,
+    }));
+  }
+}, [formData.instituteType]);
+  
+const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setSubmitted(true);
 
-    if (error) {
-      const validationErrors: Errors = {};
-      error.details.forEach((err) => {
-        const fieldName = err.path[0] as string;
-        validationErrors[fieldName] = err.message.replace('"value"', fieldName);
-      });
-      setErrors(validationErrors);
-      return;
-    }
+  // ✅ Validate with Joi
+  const { error } = activeSchema.validate(formData, { abortEarly: false });
+
+  if (error) {
+    const validationErrors: Errors = {};
+    error.details.forEach((err) => {
+      const fieldName = err.path[0] as string;
+      // Ensure friendly messages
+      validationErrors[fieldName] = err.message.replace('"value"', fieldName);
+    });
+    setErrors(validationErrors);
+    return; // stop if errors
+  }
+  
 
     // ✅ No errors → proceed
     setErrors({});
@@ -373,17 +405,18 @@ export default function L1DialogBox({
               {formData.instituteType !== "Study Halls" && (
                 <>
                   <div>
-                    <InputField
-                      label="Recognition by"
-                      name="approvedBy"
-                      value={formData.approvedBy}
-                      onChange={handleChange}
-                      placeholder="State Recognised"
-                      required
-                      error={
-                        submitted || errors.approvedBy ? errors.approvedBy : ""
-                      }
-                    />
+                  
+<InputField
+  label="Recognition by"
+  name="approvedBy" // Renamed from approvedBy
+  value={formData.approvedBy} // Renamed from approvedBy
+  onChange={handleChange}
+  placeholder="State Recognised"
+  required
+  error={
+    submitted || errors.approvedBy ? errors.approvedBy : "" // Renamed from approvedBy
+  }
+/>
                   </div>
 
                   <div>
@@ -407,9 +440,9 @@ export default function L1DialogBox({
               <div className="flex flex-col gap-3 w-full relative">
                 {/* Label */}
                 <label
-                  htmlFor="contactInfo"
-                  className="text-[#060B13] font-montserrat font-medium text-[16px] sm:text-[18px] leading-[22px]"
-                >
+  htmlFor="contactInfo"
+  className="font-montserrat font-normal text-base text-black"
+>
                   Contact Info<span className="text-red-500 ml-1">*</span>
                 </label>
 
@@ -484,7 +517,7 @@ export default function L1DialogBox({
                     onChange={handleChange}
                     className="flex-1 text-[#060B13] font-montserrat text-[16px] sm:text-[16px] leading-[20px] focus:outline-none"
                     // className="flex-1 text-[#060B13] font-montserrat text-[16px] sm:text-[16px] leading-[20px] focus:outline-none"
-                    required
+                
                   />
                 </div>
 
@@ -497,12 +530,11 @@ export default function L1DialogBox({
 
               {/* Repeat same for additionalContactInfo */}
               <div className="flex flex-col gap-3 w-full relative">
-                <label
-                  htmlFor="additionalContactInfo"
-                  className="w-[400px] h-[22px] text-[#060B13] font-montserrat font-medium text-[18px] leading-[22px] placeholder-gray-400 focus:outline-none"
-                  // className="text-[#060B13] font-montserrat font-medium text-[16px] sm:text-[18px] leading-[22px]"
-                >
-                  Additional Contact<span className="text-red-500 ml-1">*</span>
+               <label
+  htmlFor="contactInfo"
+  className="font-montserrat font-normal text-base text-gray-950"
+>
+                  Additional Contact
                 </label>
                 <div className="flex flex-row items-center gap-3 px-4 h-[48px] w-full bg-[#F5F6F9] border border-[#DADADD] rounded-[12px]">
                   {/* <div className="flex flex-row items-center gap-3 px-4 h-[48px] w-full bg-white border border-[#DADADD] rounded-[12px]"> */}
@@ -570,20 +602,15 @@ export default function L1DialogBox({
                     placeholder="00000 00000"
                     value={formData.additionalContactInfo}
                     onChange={handleChange}
-                    required
                     className="flex-1 text-[#060B13] font-montserrat text-[16px] leading-[20px]
              bg-[#F5F6F9] focus:bg-[#F5F6F9] active:bg-[#F5F6F9] 
              focus:outline-none"
                   />
                 </div>
-
-                {errors.additionalContactInfo && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.additionalContactInfo}
-                  </p>
-                )}
-              </div>
-
+                  {errors.additionalContactInfo && (
+                   <p className="text-red-500 text-sm mt-1">{errors.additionalContactInfo}</p>
+                   )}
+                </div>
               <div>
                 <InputField
                   label="Main Campus Address"

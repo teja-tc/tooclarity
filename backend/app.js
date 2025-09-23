@@ -89,6 +89,19 @@ app.use("/api/v1/notifications", notificationRoutes);
 
 app.get("/health", (req, res) => res.status(200).send("OK"));
 
+
+app.use((err, req, res, next) => {
+  console.error("Global error handler:", err);
+
+  const statusCode = err.statusCode || err.status || 500;
+  const message = err.message || "Internal Server Error";
+
+  res.status(Number(statusCode)).json({
+    status: "error",
+    message,
+  });
+});
+
 app.use((err, req, res, next) => {
   req.log.error(err, "An unhandled error occured");
   const statusCode = err.statusCode || 500;

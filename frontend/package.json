@@ -17,6 +17,7 @@
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@shadcn/ui": "^0.0.4",
+    "@types/joi": "^17.2.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.16",
@@ -28,7 +29,7 @@
     "react-dom": "^19.1.1",
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.3.1",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8"    
   },
   "compilerOptions": {
     "types": [

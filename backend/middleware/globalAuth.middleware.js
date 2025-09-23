@@ -6,6 +6,7 @@ const {
   deleteRefreshToken,
 } = require("../utils/redis.util");
 const User = require("../models/InstituteAdmin"); // 👈 import your User model
+const { decode } = require("jsonwebtoken");
 
 const globalAuthMiddleware = async (req, res, next) => {
   try {
@@ -94,6 +95,7 @@ const globalAuthMiddleware = async (req, res, next) => {
     try {
       decodedRefresh = verifyToken(refreshToken);
       userId = decodedRefresh.id;
+      req.userRole=decoded.role
       req.userId = userId;
       req.userRole = decodedRefresh.role;
       console.log("userId set to req:", userId);
