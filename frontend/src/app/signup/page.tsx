@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -32,6 +32,11 @@ export default function SignupPage() {
       return;
     }
 
+    // If allowed (INSTITUTE_ADMIN with both flags false), stay on this page
+    if (isAllowed) {
+      return;
+    }
+
     if (!isAllowed) {
       if (user?.role === "INSTITUTE_ADMIN") {
         if (user.isPaymentDone === false && user.isProfileCompleted === true) {
@@ -47,15 +52,6 @@ export default function SignupPage() {
       router.replace("/");
     }
   }, [loading, isAuthenticated, isAllowed, user, router]);
-
-  // Show loader while verifying or redirecting
-  if (loading || !isAuthenticated || !isAllowed) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   const [l1DialogOpen, setL1DialogOpen] = useState(false);
   const [selectionOpen, setSelectionOpen] = useState(false);
@@ -108,7 +104,7 @@ export default function SignupPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     localStorage.setItem("signupFormData", JSON.stringify(formData));
-    console.log(localStorage.getItem("signupFormData"))
+    console.log(localStorage.getItem("signupFormData"));
   }, [formData]);
 
   const handleInstituteTypeChange = (type: string) => {
@@ -151,6 +147,15 @@ export default function SignupPage() {
     setL2DialogOpen(true);
     setCurrentStep(2);
   };
+
+  // Show loader while verifying or redirecting
+  if (loading || !isAuthenticated || !isAllowed) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#FBF9F5]">

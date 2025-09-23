@@ -79,7 +79,7 @@ export default function LandingPage() {
   const { isAuthenticated, user, logout } = useAuth();
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
 
-  /*useEffect(() => {
+  useEffect(() => {
     if (!isAuthenticated || !user) return;
 
     // Redirect rules for INSTITUTE_ADMIN
@@ -88,12 +88,16 @@ export default function LandingPage() {
         router.replace("/dashboard");
         return;
       }
+      if(user.isPaymentDone === false && user.isProfileCompleted == false){
+        router.replace("/signup");
+        return;
+      }
       if (user.isPaymentDone === false && user.isProfileCompleted === true) {
         router.replace("/payment");
         return;
       }
     }
-  }, [isAuthenticated, user, router]); */
+  }, [isAuthenticated, user, router]);
 
   const handleLogout = async () => {
     await logout();
@@ -116,8 +120,8 @@ export default function LandingPage() {
         </div>
         <div className="flex gap-2 sm:gap-4 lg:gap-6">
             <>
-              <LoginDialogBox/>
-              <SignUpDialog open={signUpDialogOpen} onOpenChange={setSignUpDialogOpen} />
+              <LoginDialogBox caller="institution"/>
+              <SignUpDialog caller="institution" open={signUpDialogOpen} onOpenChange={setSignUpDialogOpen} />
             </>
         </div>
       </nav>

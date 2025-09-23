@@ -10,29 +10,27 @@ const RedisUtil = require("../utils/redis.util");
 const Coupon = require("../models/coupon");
 const mongoose = require("mongoose");
 
+const PLANS = require("../config/plans");
+
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-const PLANS = {
-  monthly: 9900,
-  yearly: 118800,
-};
-
 exports.createOrder = asyncHandler(async (req, res, next) => {
-  const { planType = "yearly", coupon } = req.body;
+  const { planType = "yearly", couponCode } = req.body;
   const userId = req.userId;
-  const institution = await InstituteAdmin.findById(userId).select(
-    "institution"
-  );
-  const institutionId = institution.institution;
+
+  const institution = await InstituteAdmin.findById(userId).select("institution");
+  const institutionId = institution?.institution;
 
   console.log("[Payment] Create order request received:", {
     userId,
     institutionId,
     planType,
+    couponCode,
   });
+
   if (!institutionId) {
     console.error("[Payment] Institution not found:", institutionId);
     return next(new AppError("Institution not found", 404));
@@ -40,17 +38,45 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
 
   console.log("[Payment] Institution ownership verified:", institutionId);
 
-  // Validate plan
-  const amount = PLANS[planType];
+  // ✅ Validate plan
+  let amount = PLANS[planType];
   if (!amount) {
     console.error("[Payment] Invalid plan type:", planType);
     return next(new AppError("Invalid plan type specified", 400));
   }
-  console.log("[Payment] Plan validated:", { planType, amount });
+  console.log("[Payment] Plan validated:", { planType, baseAmount: amount });
 
-  // Razorpay order creation
+  // ✅ Check coupon
+  if (couponCode) {
+    const coupon = await Coupon.findOne({
+      code: couponCode,
+      // institutions: institutionId, // check institution-specific coupon
+    });
+
+    if (!coupon) {
+      return next(new AppError("Invalid or unauthorized coupon code", 400));
+    }
+
+    // ✅ Check expiry
+    if (coupon.validTill && new Date(coupon.validTill) < new Date()) {
+      return next(new AppError("Coupon has expired", 400));
+    }
+
+    // ✅ Apply discount
+    const discount = (amount * coupon.discountPercentage) / 100;
+    amount = Math.max(0, amount - discount); // don’t go below 0
+
+    console.log("[Payment] Coupon applied:", {
+      couponCode,
+      discountPercentage: coupon.discountPercentage,
+      discount,
+      finalAmount: amount,
+    });
+  }
+
+  // ✅ Razorpay order creation
   const options = {
-    amount,
+    amount: amount * 100, // Razorpay expects amount in paise
     currency: "INR",
     receipt: `receipt_order_${new Date().getTime()}`,
   };
@@ -66,7 +92,7 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
     return next(new AppError("Failed to create order with Razorpay", 500));
   }
 
-  // Save subscription record
+  // ✅ Save subscription record
   try {
     const subscription = await Subscription.findOneAndUpdate(
       { institution: institutionId },
@@ -214,16 +240,16 @@ exports.pollSubscriptionStatus = asyncHandler(async (req, res) => {
     const subscription = await Subscription.aggregate([
       {
         $lookup: {
-          from: "instituteadmins", // collection name of InstituteAdmin
-          localField: "institution", // field in Subscription
-          foreignField: "institution", // field in InstituteAdmin
-          as: "admin", // put matches into "admin" array
+          from: "instituteadmins",
+          localField: "institution",
+          foreignField: "institution",
+          as: "admin",
         },
       },
-      { $unwind: "$admin" }, // flatten "admin" array into an object
+      { $unwind: "$admin" },
       {
         $match: {
-          "admin._id": new mongoose.Types.ObjectId(userId), // only keep docs where admin._id == userId
+          "admin._id": new mongoose.Types.ObjectId(userId),
         },
       },
       {

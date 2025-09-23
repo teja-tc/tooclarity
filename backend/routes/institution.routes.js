@@ -22,5 +22,9 @@ router.route('/me')
     .delete( institutionController.deleteMyInstitution);
 
 
+router.post('/upload',
+    upload.single("file"),
+    institutionController.uploadFileData
+);
 
 module.exports = router;

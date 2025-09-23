@@ -382,7 +382,10 @@ exports.uploadFileData = asyncHandler(async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: "File processed successfully",
-      data: "Successfully created institution and associated data",
+      data: {
+        message : "Successfully created institution and associated data",
+        isProfileCompleted: true,
+      },
     });
   } catch (err) {
     // ❌ Rollback transaction
