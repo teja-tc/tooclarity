@@ -142,7 +142,6 @@ exports.updateL2InstitutionDetails = asyncHandler(async (req, res, next) => {
  * @access  Private
  */
 exports.getMyInstitution = asyncHandler(async (req, res, next) => {
-
   // Try from user document, else by owner
   const user = await InstituteAdmin.findById(req.userId).select("institution");
   let institution = null;
@@ -317,7 +316,10 @@ exports.uploadFileData = asyncHandler(async (req, res, next) => {
     res.status(201).json({
       success: true,
       message: "File processed successfully",
-      data: "Successfully created institution and associated data",
+      data: {
+        message : "Successfully created institution and associated data",
+        isProfileCompleted: true,
+      },
     });
   } catch (err) {
     // ❌ Rollback transaction
