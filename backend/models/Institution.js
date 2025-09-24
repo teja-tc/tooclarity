@@ -61,7 +61,7 @@ const institutionSchema = new mongoose.Schema(
       trim: true,
     },
 
-    owner: {
+    institutionAdmin: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "InstituteAdmin",
       required: true,

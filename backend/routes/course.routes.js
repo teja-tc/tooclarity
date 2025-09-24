@@ -25,9 +25,9 @@ router.route('/:courseId')
 // Unified metric increment (views | comparisons)
 router.post('/:courseId/metrics', courseController.incrementMetricUnified);
 
-// Owner-level course metrics
-router.get('/summary/metrics/owner', courseController.getOwnerMetricSummaryUnified);
-router.get('/summary/metrics/owner/range', courseController.getOwnerMetricByRangeUnified);
-router.get('/summary/metrics/owner/series', courseController.getOwnerMetricSeriesUnified);
+// InstitutionAdmin-level course metrics
+router.get('/summary/metrics/institution-admin', courseController.getInstitutionAdminMetricSummaryUnified);
+router.get('/summary/metrics/institution-admin/range', courseController.getInstitutionAdminMetricByRangeUnified);
+router.get('/summary/metrics/institution-admin/series', courseController.getInstitutionAdminMetricSeriesUnified);
 
 module.exports = router;

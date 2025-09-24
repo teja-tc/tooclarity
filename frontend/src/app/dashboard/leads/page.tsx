@@ -3,30 +3,33 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import KPIGroup from "@/components/dashboard/KPIGroup";
-import CustomerList, { CustomerItem } from "@/components/dashboard/CustomerList";
+import StudentList, { StudentItem } from "@/components/dashboard/StudentList";
 import AppSelect from "@/components/ui/AppSelect";
 import { Button } from "@/components/ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { faPhone, faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
-import { getMyInstitution, getInstitutionBranches, getInstitutionCourses, analyticsAPI, authAPI, metricsAPI, enquiriesAPI } from "@/lib/api";
+import { getInstitutionBranches, getInstitutionCourses, analyticsAPI, authAPI, metricsAPI, enquiriesAPI } from "@/lib/api";
 import { withAuth } from "@/lib/auth-context";
 import { getSocket } from "@/lib/socket";
 import { motion, AnimatePresence } from "framer-motion";
 import StatCard from "@/components/dashboard/StatCard";
 import TimeRangeToggle, { TimeRangeValue } from "@/components/ui/TimeRangeToggle";
+import { useInfiniteLeads, useInstitution } from "@/lib/hooks/dashboard-hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import Loading from "@/components/ui/loading";
 
-function CustomersPage() {
-	const [customerKpiRange, setCustomerKpiRange] = useState<"Weekly"|"Monthly"|"Yearly">("Weekly");
-	const [customerTimeRange, setCustomerTimeRange] = useState<"Weekly"|"Monthly"|"Yearly">("Weekly");
-	const [customers, setCustomers] = useState<CustomerItem[]>([]);
-	const [baseCustomers, setBaseCustomers] = useState<CustomerItem[]>([]);
+function LeadsPage() {
+	const [leadKpiRange, setLeadKpiRange] = useState<"Weekly"|"Monthly"|"Yearly">("Weekly");
+	const [leadTimeRange, setLeadTimeRange] = useState<"Weekly"|"Monthly"|"Yearly">("Weekly");
+	const [students, setStudents] = useState<StudentItem[]>([]);
+	const [baseStudents, setBaseStudents] = useState<StudentItem[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
-	const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
+	const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
 	const [selectedProgram, setSelectedProgram] = useState<string>("Choose Program to see");
 	const [courseOptions, setCourseOptions] = useState<string[]>(["Choose Program to see"]);
 	const [institutionId, setInstitutionId] = useState<string | null>(null);
-	const [ownerId, setOwnerId] = useState<string | null>(null);
+	const [institutionAdminId, setInstitutionAdminId] = useState<string | null>(null);
 
 	const [kpiViews, setKpiViews] = useState<number>(0);
 	const [kpiCallbacks, setKpiCallbacks] = useState<number>(0);
@@ -36,6 +39,11 @@ function CustomersPage() {
 	const [kpiCallbacksDelta, setKpiCallbacksDelta] = useState<{value:number; isPositive:boolean}>({value:0,isPositive:true});
 	const [kpiDemosDelta, setKpiDemosDelta] = useState<{value:number; isPositive:boolean}>({value:0,isPositive:true});
 	const [isKpiLoading, setIsKpiLoading] = useState<boolean>(false);
+
+	const queryClient = useQueryClient();
+	const { data: institution } = useInstitution();
+	const { data: pages, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteLeads(10);
+	const sentinelRef = React.useRef<HTMLDivElement | null>(null);
 
 	const computeTrend = (current: number, previous: number) => {
 		if (previous <= 0) return { value: current > 0 ? 100 : 0, isPositive: current > 0 };
@@ -50,8 +58,8 @@ function CustomersPage() {
 		try {
 			setIsKpiLoading(true);
 			const [{ data: viewsNow }, { data: leadsNow }, typeRollups] = await Promise.all([
-				metricsAPI.getOwnerByRange('views', range) as any,
-				metricsAPI.getOwnerByRange('leads', range) as any,
+				metricsAPI.getInstitutionAdminByRange('views', range) as any,
+				metricsAPI.getInstitutionAdminByRange('leads', range) as any,
 				enquiriesAPI.getTypeSummaryRollups(range) as any
 			]);
 			setKpiViews(viewsNow?.totalViews || 0);
@@ -69,28 +77,29 @@ function CustomersPage() {
 			const recent = await enquiriesAPI.getRecentEnquiries();
 			if ((recent as any)?.success && Array.isArray((recent as any).data?.enquiries)) {
 				const enquiries = (recent as any).data.enquiries;
-				const mapped: CustomerItem[] = enquiries.map((enquiry: any, idx: number) => ({
+				const mapped: StudentItem[] = enquiries.map((enquiry: any, idx: number) => ({
 					date: new Date(enquiry.createdAt || Date.now() - idx * 86400000).toLocaleDateString('en-GB'),
-					name: enquiry.customerName || `Customer ${idx + 1}`,
+					name: enquiry.studentName || `Student ${idx + 1}`,
 					id: String(enquiry._id || idx),
 					status: enquiry.enquiryType || "Requested for callback",
-					// do not show program interest in list, but keep for filtering
 					program: enquiry.programInterest || undefined,
-					email: enquiry.customerEmail || undefined,
-					phone: enquiry.customerPhone || undefined,
-					address: (enquiry.customer?.customerAddress || enquiry.institution?.headquartersAddress || enquiry.institution?.locationURL || enquiry.institution?.institutionName) || undefined,
+					email: enquiry.studentEmail || undefined,
+					phone: enquiry.studentPhone || undefined,
+					address: (enquiry.student?.studentAddress || enquiry.institution?.headquartersAddress || enquiry.institution?.locationURL || enquiry.institution?.institutionName) || undefined,
 					timestampMs: enquiry.createdAt ? new Date(enquiry.createdAt).getTime() : (Date.now() - idx * 86400000)
 				}));
-				setBaseCustomers(mapped);
-				// Build program options from all enquiries across all institutions
+				// Only seed base list if still empty (infinite query will handle main list)
+				if (baseStudents.length === 0) {
+					setBaseStudents(mapped);
+				}
 				const programSet = new Set<string>();
 				mapped.forEach(m => { if (m.program) programSet.add(m.program); });
 				setCourseOptions(["Choose Program to see", ...Array.from(programSet)]);
 			}
-		} catch {}
-	}, []);
+		} catch (err) { console.error('Leads: initial fetch failed', err); }
+	}, [baseStudents.length]);
 
-	const applyListFilters = (source: CustomerItem[], programLabel: string, rangeLabel: "Weekly"|"Monthly"|"Yearly") => {
+	const applyListFilters = (source: StudentItem[], programLabel: string, rangeLabel: "Weekly"|"Monthly"|"Yearly") => {
 		const now = Date.now();
 		const windowMs = rangeLabel === 'Weekly' ? 7*24*60*60*1000 : rangeLabel === 'Monthly' ? 30*24*60*60*1000 : 365*24*60*60*1000;
 		const start = now - windowMs;
@@ -99,25 +108,94 @@ function CustomersPage() {
 			const programOk = programLabel === 'Choose Program to see' || !c.program || c.program === programLabel;
 			return inRange && programOk;
 		});
-		setCustomers(filtered);
-		if (filtered.length > 0) setSelectedCustomer(filtered[0]);
+		setStudents(filtered);
+		if (filtered.length > 0) setSelectedStudent(filtered[0]);
 	};
 
 	const handleListRangeClick = (rangeLabel: "Weekly"|"Monthly"|"Yearly") => {
-		setCustomerTimeRange(rangeLabel);
-		applyListFilters(baseCustomers, selectedProgram, rangeLabel);
+		setLeadTimeRange(rangeLabel);
+		applyListFilters(baseStudents, selectedProgram, rangeLabel);
 	};
+
+	const statusColorClass = (status?: string) => {
+		const s = (status || '').toLowerCase();
+		if (s.includes('demo')) return 'bg-purple-600 hover:bg-purple-700';
+		if (s.includes('callback')) return 'bg-blue-600 hover:bg-blue-700';
+		if (s.includes('lead')) return 'bg-emerald-600 hover:bg-emerald-700';
+		return 'bg-gray-600 hover:bg-gray-700';
+	};
+
+	// Update baseStudents from IndexedDB infinite pages, keep UI intact
+	useEffect(() => {
+		const p = (pages?.pages as any[]) || [];
+		if (p) setIsLoading(false);
+		const flat = p.flat() as any[];
+		if (flat.length) {
+			const mapped: StudentItem[] = flat.map((c: any, idx: number) => {
+				const stableId = String(c.studentId || c.id || `${c.timestampMs || ''}-${c.email || ''}-${idx}`);
+				return {
+					date: c.date || new Date(c.timestampMs || Date.now()).toLocaleDateString('en-GB'),
+					name: c.name,
+					id: stableId,
+					status: c.status || 'Requested for callback',
+					program: c.programInterests?.[0],
+					email: c.email,
+					phone: c.phone,
+					address: c.address,
+					timestampMs: c.timestampMs || Date.now(),
+					programInterests: c.programInterests || (c.program ? [c.program] : undefined)
+				};
+			});
+			// Deduplicate by id to avoid React key collisions
+			const seen = new Set<string>();
+			const unique = mapped.filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true; });
+			setBaseStudents(unique);
+			applyListFilters(unique, selectedProgram, leadTimeRange);
+		}
+	}, [pages, selectedProgram, leadTimeRange]);
+
+	// IntersectionObserver sentinel for next page (exactly at end)
+	useEffect(() => {
+		const el = sentinelRef.current;
+		if (!el) return;
+
+		// Find nearest scrollable parent to use as observer root
+		const getScrollParent = (node: Element | null): Element | null => {
+			if (!node) return null;
+			const style = window.getComputedStyle(node as Element);
+			const overflowY = style.getPropertyValue('overflow-y');
+			const isScrollable = /(auto|scroll|overlay)/.test(overflowY);
+			if (isScrollable) return node;
+			return getScrollParent(node.parentElement);
+		};
+
+		const rootEl = getScrollParent(el.parentElement) || null;
+
+		const observer = new IntersectionObserver((entries) => {
+			for (const entry of entries) {
+				if (entry.isIntersecting) {
+					if (!isFetchingNextPage && hasNextPage) {
+						fetchNextPage();
+					}
+				}
+			}
+		}, { root: rootEl, rootMargin: '0px', threshold: 1.0 });
+
+		observer.observe(el);
+		return () => {
+			try { observer.disconnect(); } catch {}
+		};
+	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
 	useEffect(() => {
 		let mounted = true;
 		(async () => {
 			try {
-				const inst = await getMyInstitution();
-				if (!mounted || !inst?._id) { setIsLoading(false); return; }
-				setInstitutionId(inst._id);
+				if (!institution?._id) { setIsLoading(false); return; }
+				setInstitutionId(institution._id);
 				setIsLoading(true);
 				await Promise.all([
-					fetchKPIs(customerKpiRange),
+					fetchKPIs(leadKpiRange),
 					fetchList()
 				]);
 				setIsLoading(false);
@@ -126,19 +204,19 @@ function CustomersPage() {
 			}
 		})();
 		return () => { mounted = false; };
-	}, [fetchKPIs, fetchList]);
+	}, [fetchKPIs, fetchList, institution, leadKpiRange]);
 
 	// When KPI time range changes, refresh only KPIs (do not touch list)
 	useEffect(() => {
 		(async () => {
-			try { await fetchKPIs(customerKpiRange); } catch {}
+			try { await fetchKPIs(leadKpiRange); } catch (err) { console.error('Leads: KPI refresh failed', err); }
 		})();
-	}, [customerKpiRange, fetchKPIs]);
+	}, [leadKpiRange, fetchKPIs]);
 
 	// When list program or range changes, re-filter from base
 	useEffect(() => {
-		applyListFilters(baseCustomers, selectedProgram, customerTimeRange);
-	}, [baseCustomers, selectedProgram, customerTimeRange]);
+		applyListFilters(baseStudents, selectedProgram, leadTimeRange);
+	}, [baseStudents, selectedProgram, leadTimeRange]);
 
 	// Socket for realtime updates
 	useEffect(() => {
@@ -152,39 +230,39 @@ function CustomersPage() {
 				s = await getSocket(origin);
 				s.on('connect', async () => {
 					s.emit('joinInstitution', institutionId);
-					let oid = ownerId;
+					let oid = institutionAdminId;
 					if (!oid) {
 						try {
 							const prof = await authAPI.getProfile();
 							oid = (prof as any)?.data?.id;
-						} catch {}
+						} catch (err) { console.error('Leads: profile fetch failed for institution admin room', err); }
 					}
-					if (oid) s.emit('joinOwner', oid);
+					if (oid) s.emit('joinInstitutionAdmin', oid);
 				});
 				s.on('courseViewsUpdated', async () => {
 					try {
-						const latest = await metricsAPI.getOwnerByRange('views', normalizeRange(customerKpiRange));
+						const latest = await metricsAPI.getInstitutionAdminByRange('views', normalizeRange(leadKpiRange));
 						if ((latest as any)?.success) setKpiViews(((latest as any).data?.totalViews) || 0);
-					} catch {}
+					} catch (err) { console.error('Leads: realtime views refresh failed', err); }
 				});
-				s.on('ownerTotalLeads', async () => {
+				s.on('institutionAdminTotalLeads', async () => {
 					try {
-						const latest = await metricsAPI.getOwnerByRange('leads', normalizeRange(customerKpiRange));
+						const latest = await metricsAPI.getInstitutionAdminByRange('leads', normalizeRange(leadKpiRange));
 						if ((latest as any)?.success) setKpiLeads(((latest as any).data?.totalLeads) || 0);
-					} catch {}
+					} catch (err) { console.error('Leads: realtime leads refresh failed', err); }
 				});
 				s.on('enquiryCreated', async () => {
 					try {
 						await Promise.all([
-							enquiriesAPI.getTypeSummaryRollups(normalizeRange(customerKpiRange)).then((r:any)=>{ if (r?.success) { setKpiCallbacks(r.data?.callbacks||0); setKpiDemos(r.data?.demos||0); } }),
-							fetchList()
+							enquiriesAPI.getTypeSummaryRollups(normalizeRange(leadKpiRange)).then((r:any)=>{ if (r?.success) { setKpiCallbacks(r.data?.callbacks||0); setKpiDemos(r.data?.demos||0); } }),
+							queryClient.invalidateQueries({ queryKey: ['leads-infinite'] })
 						]);
-					} catch {}
+					} catch (err) { console.error('Leads: realtime enquiry refresh failed', err); }
 				});
-			} catch {}
+			} catch (err) { console.error('Leads: socket setup error', err); }
 		})();
-		return () => { try { s?.off('courseViewsUpdated'); s?.off('ownerTotalLeads'); s?.off('enquiryCreated'); } catch {} };
-	}, [institutionId, customerKpiRange, fetchList]);
+		return () => { try { s?.off('courseViewsUpdated'); s?.off('institutionAdminTotalLeads'); s?.off('enquiryCreated'); } catch (err) { console.error('Leads: socket cleanup error', err); } };
+	}, [institutionId, leadKpiRange, queryClient]);
 
 	return (
 		<div className="p-2 mt-5">
@@ -195,7 +273,7 @@ function CustomersPage() {
 						<div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-2 mb-4 sm:mb-6 m-0">
 							<div className="text-lg sm:text-sm md:text-2xl font-semibold">Leads management</div>
 							<div className="ml-0 sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
-								<TimeRangeToggle value={customerKpiRange as TimeRangeValue} onChange={setCustomerKpiRange as any} />
+								<TimeRangeToggle value={leadKpiRange as TimeRangeValue} onChange={setLeadKpiRange as any} />
 							</div>
 						</div>
 						<motion.div
@@ -249,7 +327,7 @@ function CustomersPage() {
 										variant="ghost"
 										size="sm"
 										onClick={() => handleListRangeClick(r)}
-										className={`rounded-sm px-4 ${customerTimeRange===r ? 'bg-indigo-100 text-gray-900' : 'text-gray-900'}`}
+										className={`rounded-sm px-4 ${leadTimeRange===r ? 'bg-indigo-100 text-gray-900' : 'text-gray-900'}`}
 									>
 										{r}
 									</Button>
@@ -260,57 +338,66 @@ function CustomersPage() {
 
 					<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 p-2">
 						<div className="lg:col-span-2">
-							<CustomerList 
-								key={`${customerTimeRange}-${selectedProgram}-${baseCustomers.length}`}
-								items={customers} 
+							<StudentList 
+								key={`${leadTimeRange}-${selectedProgram}-${baseStudents.length}`}
+								items={students} 
 								isLoading={isLoading}
-								onCustomerClick={(customer) => setSelectedCustomer(customer)}
-								onCustomerHover={(customer) => setSelectedCustomer(customer)}
+								onStudentClick={(student) => setSelectedStudent(student)}
+								onStudentHover={(student) => setSelectedStudent(student)}
 								hideActions
 								selectionMode="hover"
 							/>
+							{/* Loading indicator and sentinel at end of list */}
+							{isFetchingNextPage && (
+								<div className="py-4">
+									<Loading />
+								</div>
+							)}
+							<div ref={sentinelRef} style={{ height: 1 }} />
 						</div>
 						<div className="lg:col-span-1">
 							<Card className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800">
 								<CardContent className="p-6">
 									<h4 className="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">Lead Details</h4>
 									<p className="text-sm text-gray-500 mb-4 dark:text-gray-300">Detailed information about the selected lead</p>
-									{selectedCustomer ? (
+									{selectedStudent ? (
 										<div className="space-y-5">
 											<div className="flex items-center gap-3 flex-nowrap">		
 												<div>
 													<div className="flex items-center gap-3 flex-nowrap">
 														<div className="h-11 w-11 rounded-full bg-yellow-400 flex items-center justify-center text-gray-700 text-lg">
-															{selectedCustomer.name.charAt(0)}
+															{selectedStudent.name.charAt(0)}
 														</div>
 														<div>
-															<div className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{selectedCustomer.name}</div>
-															<div className="text-sm text-gray-400">#{selectedCustomer.id}</div>
+															<div className="font-semibold text-gray-900 dark:text-gray-100 text-lg">{selectedStudent.name}</div>
+															<div className="text-sm text-gray-400">#{selectedStudent.id}</div>
 														</div>
 													</div>
 													<div className="space-y-3 text-sm mt-3 ml-14">
-														{selectedCustomer.phone && (
+														{selectedStudent.phone && (
 															<div className="text-gray-700 dark:text-gray-200 flex items-center gap-2">
 																<FontAwesomeIcon icon={faPhone} className="text-gray-400" />
-																<span className="text-[15px]">{selectedCustomer.phone}</span>
+																<span className="text-[15px]">{selectedStudent.phone}</span>
 															</div>
 														)}
-														{selectedCustomer.email && (
+														{selectedStudent.email && (
 															<div className="text-gray-700 dark:text-gray-200 flex items-center gap-2">
 																<FontAwesomeIcon icon={faEnvelope} className="text-gray-400" />
-																<span className="text-[15px]">{selectedCustomer.email}</span>
+																<span className="text-[15px]">{selectedStudent.email}</span>
 															</div>
 														)}
-														{selectedCustomer.address && (
+														{selectedStudent.address && (
 															<div className="text-gray-700 dark:text-gray-200 flex items-center gap-2">
 																<FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400" />
-																<span className="text-[15px]">{selectedCustomer.address}</span>
-																</div>
+																<span className="text-[15px]">{selectedStudent.address}</span>
+															</div>
 														)}
-													</div>
+														</div>
 												</div>
 											</div>
-											<Button className="rounded-md px-6 py-2 mx-auto block bg-blue-600 text-white">{selectedCustomer.status}</Button>
+											<Button className={`rounded-md px-6 py-2 mx-auto block text-white ${statusColorClass(selectedStudent.status)}`}>
+												{selectedStudent.status}
+											</Button>
 										</div>
 									) : (
 										<div className="text-gray-500 dark:text-gray-400">Select a Lead to see details.</div>
@@ -325,4 +412,4 @@ function CustomersPage() {
 	);
 }
 
-export default withAuth(CustomersPage);
+export default withAuth(LeadsPage);
