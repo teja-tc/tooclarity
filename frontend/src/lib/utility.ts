@@ -4,6 +4,7 @@ import {
   getCoursesGroupsByBranchName,
 } from "@/lib/localDb"; // update import paths
 import { institutionAPI, type ApiResponse } from "@/lib/api";
+import { useUserStore } from "@/lib/user-store";
 
 /**
  * Fetch institution + courses and wrap into a JSON File
@@ -59,9 +60,16 @@ export async function exportAndUploadInstitutionAndCourses(): Promise<ApiRespons
   if (response.success) {
     // ✅ Clear localStorage
     localStorage.clear();
-
     // ✅ Delete IndexedDB database "tooclarity"
     indexedDB.deleteDatabase("tooclarity");
+
+    // ✅ Mark profile as completed in Zustand store so routing can proceed to payment
+    try {
+      useUserStore.getState().setProfileCompleted(true);
+      console.log("[Utility] isProfileCompleted set to true in store");
+    } catch (e) {
+      console.warn("[Utility] Failed to set isProfileCompleted in store:", e);
+    }
   }
 
   return response;

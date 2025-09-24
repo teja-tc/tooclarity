@@ -8,7 +8,6 @@ export const validateField = (
 ): string | undefined => {
   const keyExists = schema.$_terms.keys?.some((k: any) => k.key === name);
   if (!keyExists) return undefined;
-
   const { error } = schema.extract(name).validate(value, { abortEarly: true });
   return error ? error.details[0].message.replace('"value"', name) : undefined;
 };

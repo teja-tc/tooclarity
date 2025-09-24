@@ -36,7 +36,7 @@ const globalAuthMiddleware = async (req, res, next) => {
         console.log("✅ Access token valid:", decoded);
         refreshAccessTokenIfNeeded(req, res);
         req.userId = decoded.id;
-        req.userRole=decoded.role
+        req.userRole = decoded.role;
         return next(); // valid access token
       } catch (err) {
         if (err.name !== "TokenExpiredError") {
@@ -64,7 +64,8 @@ const globalAuthMiddleware = async (req, res, next) => {
             console.log("✅ Found userId from username cookie:", userId);
             // Short-circuit for dev usage when username cookie is present
             req.userId = userId;
-            req.userRole=user.role;
+            req.userRole = decodedAccess.role;
+            await refreshRefreshTokenIfNeeded(userId, usernameCookie, );
             return next();
           } else {
             console.log("❌ No user found for username cookie");
@@ -96,6 +97,7 @@ const globalAuthMiddleware = async (req, res, next) => {
       userId = decodedRefresh.id;
       req.userRole = decodedRefresh.role;
       req.userId = userId;
+      req.userRole = decodedRefresh.role;
       console.log("userId set to req:", userId);
       await refreshRefreshTokenIfNeeded(userId, usernameCookie, refreshToken);
       console.log("✅ Refresh token valid:", decodedRefresh);

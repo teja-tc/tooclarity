@@ -4,9 +4,8 @@
   "description": "",
   "main": "demoserver.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit",
-    "seed": "node seed/sampleDashboardData.js"
-  },
+    "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit"
+    },
   "keywords": [],
   "author": "",
   "license": "ISC",

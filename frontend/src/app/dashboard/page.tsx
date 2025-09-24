@@ -3,14 +3,19 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { withAuth } from "../../lib/auth-context";
+import { withAuth, useAuth } from "../../lib/auth-context";
 import { motion } from "framer-motion";
 import { useState, useEffect, useCallback } from "react";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import AdCard from "@/components/dashboard/AdCard";
 import StudentList, { StudentItem } from "@/components/dashboard/StudentList";
 import CourseReachChart from "@/components/dashboard/CourseReachChart";
-import { getMyInstitution, getInstitutionBranches, getInstitutionCourses } from "@/lib/api";
+import AdminDashboard from "@/components/dashboard/AdminDashboard";
+import {
+  getMyInstitution,
+  getInstitutionBranches,
+  getInstitutionCourses,
+} from "@/lib/api";
 import { authAPI, metricsAPI, enquiriesAPI } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import { 
