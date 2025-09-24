@@ -78,3 +78,45 @@ exports.checkVerificationToken = async (email, code) => {
     return false;
   }
 };
+
+exports.sendPaymentSuccessEmail = async (options) => {
+  const { email, planType, amount, orderId, startDate, endDate } = options;
+
+  try {
+    const formattedStartDate = new Date(startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const formattedEndDate = new Date(endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const formattedAmount = (amount / 100).toFixed(2);
+
+    const mailOptions = {
+      from: `"No Reply" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Your Subscription is Confirmed!",
+      text: `Dear User,
+
+We are happy to inform you that your payment was successful and your subscription is now active!
+
+Here are the details of your plan:
+- Plan: ${planType.charAt(0).toUpperCase() + planType.slice(1)}
+- Amount Paid: ₹${formattedAmount}
+- Order ID: ${orderId}
+- Subscription Start Date: ${formattedStartDate}
+- Subscription End Date: ${formattedEndDate}
+
+Thank you for choosing us!
+
+Best regards,
+The TooClarity Team`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    logger.info({ event: "payment_success_email_sent", email, orderId }, "Payment success email sent.");
+    return true;
+
+  } catch (error) {
+    logger.error(
+      { err: error, event: "payment_email_failed", email, orderId },
+      "Failed to send payment success email."
+    );
+    return false;
+  }
+};

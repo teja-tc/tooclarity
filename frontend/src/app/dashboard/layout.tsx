@@ -75,5 +75,5 @@ export default function DashboardLayout({
     );
   }
 
-  return <div className="p-6">You do not have access.</div>;
+  return <div></div>;
 }
