@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
 
-export interface CustomerItem {
+export interface StudentItem {
   date: string;
   name: string;
   id: string;
@@ -20,13 +20,13 @@ export interface CustomerItem {
   timestampMs?: number;
 }
 
-interface CustomerListProps {
+interface StudentListProps {
   title?: string;
-  items: CustomerItem[];
+  items: StudentItem[];
   isLoading?: boolean;
-  onCustomerClick?: (customer: CustomerItem) => void;
-  onCustomerHover?: (customer: CustomerItem) => void;
-  onStatusChange?: (customerId: string, newStatus: string) => void;
+  onStudentClick?: (student: StudentItem) => void;
+  onStudentHover?: (student: StudentItem) => void;
+  onStatusChange?: (studentId: string, newStatus: string) => void;
   hideActions?: boolean;
   selectionMode?: 'click' | 'hover';
   statusLabel?: string;
@@ -34,12 +34,12 @@ interface CustomerListProps {
   useIconWhenNoAvatar?: boolean;
 }
 
-const CustomerList: React.FC<CustomerListProps> = ({
-  title = "Customer list",
+const StudentList: React.FC<StudentListProps> = ({
+  title = "Student list",
   items,
   isLoading,
-  onCustomerClick,
-  onCustomerHover,
+  onStudentClick,
+  onStudentHover,
   onStatusChange,
   hideActions = false,
   selectionMode = 'click',
@@ -47,7 +47,7 @@ const CustomerList: React.FC<CustomerListProps> = ({
   useDashboardColumns = false,
   useIconWhenNoAvatar = false
 }) => {
-  const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'status'>('date');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
@@ -90,17 +90,17 @@ const CustomerList: React.FC<CustomerListProps> = ({
       }
     });
 
-  const handleCustomerClick = (customer: CustomerItem) => {
+  const handleStudentClick = (student: StudentItem) => {
     if (selectionMode === 'click') {
-      setSelectedCustomer(selectedCustomer === customer.id ? null : customer.id);
-      onCustomerClick?.(customer);
+      setSelectedStudent(selectedStudent === student.id ? null : student.id);
+      onStudentClick?.(student);
     }
   };
 
-  const handleCustomerHover = (customer: CustomerItem) => {
+  const handleStudentHover = (student: StudentItem) => {
     if (selectionMode === 'hover') {
-      setSelectedCustomer(customer.id);
-      onCustomerHover?.(customer);
+      setSelectedStudent(student.id);
+      onStudentHover?.(student);
     }
   };
 
@@ -117,7 +117,7 @@ const CustomerList: React.FC<CustomerListProps> = ({
     return colors[status] || 'bg-gray-50 text-gray-700';
   };
 
-  const renderAvatar = (item: CustomerItem) => {
+  const renderAvatar = (item: StudentItem) => {
     if (item.avatarUrl) {
       return <img src={item.avatarUrl} alt={item.name} className="h-9 w-9 rounded-full object-cover" />;
     }
@@ -163,14 +163,14 @@ const CustomerList: React.FC<CustomerListProps> = ({
           {useDashboardColumns ? (
             <div className="px-6 hidden md:grid grid-cols-12 text-sm md:text-2xl font-semibold py-3 border-b border-gray-100 dark:border-gray-800">
               <div className="col-span-3">Date</div>
-              <div className="col-span-5">Customer name</div>
+              <div className="col-span-5">Student name</div>
               <div className="col-span-2 pr-2">Program Interest</div>
               <div className="col-span-2 text-center pl-2">{statusLabel}</div>
             </div>
           ) : (
           <div className="px-6 hidden md:grid grid-cols-12 text-sm md:text-2xl font-semibold py-3 border-b border-gray-100 dark:border-gray-800">
           <div className="col-span-3">Date</div>
-          <div className="col-span-6">Customer name</div>
+          <div className="col-span-6">Student name</div>
               <div className="col-span-2 text-center">{statusLabel}</div>
         </div>
           )}
@@ -203,8 +203,8 @@ const CustomerList: React.FC<CustomerListProps> = ({
                     whileHover={{ x: 10 }}
                     whileTap={{ scale: 0.98 }}
                     transition={{ duration: 0.1 }}
-                    onClick={() => handleCustomerClick(item)}
-                    onMouseEnter={() => handleCustomerHover(item)}
+                    onClick={() => handleStudentClick(item)}
+                    onMouseEnter={() => handleStudentHover(item)}
                     layout
             >
                     {useDashboardColumns ? (
@@ -214,7 +214,7 @@ const CustomerList: React.FC<CustomerListProps> = ({
                           <span className="block sm:hidden text-xs text-gray-500 mb-1">Date</span>
                           {item.date}
                         </div>
-                        {/* Customer */}
+                        {/* Student */}
                         <div className="flex items-start gap-3 sm:col-span-5 mb-3 sm:mb-0">
                           {renderAvatar(item)}
                           <div className="leading-tight flex-1">
@@ -252,7 +252,7 @@ const CustomerList: React.FC<CustomerListProps> = ({
                       <span className="block md:hidden text-xs md:text-base font-semibold text-gray-500 mb-1">Date</span>
                 {item.date}
               </div>
-                        {/* Customer + Program interests (compact) */}
+                        {/* Student + Program interests (compact) */}
                         <div className="flex items-start gap-3 md:col-span-6 mb-3 md:mb-0">
                           {renderAvatar(item)}
                 <div className="leading-tight flex-1">
@@ -289,4 +289,4 @@ const CustomerList: React.FC<CustomerListProps> = ({
   );
 };
 
-export default CustomerList;
+export default StudentList;

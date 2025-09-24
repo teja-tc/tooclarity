@@ -71,11 +71,15 @@ const Sidebar: React.FC = () => {
   const handleLogout = async () => {
     try {
       await useAuth().logout();
-    } catch {}
+    } catch (err) {
+      console.error('Sidebar: logout failed', err);
+    }
     try {
       localStorage.removeItem("auth_token");
       document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
-    } catch {}
+    } catch (err) {
+      console.error('Sidebar: clearing client auth state failed', err);
+    }
     window.location.href = "/";
   };
 

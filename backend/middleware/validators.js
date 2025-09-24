@@ -104,7 +104,7 @@ exports.validateL2Update = async (req, res, next) => {
         console.log("in l2UpdateValidators")
         const userId = req.userId;
         // const institution = await Institution.findById(req.user.institution);
-        const institution = await Institution.findOne({ owner: userId });
+        const institution = await Institution.findOne({ institutionAdmin: userId });
         if (!institution) {
             logger.warn({ userId: req.userId }, 'Attempted L2 update for a non-existent institution.');
             return res.status(404).json({ status: 'fail', message: 'Institution not found for the logged-in user.' });
@@ -540,7 +540,7 @@ const l2StudyHallRules = [
 exports.validateL3Details = async (req, res, next) => {
     // This function remains the same as you provided
     try {
-        const institution = await Institution.findOne({ owner: req.userId });
+        const institution = await Institution.findOne({ institutionAdmin: req.userId });
         if (!institution) {
             return res.status(404).json({ message: 'Institution not found.' });
         }

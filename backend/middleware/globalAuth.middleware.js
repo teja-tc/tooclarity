@@ -58,7 +58,7 @@ const globalAuthMiddleware = async (req, res, next) => {
       console.log("⚠️ No access token found in cookie, fallback to username cookie");
       if (usernameCookie) {
         try {
-          const user = await User.findOne({ name: usernameCookie }).select("_id");
+          const user = await User.findOne({ name: usernameCookie }).select("_id role");
           if (user) {
             userId = user._id.toString();
             console.log("✅ Found userId from username cookie:", userId);
@@ -95,7 +95,7 @@ const globalAuthMiddleware = async (req, res, next) => {
     try {
       decodedRefresh = verifyToken(refreshToken);
       userId = decodedRefresh.id;
-      req.userRole=decoded.role
+      req.userRole = decodedRefresh.role;
       req.userId = userId;
       req.userRole = decodedRefresh.role;
       console.log("userId set to req:", userId);

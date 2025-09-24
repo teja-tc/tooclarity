@@ -2,31 +2,31 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  getOwnerLeadsSummary,
-  getOwnerEnquiriesForChart,
-  getOwnerRecentEnquiries,
+  getInstitutionAdminLeadsSummary,
+  getInstitutionAdminEnquiriesForChart,
+  getInstitutionAdminRecentEnquiries,
   createEnquiry,
-  getOwnerEnquiryTypeSummary,
-  getOwnerEnquiryTypeByRangeRollups
+  getInstitutionAdminEnquiryTypeSummary,
+  getInstitutionAdminEnquiryTypeByRangeRollups
 } = require("../controllers/enquiries.controller");
 
 // All routes require authentication
 
 
-// Get total leads for owner
-router.get("/summary/leads", getOwnerLeadsSummary);
+// Get total leads for institutionAdmin
+router.get("/summary/leads", getInstitutionAdminLeadsSummary);
 
 // Get enquiries data for chart (monthly by year)
-router.get("/chart", getOwnerEnquiriesForChart);
+router.get("/chart", getInstitutionAdminEnquiriesForChart);
 
 // Get recent enquiries for dashboard
-router.get("/recent", getOwnerRecentEnquiries);
+router.get("/recent", getInstitutionAdminRecentEnquiries);
 
 // Summary by type for a time range
-router.get("/summary/types", getOwnerEnquiryTypeSummary);
+router.get("/summary/types", getInstitutionAdminEnquiryTypeSummary);
 
 // Rollup-based range summary from Institution.callbackRollups/demoRollups
-router.get("/summary/types/range", getOwnerEnquiryTypeByRangeRollups);
+router.get("/summary/types/range", getInstitutionAdminEnquiryTypeByRangeRollups);
 
 // Create new enquiry
 router.post("/createEnquiry", createEnquiry);

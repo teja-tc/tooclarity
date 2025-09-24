@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
 
 const enquirySchema = new mongoose.Schema({
-  customerName: { type: String, required: true, trim: true },
-  customerEmail: { type: String, required: true, trim: true },
-  customerPhone: { type: String, required: true, trim: true },
+  studentName: { type: String, required: true, trim: true },
+  studentEmail: { type: String, required: true, trim: true },
+  studentPhone: { type: String, required: true, trim: true },
 
   institution: { type: mongoose.Schema.Types.ObjectId, ref: "Institution", required: true, index: true },
 
@@ -14,7 +14,7 @@ const enquirySchema = new mongoose.Schema({
     required: true,
   },
 
-  customer: { type: mongoose.Schema.Types.ObjectId, ref: "Customer" },
+  student: { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
 
 }, { timestamps: true });
 

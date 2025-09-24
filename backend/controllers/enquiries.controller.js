@@ -1,24 +1,25 @@
 const Enquiries = require("../models/Enquiries");
 const { Institution } = require("../models/Institution");
-const Customer = require("../models/Customer");
+const student = require("../models/Student"); // legacy; keep import if used elsewhere
 const AppError = require("../utils/appError");
 const asyncHandler = require("express-async-handler");
 
-async function getOwnerLeadsTotal(ownerId) {
-  const institutions = await Institution.find({ owner: ownerId }).select("_id");
+async function getInstitutionAdminLeadsTotal(institutionAdminId) {
+  const institutions = await Institution.find({ institutionAdmin: institutionAdminId }).select("_id");
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return 0;
   
-  // Count customers created under the owner's institutions
-  const count = await Customer.countDocuments({
-    institution: { $in: ids }
+  // Count ONLY enquiries that are leads (callback/demo) across the institutionAdmin's institutions
+  const count = await Enquiries.countDocuments({
+    institution: { $in: ids },
+    enquiryType: { $in: [/^callback$/i, /^demo$/i] }
   });
   
   return count;
 }
 
-async function getOwnerEnquiriesMonthly(ownerId, year) {
-  const institutions = await Institution.find({ owner: ownerId }).select("_id");
+async function getInstitutionAdminEnquiriesMonthly(institutionAdminId, year) {
+  const institutions = await Institution.find({ institutionAdmin: institutionAdminId }).select("_id");
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return [];
   
@@ -29,7 +30,8 @@ async function getOwnerEnquiriesMonthly(ownerId, year) {
     
     const count = await Enquiries.countDocuments({
       institution: { $in: ids },
-      createdAt: { $gte: startDate, $lte: endDate }
+      createdAt: { $gte: startDate, $lte: endDate },
+      enquiryType: { $in: [/^callback$/i, /^demo$/i] }
     });
     
     monthlyData.push({ month, count });
@@ -38,8 +40,8 @@ async function getOwnerEnquiriesMonthly(ownerId, year) {
   return monthlyData;
 }
 
-async function getRecentEnquiries(ownerId, limit = 4) {
-  const institutions = await Institution.find({ owner: ownerId }).select("_id");
+async function getRecentEnquiries(institutionAdminId, limit = 4) {
+  const institutions = await Institution.find({ institutionAdmin: institutionAdminId }).select("_id");
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return [];
   
@@ -47,10 +49,10 @@ async function getRecentEnquiries(ownerId, limit = 4) {
     institution: { $in: ids }
   })
   .populate("institution", "institutionName headquartersAddress locationURL")
-  .populate("customer", "customerAddress")
+  .populate("student", "studentAddress")
   .sort({ createdAt: -1 })
   .limit(limit)
-  .select("customerName customerEmail customerPhone programInterest enquiryType createdAt institution customer");
+  .select("studentName studentEmail studentPhone programInterest enquiryType createdAt institution student");
   
   return enquiries;
 }
@@ -71,8 +73,8 @@ function getPeriod(range) {
   return { startDate, endDate };
 }
 
-async function countByTypeInRange(ownerId, startDate, endDate) {
-  const institutions = await Institution.find({ owner: ownerId }).select("_id");
+async function countByTypeInRange(institutionAdminId, startDate, endDate) {
+  const institutions = await Institution.find({ institutionAdmin: institutionAdminId }).select("_id");
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return { callbacks: 0, demos: 0 };
   const [callbacks, demos] = await Promise.all([
@@ -82,26 +84,40 @@ async function countByTypeInRange(ownerId, startDate, endDate) {
   return { callbacks, demos };
 }
 
-exports.getOwnerLeadsSummary = asyncHandler(async (req, res, next) => {
-  const totalLeads = await getOwnerLeadsTotal(req.userId);
+exports.getInstitutionAdminLeadsSummary = asyncHandler(async (req, res, next) => {
+  const totalLeads = await getInstitutionAdminLeadsTotal(req.userId);
   res.status(200).json({ 
     success: true, 
     data: { totalLeads } 
   });
 });
 
-exports.getOwnerEnquiriesForChart = asyncHandler(async (req, res, next) => {
+exports.getInstitutionAdminEnquiriesForChart = asyncHandler(async (req, res, next) => {
   const year = parseInt(req.query.year) || new Date().getFullYear();
-  const data = await getOwnerEnquiriesMonthly(req.userId, year);
+  const data = await getInstitutionAdminEnquiriesMonthly(req.userId, year);
   res.status(200).json({ 
     success: true, 
     data: { enquiriesData: data } 
   });
 });
 
-exports.getOwnerRecentEnquiries = asyncHandler(async (req, res, next) => {
+exports.getInstitutionAdminRecentEnquiries = asyncHandler(async (req, res, next) => {
   const limit = Math.max(1, Math.min(10000, parseInt(req.query.limit) || 1000));
-  const enquiries = await getRecentEnquiries(req.userId, limit);
+  const offset = Math.max(0, parseInt(req.query.offset) || 0);
+  const institutions = await Institution.find({ institutionAdmin: req.userId }).select("_id");
+  const ids = institutions.map(i => i._id);
+  if (ids.length === 0) return res.status(200).json({ success: true, data: { enquiries: [] } });
+
+  const enquiries = await Enquiries.find({
+    institution: { $in: ids }
+  })
+  .populate("institution", "institutionName headquartersAddress locationURL")
+  .populate("student", "studentAddress")
+  .sort({ createdAt: -1 })
+  .skip(offset)
+  .limit(limit)
+  .select("studentName studentEmail studentPhone programInterest enquiryType createdAt institution student");
+
   res.status(200).json({ 
     success: true, 
     data: { enquiries } 
@@ -109,12 +125,12 @@ exports.getOwnerRecentEnquiries = asyncHandler(async (req, res, next) => {
 });
 
 exports.createEnquiry = asyncHandler(async (req, res, next) => {
-  const { customerName, customerEmail, customerPhone, institution, programInterest, enquiryType } = req.body;
+  const { studentName, studentEmail, studentPhone, institution, programInterest, enquiryType } = req.body;
   
   const enquiry = await Enquiries.create({
-    customerName,
-    customerEmail, 
-    customerPhone,
+    studentName,
+    studentEmail, 
+    studentPhone,
     institution,
     programInterest,
     enquiryType
@@ -128,7 +144,7 @@ exports.createEnquiry = asyncHandler(async (req, res, next) => {
       // Update Institution rollups for callback/demo
       try {
         const { Institution } = require("../models/Institution");
-        const instDoc = await Institution.findById(institution).select('_id owner callbackLeadsTotal demoLeadsTotal callbackRollups demoRollups');
+        const instDoc = await Institution.findById(institution).select('_id institutionAdmin callbackLeadsTotal demoLeadsTotal callbackRollups demoRollups');
         if (instDoc) {
           const now = new Date();
           const yyyy = now.getUTCFullYear();
@@ -154,19 +170,23 @@ exports.createEnquiry = asyncHandler(async (req, res, next) => {
             await instDoc.save();
           }
         }
-      } catch {}
+      } catch (err) {
+        console.error('EnquiriesController: update institution rollups failed', err?.message || err);
+      }
       
-      const inst = await Institution.findById(institution).select("owner");
-      if (inst?.owner) {
-        const ownerId = String(inst.owner);
-        io.to(`owner:${ownerId}`).emit("enquiryCreated", { enquiry });
+      const inst = await Institution.findById(institution).select("institutionAdmin");
+      if (inst?.institutionAdmin) {
+        const adminId = String(inst.institutionAdmin);
+        io.to(`institutionAdmin:${adminId}`).emit("enquiryCreated", { enquiry });
         
-        // Emit updated leads total (based on customers now)
-        const totalLeads = await getOwnerLeadsTotal(ownerId);
-        io.to(`owner:${ownerId}`).emit("ownerTotalLeads", { totalLeads });
+        // Emit updated leads total (based on students now)
+        const totalLeads = await getInstitutionAdminLeadsTotal(adminId);
+        io.to(`institutionAdmin:${adminId}`).emit("institutionAdminTotalLeads", { totalLeads });
       }
     }
-  } catch {}
+  } catch (err) {
+    console.error('EnquiriesController: create enquiry handler failed', err?.message || err);
+  }
   
   res.status(201).json({
     success: true,
@@ -175,7 +195,7 @@ exports.createEnquiry = asyncHandler(async (req, res, next) => {
 });
 
 // New: summary by type in a range
-exports.getOwnerEnquiryTypeSummary = asyncHandler(async (req, res, next) => {
+exports.getInstitutionAdminEnquiryTypeSummary = asyncHandler(async (req, res, next) => {
   const range = (req.query.range || 'weekly').toString().toLowerCase();
   const { startDate, endDate } = getPeriod(range);
   const { callbacks, demos } = await countByTypeInRange(req.userId, startDate, endDate);
@@ -183,14 +203,14 @@ exports.getOwnerEnquiryTypeSummary = asyncHandler(async (req, res, next) => {
 });
 
 // Rollup-based range summary from Institution.callbackRollups/demoRollups
-exports.getOwnerEnquiryTypeByRangeRollups = asyncHandler(async (req, res, next) => {
+exports.getInstitutionAdminEnquiryTypeByRangeRollups = asyncHandler(async (req, res, next) => {
   const range = (req.query.range || 'weekly').toString().toLowerCase();
   const type = (req.query.type || '').toString().toLowerCase();
   if (type && !['callback','demo'].includes(type)) return next(new AppError('Invalid type. Use type=callback|demo', 400));
   const { startDate, endDate } = getPeriod(range);
   const startKey = startDate.toISOString().split('T')[0];
   const endKey = endDate.toISOString().split('T')[0];
-  const institutions = await Institution.find({ owner: req.userId }).select('_id');
+  const institutions = await Institution.find({ institutionAdmin: req.userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return res.status(200).json({ success: true, data: { callbacks: 0, demos: 0 } });
 
