@@ -56,8 +56,12 @@ const CourseReachChart: React.FC<CourseReachChartProps> = ({ onDataPointClick, t
     }
   }, [leadsValues]);
   useEffect(() => {
+    try {
     if (Array.isArray(values) && values.length > 0) {
       setChartData(values);
+      }
+    } catch (err) {
+      console.error('CourseReachChart: applying values failed', err);
     }
   }, [values]);
 
@@ -70,7 +74,7 @@ const CourseReachChart: React.FC<CourseReachChartProps> = ({ onDataPointClick, t
         setIsLoading(true);
         const next = await onRequestYearData(currentYear);
         if (mounted && Array.isArray(next) && next.length === 12) setChartData(next);
-      } catch {}
+      } catch (err) { console.error('CourseReachChart: onRequestYearData failed', err); }
       finally { setIsLoading(false); }
     };
     run();
@@ -109,7 +113,9 @@ const CourseReachChart: React.FC<CourseReachChartProps> = ({ onDataPointClick, t
           if (Array.isArray(payload?.values)) {
             setChartData(payload.values as number[]);
           }
-        } catch {}
+        } catch (err) {
+          console.error('CourseReachChart: SSE parse/update failed', err);
+        }
       };
       es.onerror = () => {
         es?.close();
@@ -223,6 +229,9 @@ const CourseReachChart: React.FC<CourseReachChartProps> = ({ onDataPointClick, t
     };
   }, [chartData, leadsData, containerWidth, showLegend, yTicksOverride]);
 
+  const currentYearMax = new Date().getFullYear();
+  	const showInfoToast = (message: string) => { import("react-toastify").then(m => m.toast.info(message)); };
+
   const formatTick = (t: number) => {
     if (yTicksOverride && yTicksOverride.length >= 2) {
       return `${Math.round(t / 1000)}k`;
@@ -230,12 +239,50 @@ const CourseReachChart: React.FC<CourseReachChartProps> = ({ onDataPointClick, t
     return t >= 1000 ? `${Math.round(t/1000)}k` : t.toLocaleString();
   };
 
-  const handleWheelYear = (e: React.WheelEvent) => {
+  // Attempt to move to a target year: allow only if <= currentYearMax. For past years, require data.
+  const trySetYear = async (targetYear: number) => {
+    	// clear any queued info; toasts are ephemeral so nothing to clear
+    if (targetYear > currentYearMax) {
+      setCurrentYear(currentYearMax);
+      return;
+    }
+    if (targetYear === currentYear) return;
+
+    // If going backward and we have a data loader, probe before switching
+    if (targetYear < currentYear) {
+      if (onRequestYearData) {
+        try {
+          const next = await onRequestYearData(targetYear);
+          const sum = Array.isArray(next) ? next.reduce((s, v) => s + (v || 0), 0) : 0;
+          if (Array.isArray(next) && next.length === 12 && sum > 0) {
+            setChartData(next);
+            setCurrentYear(targetYear);
+            return;
+          }
+          		  // No data for that year; keep current and show toast
+		  showInfoToast(`No data for ${targetYear}`);
+		  return;
+        		} catch {
+		  showInfoToast(`No data for ${targetYear}`);
+		  return;
+		}
+      } else {
+        		// No loader to verify past years; block navigation and show toast
+		showInfoToast("No previous years data available");
+		return;
+      }
+    }
+
+    // Forward navigation is clamped to current year
+    setCurrentYear(targetYear);
+  };
+
+  const handleWheelYear = async (e: React.WheelEvent) => {
     if (Math.abs(e.deltaX) > 40 || Math.abs(e.deltaY) > 60) {
       if (e.deltaY > 0 || e.deltaX > 0) {
-        setCurrentYear(y => y - 1); // scroll right/down -> previous year
+        await trySetYear(currentYear - 1);
       } else {
-        setCurrentYear(y => y + 1); // scroll left/up -> next year
+        await trySetYear(currentYearMax);
       }
     }
   };
@@ -246,17 +293,24 @@ const CourseReachChart: React.FC<CourseReachChartProps> = ({ onDataPointClick, t
     const t = e.touches[0];
     touchStart.current = { x: t.clientX, y: t.clientY };
   };
-  const onTouchEnd = (e: React.TouchEvent) => {
+  const onTouchEnd = async (e: React.TouchEvent) => {
     if (!touchStart.current) return;
     const t = e.changedTouches[0];
     const dx = t.clientX - touchStart.current.x;
     const dy = t.clientY - touchStart.current.y;
     touchStart.current = null;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 0) setCurrentYear(y => y - 1); // swipe right -> previous year
-      else setCurrentYear(y => y + 1);        // swipe left  -> next year
+      if (dx > 0) await trySetYear(currentYear - 1); // previous year
+      else await trySetYear(currentYearMax);        // next clamped to current
     }
   };
+
+  // Determine if current year has any data
+  const hasAnyData = useMemo(() => {
+    const sumA = (chartData || []).reduce((s, v) => s + (v || 0), 0);
+    const sumB = (leadsData || []).reduce((s, v) => s + (v || 0), 0);
+    return (sumA + sumB) > 0;
+  }, [chartData, leadsData]);
 
   return (
     <motion.div className="w-full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -267,9 +321,9 @@ const CourseReachChart: React.FC<CourseReachChartProps> = ({ onDataPointClick, t
             <div className="text-[22px] font-semibold text-gray-900 dark:text-gray-100">{title || "Program Reach Over Time"}</div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-                <button className="px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => setCurrentYear(y => y - 1)} aria-label="Previous Year">⟨</button>
+                <button className="px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => trySetYear(currentYear - 1)} aria-label="Previous Year">⟨</button>
                 <span className="text-sm font-medium" aria-live="polite">{currentYear}</span>
-                <button className="px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => setCurrentYear(y => y + 1)} aria-label="Next Year">⟩</button>
+                <button className="px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => trySetYear(currentYearMax)} aria-label="Next Year">⟩</button>
               </div>
               {showLegend && (
                 <div className="flex items-center gap-4">
@@ -285,6 +339,11 @@ const CourseReachChart: React.FC<CourseReachChartProps> = ({ onDataPointClick, t
               )}
             </div>
           </div>
+
+
+          {!hasAnyData && (
+            <div className="w-full py-6 text-center text-sm text-gray-500 dark:text-gray-400">No data for the current year</div>
+          )}
 
           {/* Chart container */}
           <div

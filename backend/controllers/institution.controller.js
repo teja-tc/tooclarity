@@ -27,7 +27,7 @@ exports.createL1Institution = asyncHandler(async (req, res, next) => {
 
     const institutionData = {
       ...req.body,
-      owner: req.userId,
+      institutionAdmin: req.userId,
       instituteType: req.body.instituteType,
     };
 
@@ -85,7 +85,7 @@ exports.createL1Institution = asyncHandler(async (req, res, next) => {
 exports.updateL2InstitutionDetails = asyncHandler(async (req, res, next) => {
   try {
     const userId = req.userId;
-    const institution = await Institution.findOne({ owner: userId });
+    const institution = await Institution.findOne({ institutionAdmin: userId });
     if (!institution) {
       logger.error({ userId }, "Institution not found for this user");
       return next(new AppError("Institution not found for this user", 404));
@@ -143,13 +143,13 @@ exports.updateL2InstitutionDetails = asyncHandler(async (req, res, next) => {
  */
 exports.getMyInstitution = asyncHandler(async (req, res, next) => {
 
-  // Try from user document, else by owner
+  // Try from user document, else by institutionAdmin
   const user = await InstituteAdmin.findById(req.userId).select("institution");
   let institution = null;
   if (user?.institution) {
     institution = await Institution.findById(user.institution);
   } else {
-    institution = await Institution.findOne({ owner: req.userId });
+    institution = await Institution.findOne({ institutionAdmin: req.userId });
   }
 
   if (!institution) {
@@ -247,7 +247,7 @@ exports.uploadFileData = asyncHandler(async (req, res, next) => {
       });
     }
 
-    institution.owner = req.userId;
+    institution.institutionAdmin = req.userId;
 
     // 2. Save institution
     const newInstitution = await Institution.create([institution], { session });

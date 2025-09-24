@@ -23,7 +23,7 @@ export default function DashboardLayout({
 				if (mounted && (profile as any)?.data?.name) {
 					setProfileName((profile as any).data.name);
 				}
-			} catch {}
+			} catch (err) { console.error('Dashboard layout: profile fetch failed', err); }
 		})();
 		return () => {
 			mounted = false;
