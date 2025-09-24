@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { CheckCircle2, Info } from "lucide-react";
 import { paymentAPI } from "@/lib/api";
 import { loadRazorpayScript } from "@/lib/razorpay";
+import { useUserStore } from "@/lib/user-store";
 
 
 // Simple currency formatter for INR (without symbol to match mock)
@@ -124,9 +125,9 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
 
       // 1) Create order on backend using payable amount
       const res = await paymentAPI.initiatePayment({
-        amount: payable,
+        amount: baseAmount,
         planType: selectedPlan,
-        coupon: appliedCoupon ?? undefined,
+        couponCode: appliedCoupon ?? undefined,
       });
 
       if (!res.success || !res.data) {
@@ -186,6 +187,15 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
             if (status === "active") {
               // Success
               const txnId = (verifyRes.data as any)?.transactionId || null;
+
+              // Mark payment as done in global store for redirects
+              try {
+                useUserStore.getState().setPaymentStatus(true);
+                console.log("[Payment] isPaymentDone set to true in store");
+              } catch (e) {
+                console.warn("[Payment] Failed to set isPaymentDone in store:", e);
+              }
+
               setPaymentVerified({
                 transactionId: txnId,
                 paymentId: response.razorpay_payment_id,

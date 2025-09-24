@@ -5,48 +5,42 @@ const Admin = require("../models/Admin"); // Import the new Admin model
 const AppError = require("../utils/appError");
 const asyncHandler = require("express-async-handler");
 const InstitutionAdmin = require("../models/InstituteAdmin");
+const { Institution } = require("../models/Institution");
+
 const PLANS = require("../config/plans");
 
-/**
- * @desc    Create a new coupon
- * @route   POST /api/v1/admin/coupon/create
- * @access  Private/Admin
- */
+
 exports.createCoupon = asyncHandler(async (req, res, next) => {
-  const { code, discountPercentage, validTill, planType, institutionNames, adminId } = req.body;
+  const { code, discountedPercentage, planType, institutionIds } =
+    req.body;
+
+  const adminId = req.userId;
 
   if (!adminId) {
     return next(new AppError("Admin ID is required to create a coupon", 400));
-  }
-
-  const adminExists = await Admin.findById(adminId);
-  if (!adminExists) {
-    return next(new AppError("Admin not found with the provided ID", 404));
   }
 
   if (!PLANS[planType]) {
     return next(new AppError("Invalid plan type", 400));
   }
 
-  if (!Array.isArray(institutionNames) || institutionNames.length === 0) {
-    return next(new AppError("At least one institution name is required", 400));
+  if (!Array.isArray(institutionIds) || institutionIds.length === 0) {
+    return next(new AppError("At least one institution is required", 400));
   }
 
-  const institutions = await InstitutionAdmin.find(
-    { name: { $in: institutionNames } },
-    "institution"
-  );
-
-  if (!institutions || institutions.length !== institutionNames.length) {
-    return next(new AppError("One or more institution names are invalid", 404));
+  let validTill = new Date();
+  if (planType === "yearly") {
+    validTill.setFullYear(validTill.getFullYear() + 1);
+  } else if (planType === "monthly") {
+    validTill.setMonth(validTill.getMonth() + 1);
+  } else {
+    return next(new AppError("Unsupported plan type for coupon", 400));
   }
-
-  const institutionIds = institutions.map((admin) => admin.institution);
 
   try {
     const coupon = await Coupon.create({
       code,
-      discountPercentage,
+      discountPercentage: discountedPercentage,
       institutions: institutionIds,
       validTill,
       planType,
@@ -62,41 +56,26 @@ exports.createCoupon = asyncHandler(async (req, res, next) => {
     if (err.code === 11000) {
       return next(new AppError("A coupon with this code already exists.", 409));
     }
-    if (err.name === 'ValidationError') {
-        return next(new AppError(err.message, 400));
+    if (err.name === "ValidationError") {
+      return next(new AppError(err.message, 400));
     }
     console.error("[Coupon] Creation failed:", err);
     return next(new AppError("Failed to create coupon", 500));
   }
 });
 
-
 /**
  * @desc    Validate a coupon
  * @route   POST /api/v1/coupon/apply
  * @access  Private/InstitutionAdmin
  */
-exports.validateCoupon = asyncHandler(async (req, res, next) => {
-  const { code, planType } = req.body;
-  const institutionAdminId = "60c72b2f5f1b2c001f3e8b8a"; 
-
-  if (!code || !planType) {
-    return next(new AppError("Coupon code and plan type are required", 400));
-  }
-
-  const adminUser = await InstitutionAdmin.findById(institutionAdminId).select('institution');
-  if (!adminUser || !adminUser.institution) {
-      return next(new AppError('No institution is linked to your account.', 404));
-  }
-  const institutionId = adminUser.institution;
+exports.applyCoupon = asyncHandler(async (req, res, next) => {
+  const { code } = req.body;
+  const institutionAdminId = req.userId;
 
   const coupon = await Coupon.findOne({
-    code: code.toUpperCase(),
-    planType,
-    isActive: true,
-    institutions: institutionId,
-    validTill: { $gte: new Date() },
-    $expr: { $lt: ["$useCount", "$maxUses"] }
+    code: code,
+    // institutions: institutionAdminId,
   });
 
   if (!coupon) {
@@ -107,8 +86,50 @@ exports.validateCoupon = asyncHandler(async (req, res, next) => {
     success: true,
     message: "Coupon is valid",
     data: {
-      code: coupon.code,
-      discountPercentage: coupon.discountPercentage,
+      discountAmount: discount,
     },
   });
 });
+
+exports.listInstitutions = async (req, res, next) => {
+  try {
+    const search = req.query.search || "";
+    const page = parseInt(req.query.page || "1", 10);
+    const limit = parseInt(req.query.limit || "10", 10);
+    const skip = (page - 1) * limit;
+
+    // Build filter
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { instituteName: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Query DB (select only _id and instituteName)
+    const [institutions, total] = await Promise.all([
+      Institution.find(filter)
+        .select("_id instituteName")
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 }),
+      Institution.countDocuments(filter),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Institutions fetched successfully",
+      data: {
+        institutions,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};

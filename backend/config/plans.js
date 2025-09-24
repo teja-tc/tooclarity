@@ -1,12 +1,6 @@
 const PLANS = {
-  monthly: {
-    id: "monthly",
-    price: 19900,
-  },
-  yearly: {
-    id: "yearly",
-    price: 118800,
-  }
+  monthly: 10000, // Rs.100.00
+  yearly: 1188, // Rs.1188.00
 };
 
 module.exports = PLANS;

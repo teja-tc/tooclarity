@@ -1,11 +1,12 @@
 const express = require('express');
-const { createCoupon, validateCoupon } = require('../controllers/coupon.controller');
+const { createCoupon, applyCoupon, listInstitutions } = require('../controllers/coupon.controller');
 
 const couponAdminRoute = express.Router();
 const couponInstitutionAdminRoute = express.Router();
 
-couponAdminRoute.route('/coupon/create').post(createCoupon);
-couponInstitutionAdminRoute.route('/coupon/apply').post(validateCoupon);
+couponAdminRoute.route('/create').post(createCoupon);
+couponAdminRoute.route("/institutions").get(listInstitutions);
+couponInstitutionAdminRoute.route('/apply-coupon').post(applyCoupon);
 
 module.exports = {
     couponAdminRoute,

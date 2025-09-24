@@ -21,74 +21,99 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-
 exports.createOrder = asyncHandler(async (req, res, next) => {
-  const { planType = "yearly", coupon: couponCode } = req.body;
+  const { planType = "yearly", couponCode } = req.body;
   const userId = req.userId;
 
-  const adminUser = await InstituteAdmin.findById(userId).select("institution");
-  if (!adminUser || !adminUser.institution) {
-    logger.warn({ userId }, "[Payment] Admin user or their institution not found.");
-    return next(new AppError("Institution not found for your account", 404));
+  const institution = await InstituteAdmin.findById(userId).select("institution");
+  const institutionId = institution?.institution;
+
+  console.log("[Payment] Create order request received:", {
+    userId,
+    institutionId,
+    planType,
+    couponCode,
+  });
+
+  if (!institutionId) {
+    console.error("[Payment] Institution not found:", institutionId);
+    return next(new AppError("Institution not found", 404));
   }
   const institutionId = adminUser.institution;
 
-  const plan = PLANS[planType];
-  if (!plan) {
-    logger.warn({ planType }, "[Payment] Invalid plan type specified.");
+  // ✅ Validate plan
+  let amount = PLANS[planType];
+  if (!amount) {
+    console.error("[Payment] Invalid plan type:", planType);
     return next(new AppError("Invalid plan type specified", 400));
   }
+  console.log("[Payment] Plan validated:", { planType, baseAmount: amount });
 
-  let finalAmount = plan.price;
-  let couponId = null;
-
+  // ✅ Check coupon
   if (couponCode) {
     const coupon = await Coupon.findOne({
-      code: couponCode.toUpperCase(),
-      planType,
-      isActive: true,
-      institutions: institutionId,
-      validTill: { $gte: new Date() },
-    }).where('this.useCount < this.maxUses');
+      code: couponCode,
+      // institutions: institutionId, // check institution-specific coupon
+    });
 
     if (!coupon) {
-      logger.warn({ couponCode, institutionId }, "[Payment] Invalid, expired, or inapplicable coupon.");
-      return next(new AppError("The provided coupon is invalid or has expired", 400));
+      return next(new AppError("Invalid or unauthorized coupon code", 400));
     }
 
-    couponId = coupon._id;
-    const discountAmount = Math.round((plan.price * coupon.discountPercentage) / 100);
-    finalAmount = Math.max(plan.price - discountAmount, 0);
-    logger.info({ couponCode, discountAmount, finalAmount }, "[Payment] Coupon applied successfully.");
+    // ✅ Check expiry
+    if (coupon.validTill && new Date(coupon.validTill) < new Date()) {
+      return next(new AppError("Coupon has expired", 400));
+    }
+
+    // ✅ Apply discount
+    const discount = (amount * coupon.discountPercentage) / 100;
+    amount = Math.max(0, amount - discount); // don’t go below 0
+
+    console.log("[Payment] Coupon applied:", {
+      couponCode,
+      discountPercentage: coupon.discountPercentage,
+      discount,
+      finalAmount: amount,
+    });
   }
 
+  // ✅ Razorpay order creation
   const options = {
-    amount: finalAmount,
+    amount: amount * 100, // Razorpay expects amount in paise
     currency: "INR",
-    receipt: `receipt_${institutionId.toString()}_${Date.now()}`,
-    notes: {
-      institutionId: institutionId.toString(),
-      planType,
-      userId,
-    }
+    receipt: `receipt_order_${new Date().getTime()}`,
   };
 
-  const order = await razorpay.orders.create(options);
-  logger.info({ orderId: order.id, institutionId }, "[Payment] Razorpay order created.");
+  console.log("[Payment] Creating Razorpay order with options:", options);
 
-  await Subscription.findOneAndUpdate(
-    { institution: institutionId },
-    {
-      planType,
-      status: "pending",
-      razorpayOrderId: order.id,
-      razorpayPaymentId: null,
-      coupon: couponId,
-      startDate: null,
-      endDate: null,
-    },
-    { upsert: true, new: true }
-  );
+  let order;
+  try {
+    order = await razorpay.orders.create(options);
+    console.log("[Payment] Razorpay order created:", order);
+  } catch (err) {
+    console.error("[Payment] Razorpay order creation failed:", err);
+    return next(new AppError("Failed to create order with Razorpay", 500));
+  }
+
+  // ✅ Save subscription record
+  try {
+    const subscription = await Subscription.findOneAndUpdate(
+      { institution: institutionId },
+      {
+        planType,
+        status: "pending",
+        razorpayOrderId: order.id,
+        razorpayPaymentId: null,
+        startDate: null,
+        endDate: null,
+      },
+      { upsert: true, new: true }
+    );
+    console.log("[Payment] Subscription record updated:", subscription);
+  } catch (err) {
+    console.error("[Payment] Subscription DB update failed:", err);
+    return next(new AppError("Failed to update subscription", 500));
+  }
 
   res.status(200).json({
     key: process.env.RAZORPAY_KEY_ID,
@@ -187,27 +212,51 @@ exports.verifyPayment = asyncHandler(async (req, res, next) => {
 });
 
 exports.pollSubscriptionStatus = asyncHandler(async (req, res) => {
-  const userId = req.userId;
-  const adminUser = await InstituteAdmin.findById(userId).select("institution");
+  try {
+    const userId = req.userId;
 
-  if (!adminUser || !adminUser.institution) {
-    return res.status(404).json({ success: false, message: "Institution not found." });
+    if (!userId) {
+      return res
+        .status(400)
+        .json({ status: "error", message: "Missing userId" });
+    }
+
+    const subscription = await Subscription.aggregate([
+      {
+        $lookup: {
+          from: "instituteadmins",
+          localField: "institution",
+          foreignField: "institution",
+          as: "admin",
+        },
+      },
+      { $unwind: "$admin" },
+      {
+        $match: {
+          "admin._id": new mongoose.Types.ObjectId(userId),
+        },
+      },
+      {
+        $project: {
+          status: 1,
+          planType: 1,
+          startDate: 1,
+          endDate: 1,
+        },
+      },
+    ]);
+
+    if (!subscription) {
+      return res.status(404).json({ success: false, message: "pending" });
+    }
+
+    return res
+      .status(200)
+      .json({ success: true, message: subscription[0].status });
+  } catch (err) {
+    console.error("[Poll Subscription] ❌ Error:", err);
+    return res
+      .status(500)
+      .json({ status: "error", message: "Internal server error" });
   }
-  const institutionId = adminUser.institution.toString();
-
-  const cachedStatus = await RedisUtil.get(`sub_status:${institutionId}`);
-  if (cachedStatus) {
-    return res.status(200).json({ success: true, message: cachedStatus, source: 'cache' });
-  }
-
-  const subscription = await Subscription.findOne(
-    { institution: institutionId },
-    'status'
-  ).lean();
-
-  const status = subscription ? subscription.status : "pending";
-
-  await RedisUtil.setex(`sub_status:${institutionId}`, 3600, status);
-
-  return res.status(200).json({ success: true, message: status, source: 'db' });
 });
