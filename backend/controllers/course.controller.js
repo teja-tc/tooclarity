@@ -1,6 +1,6 @@
 const Course = require("../models/Course");
 const { Institution } = require("../models/Institution");
-const Customer = require("../models/Customer");
+const student = require("../models/Student");
 const AppError = require("../utils/appError");
 const asyncHandler = require("express-async-handler");
 const { uploadStream } = require("../services/upload.service");
@@ -8,7 +8,7 @@ const { uploadStream } = require("../services/upload.service");
 // Generic helpers
 async function incrementMetricGeneric(req, res, next, cfg) {
   const { institutionId, courseId } = req.params;
-  const { metricField, rollupField, updatedEvent, ownerTotalEvent } = cfg;
+  const { metricField, rollupField, updatedEvent, institutionAdminTotalEvent } = cfg;
 
   const incUpdate = {}; incUpdate[metricField] = 1;
   const course = await Course.findOneAndUpdate(
@@ -32,9 +32,11 @@ async function incrementMetricGeneric(req, res, next, cfg) {
 
     await Course.updateOne(queryHas, { $inc: { [incPath]: 1 } });
     await Course.updateOne(queryPush, { $push: { [rollupField]: { day: dayKey, count: 1 } } });
-  } catch {}
+  } catch (err) {
+    console.error('CourseController: rollup update failed', err?.message || err);
+  }
 
-  // Emit socket events with fresh owner total
+  // Emit socket events with fresh institutionAdmin total
   try {
     const io = req.app.get("io");
     if (io) {
@@ -42,11 +44,11 @@ async function incrementMetricGeneric(req, res, next, cfg) {
       payload[metricField] = course[metricField];
       io.to(`institution:${institutionId}`).emit(updatedEvent, payload);
 
-      const inst = await Institution.findById(institutionId).select("owner");
-      if (inst?.owner) {
-        const ownerId = String(inst.owner);
-        io.to(`owner:${ownerId}`).emit(updatedEvent, payload);
-        const institutions = await Institution.find({ owner: ownerId }).select('_id');
+      const inst = await Institution.findById(institutionId).select("institutionAdmin");
+              if (inst?.institutionAdmin) {
+          const adminId = String(inst.institutionAdmin);
+          io.to(`institutionAdmin:${adminId}`).emit(updatedEvent, payload);
+          const institutions = await Institution.find({ institutionAdmin: adminId }).select('_id');
         const ids = institutions.map(i => i._id);
         if (ids.length > 0) {
           const groupField = {}; groupField[`total`] = { $sum: { $ifNull: [ `$${metricField}`, 0 ] } };
@@ -58,17 +60,19 @@ async function incrementMetricGeneric(req, res, next, cfg) {
           const totalPayload = metricField === 'courseViews' ? { totalViews: total } : 
                               metricField === 'comparisons' ? { totalComparisons: total } : 
                               { totalLeads: total };
-          io.to(`owner:${ownerId}`).emit(ownerTotalEvent, totalPayload);
+          io.to(`institutionAdmin:${adminId}`).emit(institutionAdminTotalEvent, totalPayload);
         }
       }
     }
-  } catch {}
+  } catch (err) {
+    console.error('CourseController: socket emit/institutionAdmin total failed', err?.message || err);
+  }
 
   return res.status(200).json({ success: true, data: { courseId, [metricField]: course[metricField] } });
 }
 
-async function ownerTotalGeneric(userId, metricField) {
-  const institutions = await Institution.find({ owner: userId }).select('_id');
+async function institutionAdminTotalGeneric(userId, metricField) {
+  const institutions = await Institution.find({ institutionAdmin: userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return 0;
   const agg = await Course.aggregate([
@@ -78,9 +82,9 @@ async function ownerTotalGeneric(userId, metricField) {
   return agg[0]?.total || 0;
 }
 
-// Customer-based leads helpers
-async function ownerLeadsRangeCurrent(userId, range) {
-  const institutions = await Institution.find({ owner: userId }).select('_id');
+// student-based leads helpers
+async function institutionAdminLeadsRangeCurrent(userId, range) {
+  const institutions = await Institution.find({ institutionAdmin: userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return 0;
   const now = new Date();
@@ -92,11 +96,11 @@ async function ownerLeadsRangeCurrent(userId, range) {
   } else if (range === 'yearly') {
     startDate = new Date(now.getUTCFullYear(), 0, 1); endDate = new Date(now);
   } else { return 0; }
-  return Customer.countDocuments({ institution: { $in: ids }, createdAt: { $gte: startDate, $lte: endDate } });
+  return student.countDocuments({ institution: { $in: ids }, createdAt: { $gte: startDate, $lte: endDate } });
 }
 
-async function ownerLeadsRangePrevious(userId, range) {
-  const institutions = await Institution.find({ owner: userId }).select('_id');
+async function institutionAdminLeadsRangePrevious(userId, range) {
+  const institutions = await Institution.find({ institutionAdmin: userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return 0;
   const now = new Date();
@@ -108,12 +112,12 @@ async function ownerLeadsRangePrevious(userId, range) {
   } else if (range === 'yearly') {
     startDate = new Date(now.getUTCFullYear() - 1, 0, 1); endDate = new Date(now.getUTCFullYear(), 0, 1);
   } else { return 0; }
-  return Customer.countDocuments({ institution: { $in: ids }, createdAt: { $gte: startDate, $lt: endDate } });
+  return student.countDocuments({ institution: { $in: ids }, createdAt: { $gte: startDate, $lt: endDate } });
 }
 
 // Fixed range calculation function with proper date handling
-async function ownerRangeGeneric(userId, rollupField, range) {
-  const institutions = await Institution.find({ owner: userId }).select('_id');
+async function institutionAdminRangeGeneric(userId, rollupField, range) {
+  const institutions = await Institution.find({ institutionAdmin: userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return 0;
   
@@ -157,8 +161,8 @@ async function ownerRangeGeneric(userId, rollupField, range) {
 }
 
 // Fixed previous range calculation function with proper date handling
-async function ownerPreviousRangeGeneric(userId, rollupField, range) {
-  const institutions = await Institution.find({ owner: userId }).select('_id');
+async function institutionAdminPreviousRangeGeneric(userId, rollupField, range) {
+  const institutions = await Institution.find({ institutionAdmin: userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return 0;
   
@@ -207,7 +211,7 @@ const checkOwnership = async (institutionId, userId) => {
   if (!institution) {
     throw new AppError("No institution found with that ID", 404);
   }
-  if (institution.owner.toString() !== userId) {
+  if (institution.institutionAdmin.toString() !== userId) {
     throw new AppError(
       "You are not authorized to perform this action for this institution",
       403
@@ -365,10 +369,10 @@ exports.incrementMetricUnified = asyncHandler(async (req, res, next) => {
   }
   
   const cfg = isViews
-    ? { metricField: 'courseViews', rollupField: 'viewsRollups', updatedEvent: 'courseViewsUpdated', ownerTotalEvent: 'ownerTotalViews' }
+    ? { metricField: 'courseViews', rollupField: 'viewsRollups', updatedEvent: 'courseViewsUpdated', institutionAdminTotalEvent: 'institutionAdminTotalViews' }
     : isComparisons
-    ? { metricField: 'comparisons', rollupField: 'comparisonRollups', updatedEvent: 'comparisonsUpdated', ownerTotalEvent: 'ownerTotalComparisons' }
-    : { metricField: 'leadsGenerated', rollupField: 'leadsRollups', updatedEvent: 'leadsUpdated', ownerTotalEvent: 'ownerTotalLeads' };
+    ? { metricField: 'comparisons', rollupField: 'comparisonRollups', updatedEvent: 'comparisonsUpdated', institutionAdminTotalEvent: 'institutionAdminTotalComparisons' }
+    : { metricField: 'leadsGenerated', rollupField: 'leadsRollups', updatedEvent: 'leadsUpdated', institutionAdminTotalEvent: 'institutionAdminTotalLeads' };
     
   return incrementMetricGeneric(req, res, next, cfg);
 });
@@ -410,7 +414,7 @@ function getPreviousPeriod(range) {
 
 // ----- Helpers: Course rollups aggregation -----
 async function aggregateRollupsTotal(userId, rollupField, startDate, endDate) {
-  const institutions = await Institution.find({ owner: userId }).select('_id');
+  const institutions = await Institution.find({ institutionAdmin: userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return 0;
   const startKey = startDate.toISOString().split('T')[0];
@@ -424,24 +428,24 @@ async function aggregateRollupsTotal(userId, rollupField, startDate, endDate) {
   return agg[0]?.total || 0;
 }
 
-// ----- Helpers: Customer-based leads -----
-async function countCustomersInRange(userId, startDate, endDate) {
-  const institutions = await Institution.find({ owner: userId }).select('_id');
+// ----- Helpers: student-based leads -----
+async function countStudentsInRange(userId, startDate, endDate) {
+  const institutions = await Institution.find({ institutionAdmin: userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return 0;
-  return Customer.countDocuments({ institution: { $in: ids }, createdAt: { $gte: startDate, $lte: endDate } });
+  return student.countDocuments({ institution: { $in: ids }, createdAt: { $gte: startDate, $lte: endDate } });
 }
 
-async function countCustomersTotal(userId) {
-  const institutions = await Institution.find({ owner: userId }).select('_id');
+async function countStudentsTotal(userId) {
+  const institutions = await Institution.find({ institutionAdmin: userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) return 0;
-  return Customer.countDocuments({ institution: { $in: ids } });
+  return student.countDocuments({ institution: { $in: ids } });
 }
 
-// ----- Unified owner metric summary -----
-// GET /summary/metrics/owner?metric=views|comparisons|leads
-exports.getOwnerMetricSummaryUnified = asyncHandler(async (req, res, next) => {
+// ----- Unified institutionAdmin metric summary -----
+// GET /summary/metrics/institutionAdmin?metric=views|comparisons|leads
+exports.getInstitutionAdminMetricSummaryUnified = asyncHandler(async (req, res, next) => {
   const raw = (req.query.metric || '').toString().toLowerCase();
   const isViews = raw === 'views' || raw === 'courseviews';
   const isComparisons = raw === 'comparisons' || raw === 'comparison';
@@ -450,12 +454,12 @@ exports.getOwnerMetricSummaryUnified = asyncHandler(async (req, res, next) => {
   if (!isViews && !isComparisons && !isLeads) return next(new AppError('Invalid metric. Use metric=views|comparisons|leads', 400));
 
   if (isLeads) {
-    const totalLeads = await countCustomersTotal(req.userId);
+    const totalLeads = await countStudentsTotal(req.userId);
     return res.status(200).json({ success: true, data: { totalLeads } });
   }
 
   // Fallback totals from Course
-  const institutions = await Institution.find({ owner: req.userId }).select('_id');
+  const institutions = await Institution.find({ institutionAdmin: req.userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) {
     if (isViews) return res.status(200).json({ success: true, data: { totalViews: 0 } });
@@ -471,9 +475,9 @@ exports.getOwnerMetricSummaryUnified = asyncHandler(async (req, res, next) => {
   return res.status(200).json({ success: true, data: { totalComparisons: total } });
 });
 
-// ----- Unified owner metric by range -----
-// GET /summary/metrics/owner/range?metric=views|comparisons|leads&range=weekly|monthly|yearly
-exports.getOwnerMetricByRangeUnified = asyncHandler(async (req, res, next) => {
+// ----- Unified institutionAdmin metric by range -----
+// GET /summary/metrics/institutionAdmin/range?metric=views|comparisons|leads&range=weekly|monthly|yearly
+exports.getInstitutionAdminMetricByRangeUnified = asyncHandler(async (req, res, next) => {
   const raw = (req.query.metric || '').toString().toLowerCase();
   const range = (req.query.range || 'weekly').toString().toLowerCase();
   const isViews = raw === 'views' || raw === 'courseviews';
@@ -485,8 +489,8 @@ exports.getOwnerMetricByRangeUnified = asyncHandler(async (req, res, next) => {
   if (isLeads) {
     const { startDate: cs, endDate: ce } = getCurrentPeriod(range);
     const { startDate: ps, endDate: pe } = getPreviousPeriod(range);
-    const current = await countCustomersInRange(req.userId, cs, ce);
-    const previous = await countCustomersInRange(req.userId, ps, pe);
+    const current = await countStudentsInRange(req.userId, cs, ce);
+    const previous = await countStudentsInRange(req.userId, ps, pe);
     const trend = previous > 0 ? ((current - previous) / previous) * 100 : 0;
     return res.status(200).json({ success: true, data: { totalLeads: current, trend: { value: Math.abs(trend), isPositive: trend >= 0 } } });
   }
@@ -502,7 +506,7 @@ exports.getOwnerMetricByRangeUnified = asyncHandler(async (req, res, next) => {
 });
 
 // ----- Series: monthly counts for a given year -----
-exports.getOwnerMetricSeriesUnified = asyncHandler(async (req, res, next) => {
+exports.getInstitutionAdminMetricSeriesUnified = asyncHandler(async (req, res, next) => {
   const raw = (req.query.metric || '').toString().toLowerCase();
   const year = parseInt(req.query.year, 10) || new Date().getUTCFullYear();
   const isViews = raw === 'views' || raw === 'courseviews';
@@ -512,7 +516,7 @@ exports.getOwnerMetricSeriesUnified = asyncHandler(async (req, res, next) => {
     return next(new AppError('Invalid metric. Use metric=views|comparisons|leads', 400));
   }
 
-  const institutions = await Institution.find({ owner: req.userId }).select('_id');
+  const institutions = await Institution.find({ institutionAdmin: req.userId }).select('_id');
   const ids = institutions.map(i => i._id);
   if (ids.length === 0) {
     return res.status(200).json({ success: true, data: { series: new Array(12).fill(0) } });
@@ -524,7 +528,7 @@ exports.getOwnerMetricSeriesUnified = asyncHandler(async (req, res, next) => {
       const startDate = new Date(Date.UTC(year, m, 1));
       const endDate = new Date(Date.UTC(year, m + 1, 0, 23, 59, 59, 999));
       // inclusive end
-      const count = await Customer.countDocuments({
+      const count = await student.countDocuments({
         institution: { $in: ids },
         createdAt: { $gte: startDate, $lte: endDate }
       });

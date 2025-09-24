@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const notificationController = require('../controllers/notification.controller');
 
-// GET /v1/notifications?scope=customer|institution|branch|admin&customerId=...&institutionId=...&branchId=...&ownerId=...&page=1&limit=20&unread=true
+// GET /v1/notifications?scope=student|institution|branch|admin&studentId=...&institutionId=...&branchId=...&institutionAdminId=...&page=1&limit=20&unread=true
 router.get('/', notificationController.list);
 
 // POST /v1/notifications

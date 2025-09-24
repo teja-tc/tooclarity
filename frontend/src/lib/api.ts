@@ -1,6 +1,6 @@
 // API configuration and methods for authentication
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 // Types for API requests and responses
 export interface SignUpData {
@@ -650,27 +650,27 @@ export const metricsAPI = {
     return apiRequest(`/v1/institutions/${institutionId}/courses/${courseId}/metrics?metric=${metric}`, { method: "POST" });
   },
   // Accept optional institutionId; if missing, resolve via getMyInstitution()
-  getOwnerSummary: async (metric: 'views'|'comparisons', institutionId?: string): Promise<ApiResponse> => {
+  getInstitutionAdminSummary: async (metric: 'views'|'comparisons', institutionId?: string): Promise<ApiResponse> => {
     let iid = institutionId;
     if (!iid) {
-      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch (err) { console.error('metricsAPI.getInstitutionAdminSummary: resolve institution failed', err); }
     }
     if (!iid) throw new Error('institutionId not available');
-    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner?metric=${metric}`, { method: "GET" });
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/institution-admin?metric=${metric}`, { method: "GET" });
   },
-  getOwnerByRange: async (
+  getInstitutionAdminByRange: async (
     metric: 'views'|'comparisons'|'leads' | string,
     range: 'weekly'|'monthly'|'yearly',
     institutionId?: string
   ): Promise<ApiResponse> => {
     let iid = institutionId as string | undefined;
     if (!iid) {
-      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch (err) { console.error('metricsAPI.getInstitutionAdminByRange: resolve institution failed', err); }
     }
     if (!iid) throw new Error('institutionId not available');
-    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner/range?metric=${metric}&range=${range}`, { method: "GET" });
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/institution-admin/range?metric=${metric}&range=${range}`, { method: "GET" });
   },
-  getOwnerSeries: async (
+  getInstitutionAdminSeries: async (
     metric: 'views'|'comparisons'|'leads',
     year?: number,
     institutionId?: string
@@ -679,14 +679,14 @@ export const metricsAPI = {
     if (year) q.push(`year=${year}`);
     let iid = institutionId;
     if (!iid) {
-      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch (err) { console.error('metricsAPI.getInstitutionAdminSeries: resolve institution failed', err); }
     }
     if (!iid) throw new Error('institutionId not available');
-    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner/series?${q.join('&')}`, { method: "GET" });
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/institution-admin/series?${q.join('&')}`, { method: "GET" });
   }
 };
 
-// Enquiries API helpers (leads generated and recent enquiries)
+// Enquiries API helpers
 export const enquiriesAPI = {
   getLeadsSummary: async (): Promise<ApiResponse> => {
     return apiRequest(`/v1/enquiries/summary/leads`, { method: "GET" });
@@ -698,6 +698,10 @@ export const enquiriesAPI = {
   getRecentEnquiries: async (): Promise<ApiResponse> => {
     return apiRequest(`/v1/enquiries/recent`, { method: "GET" });
   },
+  getRecentEnquiriesWithOffset: async (offset: number, limit: number): Promise<ApiResponse> => {
+    const q = [`offset=${Math.max(0, offset)}`, `limit=${Math.max(1, Math.min(100, limit))}`].join('&');
+    return apiRequest(`/v1/enquiries/recent?${q}`, { method: "GET" });
+  },
   getTypeSummary: async (range: 'weekly'|'monthly'|'yearly'): Promise<ApiResponse> => {
     return apiRequest(`/v1/enquiries/summary/types?range=${range}`, { method: "GET" });
   },
@@ -707,9 +711,9 @@ export const enquiriesAPI = {
     return apiRequest(`/v1/enquiries/summary/types/range?${q.join('&')}`, { method: "GET" });
   },
   createEnquiry: async (enquiryData: {
-    customerName: string;
-    customerEmail: string;
-    customerPhone: string;
+    studentName: string;
+    studentEmail: string;
+    studentPhone: string;
     institution: string;
     programInterest: string;
     enquiryType: string;
@@ -724,11 +728,11 @@ export const enquiriesAPI = {
 // Notifications API helpers
 export const notificationsAPI = {
   list: async (params: {
-    scope?: 'customer'|'institution'|'branch'|'admin';
-    customerId?: string;
+    scope?: 'student'|'institution'|'branch'|'admin';
+    studentId?: string;
     institutionId?: string;
     branchId?: string;
-    ownerId?: string;
+    institutionAdminId?: string;
     page?: number;
     limit?: number;
     unread?: boolean;
@@ -745,11 +749,11 @@ export const notificationsAPI = {
     title: string;
     description?: string;
     category?: string;
-    recipientType: 'CUSTOMER'|'INSTITUTION'|'BRANCH'|'ADMIN'|'SYSTEM';
-    customer?: string;
+    recipientType: 'STUDENT'|'INSTITUTION'|'BRANCH'|'ADMIN'|'SYSTEM';
+    student?: string;
     institution?: string;
     branch?: string;
-    owner?: string;
+    institutionAdmin?: string;
     metadata?: any;
   }): Promise<ApiResponse> => {
     return apiRequest(`/v1/notifications`, { method: 'POST', body: JSON.stringify(payload) });
@@ -797,14 +801,16 @@ export interface PaymentInitPayload {
   couponCode?: string | null;
   // institutionId: string;
 }
+export interface PaymentVerifyPayload {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+  planType?: string;
+  coupon?: string | null;
+  amount?: number;
+}
 
 export const paymentAPI = {
-  applyCoupon: async (code: string): Promise<ApiResponse> => {
-    return apiRequest(`/v1/payment/apply-coupon`, {
-      method: "POST",
-      body: JSON.stringify({ code }),
-    });
-  },
   initiatePayment: async (
     payload: PaymentInitPayload
   ): Promise<ApiResponse> => {
@@ -874,7 +880,7 @@ export const paymentAPI = {
 
   /**
    * Build receipt URL for opening/downloading receipt
-   */
+   
   getReceiptUrl: (q: { transactionId?: string | null; paymentId?: string | null; orderId?: string | null }): string => {
     const params = new URLSearchParams({
       ...(q.paymentId ? { paymentId: q.paymentId } : {}),
@@ -883,7 +889,7 @@ export const paymentAPI = {
 
     }).toString();
     return apiRequest(`/v1/payment/verify-payment?${qs}`, { method: "GET" });
-  },
+  },*/
   getReceiptUrl: (params: {
     transactionId?: string | null;
     paymentId?: string | null;

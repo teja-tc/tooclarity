@@ -5,13 +5,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import AnalyticsTable, { CoursePerformanceRow } from "@/components/dashboard/AnalyticsTable";
 import CourseReachChart from "@/components/dashboard/CourseReachChart";
 import LeadTypeAnalytics, { LeadTypeData } from "@/components/dashboard/LeadTypeAnalytics";
-import { analyticsAPI, metricsAPI, enquiriesAPI, authAPI, getMyInstitution } from "@/lib/api";
+import { analyticsAPI, metricsAPI, enquiriesAPI, authAPI } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import { withAuth } from "@/lib/auth-context";
 import Loading from "@/components/ui/loading";
 import { motion, AnimatePresence } from "framer-motion";
 import StatCard from "@/components/dashboard/StatCard";
 import TimeRangeToggle, { TimeRangeValue } from "@/components/ui/TimeRangeToggle";
+import { useInstitution } from "@/lib/hooks/dashboard-hooks";
 
 function AnalyticsPage() {
 	const [analyticsRange, setAnalyticsRange] = useState<"Weekly"|"Monthly"|"Yearly">("Weekly");
@@ -26,10 +27,11 @@ function AnalyticsPage() {
 	const [isPerfLoading, setIsPerfLoading] = useState<boolean>(false);
 	const [isTrendLoading, setIsTrendLoading] = useState<boolean>(false);
 	const [institutionId, setInstitutionId] = useState<string | null>(null);
-	const [ownerId, setOwnerId] = useState<string | null>(null);
+	const [institutionAdminId, setInstitutionAdminId] = useState<string | null>(null);
 	// Static first KPI (not linked to backend)
 	const [kpiProfileViews, setKpiProfileViews] = useState<number>(1350);
 	const [kpiProfileDelta] = useState<{value:number; isPositive:boolean}>({ value: 12.5, isPositive: true });
+	const { data: institution } = useInstitution();
 
 	// Effect 1: KPIs depend on time range only
 	useEffect(() => {
@@ -39,8 +41,8 @@ function AnalyticsPage() {
 				setIsKpiLoading(true);
 				const range = analyticsRange.toLowerCase() as 'weekly'|'monthly'|'yearly';
 				const [viewsRange, leadsRange] = await Promise.all([
-					metricsAPI.getOwnerByRange('views', range) as any,
-					metricsAPI.getOwnerByRange('leads', range) as any,
+					metricsAPI.getInstitutionAdminByRange('views', range) as any,
+					metricsAPI.getInstitutionAdminByRange('leads', range) as any,
 				]);
 				if (!mounted) return;
 				if (viewsRange?.success) {
@@ -51,7 +53,7 @@ function AnalyticsPage() {
 					setKpiLeads(leadsRange.data?.totalLeads || 0);
 					if (leadsRange.data?.trend) setKpiLeadsDelta(leadsRange.data.trend);
 				}
-			} catch {} finally {
+			} catch (err) { console.error('Analytics: KPI fetch failed', err); } finally {
 				setIsKpiLoading(false);
 			}
 		})();
@@ -66,8 +68,8 @@ function AnalyticsPage() {
 				setIsTrendLoading(true);
 				const year = new Date().getFullYear();
 				const [viewsSeries, leadsSeries] = await Promise.all([
-					metricsAPI.getOwnerSeries('views', year) as any,
-					metricsAPI.getOwnerSeries('leads', year) as any,
+					metricsAPI.getInstitutionAdminSeries('views', year) as any,
+					metricsAPI.getInstitutionAdminSeries('leads', year) as any,
 				]);
 				if (!mounted) return;
 				const viewsArr = new Array(12).fill(0);
@@ -79,7 +81,7 @@ function AnalyticsPage() {
 					leadsSeries.data.series.forEach((n: number, i: number) => { if (i>=0 && i<12) leadsArr[i] = n || 0; });
 				}
 				setViewLeadTrends({ views: viewsArr, leads: leadsArr });
-			} catch {} finally {
+			} catch (err) { console.error('Analytics: trends fetch failed', err); } finally {
 				setIsTrendLoading(false);
 			}
 		})();
@@ -91,19 +93,18 @@ function AnalyticsPage() {
 		let mounted = true;
 		(async () => {
 			try {
-				const [instRes, prof] = await Promise.all([
-					getMyInstitution() as any,
+				const [prof] = await Promise.all([
 					authAPI.getProfile() as any,
 				]);
 				if (!mounted) return;
-				const iid = instRes?.data?._id || instRes?.data?.id || null;
+				const iid = institution?._id || null;
 				const oid = prof?.data?.id || prof?.data?._id || null;
 				setInstitutionId(iid);
-				setOwnerId(oid);
-			} catch {}
+				setInstitutionAdminId(oid);
+			} catch (err) { console.error('Analytics: identifiers fetch failed', err); }
 		})();
 		return () => { mounted = false; };
-	}, []);
+	}, [institution]);
 
 	// Effect 3: Program performance loads independently (on mount)
 	useEffect(() => {
@@ -148,7 +149,7 @@ function AnalyticsPage() {
 				} else {
 					setCoursePerformance([]);
 				}
-			} catch {} finally {
+			} catch (err) { console.error('Analytics: program performance fetch failed', err); } finally {
 				setIsPerfLoading(false);
 			}
 		})();
@@ -162,7 +163,7 @@ function AnalyticsPage() {
 			try {
 				const [callbacksDemos, comparisons] = await Promise.all([
 					enquiriesAPI.getTypeSummaryRollups('yearly') as any,
-					metricsAPI.getOwnerSummary('comparisons') as any
+					metricsAPI.getInstitutionAdminSummary('comparisons') as any
 				]);
 				if (!mounted) return;
 				setLeadTypes({
@@ -170,14 +171,14 @@ function AnalyticsPage() {
 					demoRequests: Number(callbacksDemos?.data?.demos || 0),
 					courseComparisons: Number((comparisons?.data?.totalComparisons) || 0)
 				});
-			} catch {}
+			} catch (err) { console.error('Analytics: lead types fetch failed', err); }
 		})();
 		return () => { mounted = false; };
 	}, []);
 
 	// Effect 5: Realtime updates via Socket.IO
 	useEffect(() => {
-		if (!institutionId && !ownerId) return;
+		if (!institutionId && !institutionAdminId) return;
 		let s: any;
 		let mounted = true;
 		(async () => {
@@ -188,7 +189,7 @@ function AnalyticsPage() {
 				s = await getSocket(origin);
 				s.on('connect', async () => {
 					if (institutionId) s.emit('joinInstitution', institutionId);
-					if (ownerId) s.emit('joinOwner', ownerId);
+					if (institutionAdminId) s.emit('joinInstitutionAdmin', institutionAdminId);
 				});
 
 				// When views change, refresh views KPI and views series
@@ -196,8 +197,8 @@ function AnalyticsPage() {
 					try {
 						const range = (analyticsRange.toLowerCase() as 'weekly'|'monthly'|'yearly');
 						const [viewsRange, viewsSeries] = await Promise.all([
-							metricsAPI.getOwnerByRange('views', range) as any,
-							metricsAPI.getOwnerSeries('views', new Date().getFullYear()) as any,
+							metricsAPI.getInstitutionAdminByRange('views', range) as any,
+							metricsAPI.getInstitutionAdminSeries('views', new Date().getFullYear()) as any,
 						]);
 						if (viewsRange?.success) {
 							setKpiCourseViews(viewsRange.data?.totalViews || 0);
@@ -208,7 +209,7 @@ function AnalyticsPage() {
 							viewsSeries.data.series.forEach((n: number, i: number) => { if (i>=0 && i<12) arr[i] = n || 0; });
 							setViewLeadTrends(prev => ({ views: arr, leads: prev?.leads || new Array(12).fill(0) }));
 						}
-					} catch {}
+					} catch (err) { console.error('Analytics: realtime courseViews update failed', err); }
 				});
 
 				// When an enquiry is created, refresh leads KPI, leads series, program performance and lead type totals
@@ -216,8 +217,8 @@ function AnalyticsPage() {
 					try {
 						const range = (analyticsRange.toLowerCase() as 'weekly'|'monthly'|'yearly');
 						const [leadsRange, leadsSeries, enquiriesRes, leadTypesRes] = await Promise.all([
-							metricsAPI.getOwnerByRange('leads', range) as any,
-							metricsAPI.getOwnerSeries('leads', new Date().getFullYear()) as any,
+							metricsAPI.getInstitutionAdminByRange('leads', range) as any,
+							metricsAPI.getInstitutionAdminSeries('leads', new Date().getFullYear()) as any,
 							enquiriesAPI.getRecentEnquiries() as any,
 							enquiriesAPI.getTypeSummaryRollups('yearly') as any,
 						]);
@@ -272,22 +273,22 @@ function AnalyticsPage() {
 								courseComparisons: 0,
 							});
 						}
-					} catch {}
+					} catch (err) { console.error('Analytics: realtime enquiryCreated update failed', err); }
 				});
 
 				// When comparisons change, refresh comparisons total inside lead type analysis only
 				s.on('comparisonsUpdated', async () => {
 					try {
-						const cmp = await metricsAPI.getOwnerSummary('comparisons') as any;
+						const cmp = await metricsAPI.getInstitutionAdminSummary('comparisons') as any;
 						if (cmp?.success) {
 							setLeadTypes(prev => prev ? { ...prev, courseComparisons: Number(cmp.data?.totalComparisons || 0) } : prev);
 						}
-					} catch {}
+					} catch (err) { console.error('Analytics: realtime comparisons update failed', err); }
 				});
-			} catch {}
+			} catch (err) { console.error('Analytics: socket setup failed', err); }
 		})();
-		return () => { try { mounted = false; s?.off('courseViewsUpdated'); s?.off('enquiryCreated'); s?.off('comparisonsUpdated'); } catch {} };
-	}, [institutionId, ownerId, analyticsRange]);
+		return () => { try { mounted = false; s?.off('courseViewsUpdated'); s?.off('enquiryCreated'); s?.off('comparisonsUpdated'); } catch (err) { console.error('Analytics: socket cleanup failed', err); } };
+	}, [institutionId, institutionAdminId, analyticsRange]);
 
 	const rangeText = analyticsRange.toLowerCase();
 
@@ -298,7 +299,7 @@ function AnalyticsPage() {
 					{/* Header with Time Range Toggle to mirror dashboard UI */}
 					<div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-2 mb-4 sm:mb-6 m-0">
 						<div className="text-lg sm:text-sm md:text-2xl font-semibold">Analytics</div>
-						<div className="ml-0 sm:ml-auto flex items-center gap-2 w-full sm:w-auto">
+						<div className="ml-0 sm:ml-auto flex items-center gap-2 w_full sm:w-auto">
 							<TimeRangeToggle value={analyticsRange as TimeRangeValue} onChange={setAnalyticsRange as any} />
 						</div>
 					</div>

@@ -9,7 +9,7 @@ const app = require('./app');
 const DB = process.env.MONGO_URI;
 mongoose.connect(DB).then(() => console.log('✅ MongoDB connection successful!'));
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 const server = app.listen(port, () => {
     console.log(`🚀 App running on port ${port}...`);
 });
@@ -29,9 +29,9 @@ io.on('connection', (socket) => {
   socket.on('joinInstitution', (institutionId) => {
     if (institutionId) socket.join(`institution:${institutionId}`);
   });
-  // Owner scope room for cross-institution aggregates
-  socket.on('joinOwner', (ownerId) => {
-    if (ownerId) socket.join(`owner:${ownerId}`);
+  // InstitutionAdmin scope room for cross-institution aggregates
+  socket.on('joinInstitutionAdmin', (adminId) => {
+    if (adminId) socket.join(`institutionAdmin:${adminId}`);
   });
 });
 
@@ -51,19 +51,19 @@ io.on('connection', (socket) => {
         const updated = change.updateDescription?.updatedFields || {};
         const institutionId = String(doc.institution);
         const { Institution } = require('./models/Institution');
-        const inst = await Institution.findById(institutionId).select('owner');
+        const inst = await Institution.findById(institutionId).select('institutionAdmin');
 
         const keys = Object.keys(updated);
         const viewsRollupsChanged = keys.some(k => k.startsWith('viewsRollups'));
         const comparisonsRollupsChanged = keys.some(k => k.startsWith('comparisonRollups'));
 
-        // courseViews or viewsRollups change → emit views events and owner totals
+        // courseViews or viewsRollups change → emit views events and institutionAdmin totals
         if (typeof updated.courseViews !== 'undefined' || viewsRollupsChanged || change.operationType === 'replace') {
           if (institutionId) io.to(`institution:${institutionId}`).emit('courseViewsUpdated', { institutionId, courseId: String(doc._id), courseViews: doc.courseViews });
-          if (inst?.owner) {
-            const ownerId = String(inst.owner);
-            io.to(`owner:${ownerId}`).emit('courseViewsUpdated', { institutionId, courseId: String(doc._id), courseViews: doc.courseViews });
-            const institutions = await Institution.find({ owner: ownerId }).select('_id');
+          if (inst?.institutionAdmin) {
+            const adminId = String(inst.institutionAdmin);
+            io.to(`institutionAdmin:${adminId}`).emit('courseViewsUpdated', { institutionId, courseId: String(doc._id), courseViews: doc.courseViews });
+            const institutions = await Institution.find({ institutionAdmin: adminId }).select('_id');
             const ids = institutions.map(i => i._id);
             if (ids.length > 0) {
               const agg = await require('./models/Course').aggregate([
@@ -71,18 +71,18 @@ io.on('connection', (socket) => {
                 { $group: { _id: null, totalViews: { $sum: { $ifNull: ["$courseViews", 0] } } } }
               ]);
               const totalViews = (agg[0]?.totalViews) || 0;
-              io.to(`owner:${ownerId}`).emit('ownerTotalViews', { totalViews });
+              io.to(`institutionAdmin:${adminId}`).emit('institutionAdminTotalViews', { totalViews });
             }
           }
         }
 
-        // comparisons or comparisonRollups change → emit comparison events and owner totals
+        // comparisons or comparisonRollups change → emit comparison events and institutionAdmin totals
         if (typeof updated.comparisons !== 'undefined' || comparisonsRollupsChanged || change.operationType === 'replace') {
           if (institutionId) io.to(`institution:${institutionId}`).emit('comparisonsUpdated', { institutionId, courseId: String(doc._id), comparisons: doc.comparisons });
-          if (inst?.owner) {
-            const ownerId = String(inst.owner);
-            io.to(`owner:${ownerId}`).emit('comparisonsUpdated', { institutionId, courseId: String(doc._id), comparisons: doc.comparisons });
-            const institutions = await Institution.find({ owner: ownerId }).select('_id');
+          if (inst?.institutionAdmin) {
+            const adminId = String(inst.institutionAdmin);
+            io.to(`institutionAdmin:${adminId}`).emit('comparisonsUpdated', { institutionId, courseId: String(doc._id), comparisons: doc.comparisons });
+            const institutions = await Institution.find({ institutionAdmin: adminId }).select('_id');
             const ids = institutions.map(i => i._id);
             if (ids.length > 0) {
               const agg = await require('./models/Course').aggregate([
@@ -90,11 +90,13 @@ io.on('connection', (socket) => {
                 { $group: { _id: null, totalComparisons: { $sum: { $ifNull: ["$comparisons", 0] } } } }
               ]);
               const totalComparisons = (agg[0]?.totalComparisons) || 0;
-              io.to(`owner:${ownerId}`).emit('ownerTotalComparisons', { totalComparisons });
+              io.to(`institutionAdmin:${adminId}`).emit('institutionAdminTotalComparisons', { totalComparisons });
             }
           }
         }
-      } catch {}
+      } catch (err) {
+        console.error('Courses change stream handler failed:', err?.message || err);
+      }
     });
   } catch (e) {
     console.error('Change stream init failed:', e?.message || e);
@@ -113,20 +115,21 @@ io.on('connection', (socket) => {
         if (!doc) return;
         const institutionId = String(doc.institution);
         if (institutionId) io.to(`institution:${institutionId}`).emit('enquiryCreated', { enquiry: doc });
-        // Notify owner rooms as well and push updated totals
-        const inst = await Institution.findById(institutionId).select('owner');
-        if (inst?.owner) {
-          const ownerId = String(inst.owner);
-          io.to(`owner:${ownerId}`).emit('enquiryCreated', { enquiry: doc });
-          // Emit updated total leads (customer-based)
+        // Notify institutionAdmin rooms as well and push updated totals
+        const inst = await Institution.findById(institutionId).select('institutionAdmin');
+        if (inst?.institutionAdmin) {
+          const adminId = String(inst.institutionAdmin);
+          io.to(`institutionAdmin:${adminId}`).emit('enquiryCreated', { enquiry: doc });
+          // Emit updated total leads (callback/demo enquiries only)
           const { default: mongoose } = require('mongoose');
-          const Customer = require('./models/Customer');
-          const institutions = await Institution.find({ owner: ownerId }).select('_id');
+          const institutions = await Institution.find({ institutionAdmin: adminId }).select('_id');
           const ids = institutions.map(i => i._id);
-          const totalLeads = await Customer.countDocuments({ institution: { $in: ids } });
-          io.to(`owner:${ownerId}`).emit('ownerTotalLeads', { totalLeads });
+          const totalLeads = await Enquiries.countDocuments({ institution: { $in: ids }, enquiryType: { $in: [/^callback$/i, /^demo$/i] } });
+          io.to(`institutionAdmin:${adminId}`).emit('institutionAdminTotalLeads', { totalLeads });
         }
-      } catch {}
+      } catch (err) {
+        console.error('Enquiries change stream handler failed:', err?.message || err);
+      }
     });
   } catch (e) {
     console.error('Enquiries change stream init failed:', e?.message || e);

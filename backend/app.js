@@ -33,7 +33,7 @@ const pinoMiddleware = pinoHttp({ logger: logger });
 app.use(pinoMiddleware);
 
 const corsOptions = {
-  origin: process.env.CLIENT_ORIGIN,
+  origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
   credentials: true,
   optionsSuccessStatus: 200,
 };
