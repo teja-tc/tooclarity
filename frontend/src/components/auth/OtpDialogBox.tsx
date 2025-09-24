@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import InputField from "@/components/ui/InputField";
 import { authAPI } from "../../lib/api";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../../lib/auth-context";
 
 interface OtpDialogBoxProps {
   open: boolean;
@@ -29,7 +31,9 @@ export default function OtpDialogBox({
   const [resendLoading, setResendLoading] = useState(false);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const { refreshUser } = useAuth();
 
+  const router = useRouter();
   // Timer countdown
   useEffect(() => {
     if (open && timer > 0) {
@@ -95,13 +99,10 @@ export default function OtpDialogBox({
       });
 
       if (response.success) {
-        // Store token if provided
-        if (response.data?.token && typeof window !== "undefined") {
-          localStorage.setItem('authToken', response.data.token);
-        }
-        
         onVerificationSuccess();
         setOpen(false);
+        await refreshUser();
+        router.push("/signup");
       } else {
         setError(response.message || "Invalid OTP. Please try again.");
       }

@@ -16,17 +16,25 @@ import { Label } from "@/components/ui/label";
 import InputField from "@/components/ui/InputField";
 import { authAPI } from "../../lib/api";
 import OtpDialogBox from "./OtpDialogBox";
+import { useAuth } from "../../lib/auth-context";
+
+type SignUpCaller = "admin" | "institution";
 
 interface SignUpDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  caller?: SignUpCaller;
+  onSuccess?: () => void; // called after successful verification
 }
 
 export default function SignUpDialog({
   open: externalOpen,
   onOpenChange,
+  caller = "institution",
+  onSuccess,
 }: SignUpDialogProps = {}) {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showRePassword, setShowRePassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -73,7 +81,7 @@ export default function SignUpDialog({
       newErrors.designation = "Designation is required.";
     }
 
-    if (!formData.linkedin.trim()) {
+    if (caller !== "admin" && !formData.linkedin.trim()) {
       newErrors.linkedin = "LinkedIn profile is required.";
     }
 
@@ -104,13 +112,20 @@ export default function SignUpDialog({
       // Prepare data for API (exclude repassword)
       const { repassword, ...signUpData } = formData;
 
-      const response = await authAPI.signUp(signUpData);
+      const response = await authAPI.signUp({ ...signUpData, type: caller });
 
       // Check for successful registration
       if (response.success) {
-        // Close signup dialog and open OTP dialog
+        // Close signup dialog
         setOpen(false);
-        setOpenVerify(true);
+        if (caller === "admin") {
+          // For admin, skip OTP and go directly to dashboard
+          await refreshUser();
+          router.push('/dashboard');
+        } else {
+          // For non-admin, open OTP verification dialog
+          setOpenVerify(true);
+        }
       } else {
         setErrors({
           general: response.message || "Sign up failed. Please try again.",
@@ -125,7 +140,7 @@ export default function SignUpDialog({
 
   const handleVerificationSuccess = () => {
     // Handle successful verification
-    alert("Account verified successfully! Welcome to Too Clarity!");
+    // alert("Account verified successfully! Welcome to Too Clarity!");
 
     // Reset form
     setFormData({
@@ -139,7 +154,13 @@ export default function SignUpDialog({
     });
     setAcceptTerms(false);
 
-    // Redirect to /signup page
+    // If parent wants to handle success (e.g., admin-login -> dashboard), delegate
+    if (onSuccess) {
+      onSuccess();
+      return;
+    }
+
+    // Default: Redirect to /signup page
     router.push('/signup');
   };
 
@@ -198,8 +219,9 @@ export default function SignUpDialog({
                 id: "designation",
                 formKey: "designation",
               },
-              { label: "LinkedIn", id: "linkedin", formKey: "linkedin" },
-            ].map((f) => (
+              // Only include LinkedIn when not admin
+              ...(caller === "admin" ? [] : [{ label: "LinkedIn", id: "linkedin", formKey: "linkedin" }]),
+            ].map((f: any) => (
               <div key={f.id}>
                 {f.id === "phone" ? (
                   <InputField

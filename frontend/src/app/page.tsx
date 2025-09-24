@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Footer from "@/components/ui/footer";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +11,8 @@ import {
 import SignUpDialog from "@/components/auth/SignUpDialog";
 import LoginDialogBox from "@/components/auth/LoginDialogBox";
 import { useAuth } from "../lib/auth-context";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const features = [
   {
@@ -75,15 +75,36 @@ const faqs = [
 
 
 export default function LandingPage() {
+  const router = useRouter();
   const { isAuthenticated, user, logout } = useAuth();
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
+
+  /*useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    // Redirect rules for INSTITUTE_ADMIN
+    if (user.role === "INSTITUTE_ADMIN") {
+      if (user.isPaymentDone === true && user.isProfileCompleted === true) {
+        router.replace("/dashboard");
+        return;
+      }
+      if(user.isPaymentDone === false && user.isProfileCompleted == false){
+        router.replace("/signup");
+        return;
+      }
+      if (user.isPaymentDone === false && user.isProfileCompleted === true) {
+        router.replace("/payment");
+        return;
+      }
+    }
+  }, [isAuthenticated, user, router]); */
 
   const handleLogout = async () => {
     await logout();
   };
 
   const handleDashboard = () => {
-    window.location.href = '/dashboard';
+    router.push('/dashboard');
   };
 
   const handleGetStarted = () => {
@@ -98,24 +119,10 @@ export default function LandingPage() {
           <img src="/Too%20Clarity.png" alt="Too Clarity Logo" className="h-6 sm:h-7 w-auto" />
         </div>
         <div className="flex gap-2 sm:gap-4 lg:gap-6">
-          {isAuthenticated ? (
-            <div className="flex items-center gap-2 sm:gap-4">
-              <span className="text-xs sm:text-sm text-gray-600 hidden sm:block">
-                Welcome, {user?.admin}
-              </span>
-              <Button onClick={handleDashboard} variant="signup" className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2">
-                Dashboard
-              </Button>
-              <Button onClick={handleLogout} variant="login" className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2">
-                Logout
-              </Button>
-            </div>
-          ) : (
             <>
-              <LoginDialogBox/>
-              <SignUpDialog open={signUpDialogOpen} onOpenChange={setSignUpDialogOpen} />
+              <LoginDialogBox caller="institution"/>
+              <SignUpDialog caller="institution" open={signUpDialogOpen} onOpenChange={setSignUpDialogOpen} />
             </>
-          )}
         </div>
       </nav>
 

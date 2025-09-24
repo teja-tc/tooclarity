@@ -10,10 +10,11 @@ const sendTokens = async (user, res, message) => {
 
   const userId = user._id;
   const username = user.name;
+  const role = user.role;
 
   // 1. generate tokens
-  const accessToken = JwtUtil.generateToken(userId, username, "access");
-  const refreshToken = JwtUtil.generateToken(userId, username, "refresh");
+  const accessToken = JwtUtil.generateToken(userId, username, "access", role);
+  const refreshToken = JwtUtil.generateToken(userId, username, "refresh", role);
 
   // 2. decode refresh to calculate expiry
   const decodedRefresh = JwtUtil.decodeToken(refreshToken);
@@ -33,9 +34,10 @@ const sendTokens = async (user, res, message) => {
   });
 };
 
+
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, contactNumber, designation, linkedinUrl } =
+    const { name, email, password, contactNumber, designation, linkedinUrl, type } =
       req.body;
 
     const existingUser = await InstituteAdmin.findOne({
@@ -48,66 +50,52 @@ exports.register = async (req, res, next) => {
       });
     }
 
-    const newInstituteAdmin = await InstituteAdmin.create({
-      name,
-      email,
-      password,
-      contactNumber,
-      designation,
-      linkedinUrl,
-    });
+    let newUser;
 
-    // send OTP for phone verification
-    await otpService.sendVerificationToken(email);
+    if (type === "institution") {
+      // Institution registration
+      newUser = await InstituteAdmin.create({
+        name,
+        email,
+        password,
+        contactNumber,
+        designation,
+        linkedinUrl,
+        role: "INSTITUTE_ADMIN",
+        isPaymentDone: false,
+        isProfileCompleted: false,
+      });
 
-    return res.status(201).json({
-      status: "success",
-      message:
-        "User registered successfully. An OTP has been sent to your contact number for verification.",
-    });
+      // Send OTP for email verification
+      await otpService.sendVerificationToken(email);
+
+      return res.status(201).json({
+        status: "success",
+        message:
+          "User registered successfully. An OTP has been sent to your email for verification.",
+      });
+    } else if (type === "admin") {
+      // Admin registration
+      newUser = await InstituteAdmin.create({
+        name,
+        email,
+        password,
+        contactNumber,
+        designation,
+        role: "ADMIN",
+      });
+
+      return await sendTokens(newUser, res, "ADMIN REGISTERED SUCCESSFULLY");
+    } else {
+      return res.status(400).json({
+        status: "fail",
+        message: "Invalid user type.",
+      });
+    }
   } catch (error) {
     next(error);
   }
 };
-
-// exports.verifyPhoneOtp = async (req, res, next) => {
-//   try {
-//     const { contactNumber, otp } = req.body;
-//     const isOtpValid = await otpService.checkVerificationToken(
-//       contactNumber,
-//       otp
-//     );
-//     if (!isOtpValid) {
-//       return res
-//         .status(400)
-//         .json({ status: "fail", message: "Incorrect or expired OTP." });
-//     }
-
-//     const user = await InstituteAdmin.findOne({ contactNumber });
-//     if (!user) {
-//       return res
-//         .status(404)
-//         .json({ status: "fail", message: "User not found" });
-//     }
-//     if (user.isPhoneVerified) {
-//       return res
-//         .status(400)
-//         .json({ status: "fail", message: "Phone number is already verified." });
-//     }
-
-//     user.isPhoneVerified = true;
-//     await user.save();
-
-//     // issue tokens
-//     return await sendTokens(
-//       user._id,
-//       res,
-//       "Phone number verified successfully."
-//     );
-//   } catch (error) {
-//     next(error);
-//   }
-// };
 
 exports.verifyEmailOtp = async (req, res, next) => {
   try {
@@ -149,7 +137,7 @@ exports.verifyEmailOtp = async (req, res, next) => {
 
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password} = req.body;
 
     const user = await InstituteAdmin.findOne({ email }).select("+password");
     if (!user || !(await user.comparePassword(password))) {
@@ -158,7 +146,7 @@ exports.login = async (req, res, next) => {
         .json({ status: "fail", message: "Incorrect email or password." });
     }
 
-    if (!user.isEmailVerified) {
+    if (user.role == "INSTITUTE_ADMIN" && !user.isEmailVerified) {
       return res.status(403).json({
         status: "fail",
         message: "Account not verified. Please verify your Email first.",

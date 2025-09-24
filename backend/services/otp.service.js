@@ -1,115 +1,3 @@
-// const twilio = require("twilio");
-// const logger = require("../config/logger");
-// const AppError = require("../utils/appError");
-
-// const twilioClient = twilio(
-//   process.env.TWILIO_ACCOUNT_SID,
-//   process.env.TWILIO_AUTH_TOKEN
-// );
-// const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
-
-// const formatPhoneNumber = (number) => {
-//   if (!number.startsWith("+")) {
-//     return `+91${number}`;
-//   }
-//   return number;
-// };
-
-// /**
-//  * Generates a secure random OTP.
-//  * @returns {string} The generated OTP.
-//  */
-// exports.generateOtp = () => {
-//   const otpLength = parseInt(process.env.OTP_LENGTH, 10) || 6;
-//   return crypto
-//     .randomInt(0, Math.pow(10, otpLength))
-//     .toString()
-//     .padStart(otpLength, "0");
-// };
-
-// /**
-//  * Sends a verification token (OTP) to a phone number using the Twilio Verify API.
-//  * @param {string} phoneNumber - The recipient's phone number in E.164 format.
-//  * @returns {Promise<object>} The verification object from Twilio.
-//  */
-// exports.sendVerificationToken = async (phoneNumber) => {
-//   try {
-//     const formatNumber = formatPhoneNumber(phoneNumber);
-//     const verification = await twilioClient.verify.v2
-//       .services(verifyServiceSid)
-//       .verifications.create({ to: formatNumber, channel: "sms" });
-
-//     logger.info(
-//       {
-//         event: "verification_token_sent",
-//         phoneNumber: formatNumber,
-//         verificationSid: verification.sid,
-//       },
-//       "Verification token sent successfully."
-//     );
-
-//     return verification;
-//   } catch (error) {
-//     logger.error(
-//       {
-//         err: error,
-//         event: "verification_token_failed",
-//         phoneNumber: phoneNumber,
-//       },
-//       "Failed to send verification token via Twilio."
-//     );
-
-//     throw new AppError("Could not send verification code.", 500);
-//   }
-// };
-
-// /**
-//  * Checks if the OTP is valid.
-//  * @param {string} phoneNumber - The user's phone number in E.164 format.
-//  * @param {string} code - The OTP code provided by the user.
-//  * @returns {Promise<boolean>} True if the code is valid, false otherwise.
-//  */
-// exports.checkVerificationToken = async (phoneNumber, code) => {
-//   try {
-//     const formatNumber = formatPhoneNumber(phoneNumber);
-//     const verificationCheck = await twilioClient.verify.v2
-//       .services(verifyServiceSid)
-//       .verificationChecks.create({ to: formatNumber, code: code });
-
-//     if (verificationCheck.status === "approved") {
-//       logger.info(
-//         {
-//           event: "verification_check_success",
-//           phoneNumber: formatNumber,
-//         },
-//         "Verification check approved."
-//       );
-//       return true;
-//     } else {
-//       logger.warn(
-//         {
-//           event: "verification_check_denied",
-//           phoneNumber: formatNumber,
-//           status: verificationCheck.status,
-//         },
-//         "Verification check was valid but not approved."
-//       );
-//       return false;
-//     }
-//   } catch (error) {
-//     logger.warn(
-//       {
-//         err: error,
-//         event: "verification_check_error",
-//         phoneNumber: phoneNumber,
-//       },
-//       `Verification check failed, likely due to an invalid/expired code.`
-//     );
-
-//     return false;
-//   }
-// };
-
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const logger = require("../config/logger");
@@ -186,6 +74,48 @@ exports.checkVerificationToken = async (email, code) => {
     logger.error(
       { err: error, event: "otp_check_error", email },
       "OTP check failed."
+    );
+    return false;
+  }
+};
+
+exports.sendPaymentSuccessEmail = async (options) => {
+  const { email, planType, amount, orderId, startDate, endDate } = options;
+
+  try {
+    const formattedStartDate = new Date(startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const formattedEndDate = new Date(endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const formattedAmount = (amount / 100).toFixed(2);
+
+    const mailOptions = {
+      from: `"No Reply" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Your Subscription is Confirmed!",
+      text: `Dear User,
+
+We are happy to inform you that your payment was successful and your subscription is now active!
+
+Here are the details of your plan:
+- Plan: ${planType.charAt(0).toUpperCase() + planType.slice(1)}
+- Amount Paid: ₹${formattedAmount}
+- Order ID: ${orderId}
+- Subscription Start Date: ${formattedStartDate}
+- Subscription End Date: ${formattedEndDate}
+
+Thank you for choosing us!
+
+Best regards,
+The TooClarity Team`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    logger.info({ event: "payment_success_email_sent", email, orderId }, "Payment success email sent.");
+    return true;
+
+  } catch (error) {
+    logger.error(
+      { err: error, event: "payment_email_failed", email, orderId },
+      "Failed to send payment success email."
     );
     return false;
   }
