@@ -140,7 +140,7 @@ export default function SignUpDialog({
 
   const handleVerificationSuccess = () => {
     // Handle successful verification
-    alert("Account verified successfully! Welcome to Too Clarity!");
+    // alert("Account verified successfully! Welcome to Too Clarity!");
 
     // Reset form
     setFormData({

@@ -1,6 +1,7 @@
 // API configuration and methods for authentication
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 // Types for API requests and responses
 export interface SignUpData {
@@ -150,6 +151,22 @@ export interface UndergraduateData {
   busService: boolean;
 }
 
+export interface PaymentInitPayload {
+  amount: number; // Payable amount in INR
+  planType?: string; // e.g., "yearly" | "monthly"
+  couponCode?: string | null;
+  // institutionId: string;
+}
+
+export interface PaymentVerifyPayload {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+  planType?: string;
+  coupon?: string | null;
+  amount?: number;
+}
+
 export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -171,22 +188,11 @@ export async function apiRequest<T>(
       ...options,
     });
 
-    const contentType = response.headers.get("content-type") || "";
-    const isJson = contentType.includes("application/json");
-    const raw = isJson ? await response.json() : await response.text();
+    const data = await response.json();
 
     if (!response.ok) {
-      const message = isJson
-        ? (raw as any)?.message || `${response.status} ${response.statusText}`
-        : `${response.status} ${response.statusText}`;
-      return { success: false, message } as ApiResponse<T>;
+      throw new Error(data.message || "Something went wrong");
     }
-
-    if (!isJson) {
-      return { success: false, message: "Unexpected response format" } as ApiResponse<T>;
-    }
-
-    const data = raw as any;
 
     // Ensure the response always has a success field
     // Handle different response formats from backend
@@ -625,7 +631,6 @@ export const getMyInstitution = async (): Promise<any> => {
   return payload?.data || payload;
 };
 
-
 // Analytics API helpers
 export type TimeRangeParam = "weekly" | "monthly" | "yearly";
 
@@ -791,28 +796,21 @@ export const getInstitutionCourses = async (
   return [];
 };
 
-export interface PaymentInitPayload {
-  amount: number; // Payable amount in INR
-  planType?: string; // e.g., "yearly" | "monthly"
-  couponCode?: string | null;
-  // institutionId: string;
-}
 
 export const paymentAPI = {
-  applyCoupon: async (code: string): Promise<ApiResponse> => {
-    return apiRequest(`/v1/payment/apply-coupon`, {
-      method: "POST",
-      body: JSON.stringify({ code }),
-    });
-  },
+  /**
+   * Initiate a payment on the backend
+   * - Sends the payable amount and optional context to create an order/session
+   */
   initiatePayment: async (
     payload: PaymentInitPayload
   ): Promise<ApiResponse> => {
-    return apiRequest(`/v1/payment/initiate`, {
+    return apiRequest("/v1/payment/create-order", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
+
   /**
    * Apply coupon to get discount amount from backend
    */
@@ -880,22 +878,35 @@ export const paymentAPI = {
       ...(q.paymentId ? { paymentId: q.paymentId } : {}),
       ...(q.orderId ? { orderId: q.orderId } : {}),
       ...(q.transactionId ? { transactionId: q.transactionId } : {}),
-
     }).toString();
-    return apiRequest(`/v1/payment/verify-payment?${qs}`, { method: "GET" });
+    return `${API_BASE_URL}/v1/payment/receipt?${params}`;
   },
-  getReceiptUrl: (params: {
-    transactionId?: string | null;
-    paymentId?: string | null;
-    orderId?: string | null;
-  }): string => {
-    const qs = new URLSearchParams(
-      Object.entries(params).reduce<Record<string, string>>((acc, [k, v]) => {
-        if (v) acc[k] = String(v);
-        return acc;
-      }, {})
-    ).toString();
-    return `${API_BASE_URL}/v1/payment/receipt${qs ? `?${qs}` : ""}`;
+
+  /**
+   * Optional helper to programmatically download receipt as file
+   */
+  downloadReceiptFile: async (
+    q: { transactionId?: string | null; paymentId?: string | null; orderId?: string | null },
+    filename = "receipt.pdf"
+  ): Promise<ApiResponse> => {
+    try {
+      const url = paymentAPI.getReceiptUrl(q);
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) {
+        return { success: false, message: `Failed to download receipt (${res.status})` };
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+      return { success: true, message: "Receipt downloaded" };
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : "Download failed" };
+    }
   },
 };
-

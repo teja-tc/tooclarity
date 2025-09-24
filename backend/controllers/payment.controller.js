@@ -39,7 +39,8 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
     console.error("[Payment] Institution not found:", institutionId);
     return next(new AppError("Institution not found", 404));
   }
-  const institutionId = adminUser.institution;
+
+  console.log("[Payment] Institution ownership verified:", institutionId);
 
   // ✅ Validate plan
   let amount = PLANS[planType];
@@ -120,6 +121,7 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
     amount: order.amount,
     orderId: order.id,
   });
+  console.log("[Payment] Order response sent to client");
 });
 
 exports.verifyPayment = asyncHandler(async (req, res, next) => {

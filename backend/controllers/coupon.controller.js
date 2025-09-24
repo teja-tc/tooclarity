@@ -69,6 +69,27 @@ exports.createCoupon = asyncHandler(async (req, res, next) => {
  * @route   POST /api/v1/coupon/apply
  * @access  Private/InstitutionAdmin
  */
+// exports.applyCoupon = asyncHandler(async (req, res, next) => {
+//   const { code } = req.body;
+//   const institutionAdminId = req.userId;
+
+//   const coupon = await Coupon.findOne({
+//     code: code,
+//     // institutions: institutionAdminId,
+//   });
+
+//   if (!coupon) {
+//     return next(new AppError("This coupon is not valid for your account, has expired, or has been fully redeemed.", 404));
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Coupon is valid",
+//     data: {
+//       discountAmount: discount,
+//     },
+//   });
+// });
 exports.applyCoupon = asyncHandler(async (req, res, next) => {
   const { code } = req.body;
   const institutionAdminId = req.userId;
@@ -79,16 +100,24 @@ exports.applyCoupon = asyncHandler(async (req, res, next) => {
   });
 
   if (!coupon) {
-    return next(new AppError("This coupon is not valid for your account, has expired, or has been fully redeemed.", 404));
+    return next(new AppError("Invalid or expired coupon", 404));
   }
+
+  if (new Date(coupon.validTill) < new Date()) {
+    return next(new AppError("Coupon has expired", 400));
+  }
+
+  const originalAmount = PLANS[coupon.planType];
+  const discount = (originalAmount * coupon.discountPercentage) / 100;
+  const finalAmount = Math.max(originalAmount - discount, 0);
 
   res.status(200).json({
     success: true,
-    message: "Coupon is valid",
+    message: "Coupon applied successfully",
     data: {
       discountAmount: discount,
-    },
-  });
+    },
+  });
 });
 
 exports.listInstitutions = async (req, res, next) => {
