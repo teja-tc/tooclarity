@@ -183,7 +183,12 @@ function LeadsPage() {
 
 		observer.observe(el);
 		return () => {
-			try { observer.disconnect(); } catch {}
+			try { 
+				observer.disconnect(); 
+			} catch (disconnectError) {
+				console.warn('Failed to disconnect intersection observer:', disconnectError);
+				// Non-critical: observer will be garbage collected anyway
+			}
 		};
 	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 

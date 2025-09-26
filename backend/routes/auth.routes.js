@@ -32,4 +32,11 @@ router.post(
     authController.verifyEmailOtp
 );
 
+// Google OAuth - Fixed paths to match frontend expectations
+router.get('/google/start', authController.googleStart);
+router.get('/google/callback', authController.googleCallback);
+
+// Add token refresh endpoint
+router.post('/refresh-google-tokens', authController.refreshGoogleTokens);
+
 module.exports = router;

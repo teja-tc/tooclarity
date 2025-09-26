@@ -255,7 +255,11 @@ export function useInfiniteLeads(pageSize: number = 10) {
               await replaceDashboardStudentsWithLatestTen(students as any);
               rows = await getDashboardStudentsPage(institution?._id, 0, pageSize);
             }
-          } catch {}
+          } catch (indexedDBError) {
+            console.error('Failed to persist students to IndexedDB:', indexedDBError);
+            // Fallback: continue with API-only data
+            console.log('Falling back to API-only data retrieval');
+          }
         }
         return rows as any[];
       }
