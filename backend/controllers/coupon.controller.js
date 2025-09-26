@@ -1,4 +1,7 @@
+// controllers/coupon.controller.js
+
 const Coupon = require("../models/coupon");
+const Admin = require("../models/Admin"); // Import the new Admin model
 const AppError = require("../utils/appError");
 const asyncHandler = require("express-async-handler");
 const InstitutionAdmin = require("../models/InstituteAdmin");
@@ -62,8 +65,31 @@ exports.createCoupon = asyncHandler(async (req, res, next) => {
 });
 
 /**
- * Apply a coupon → return discounted amount
+ * @desc    Validate a coupon
+ * @route   POST /api/v1/coupon/apply
+ * @access  Private/InstitutionAdmin
  */
+// exports.applyCoupon = asyncHandler(async (req, res, next) => {
+//   const { code } = req.body;
+//   const institutionAdminId = req.userId;
+
+//   const coupon = await Coupon.findOne({
+//     code: code,
+//     // institutions: institutionAdminId,
+//   });
+
+//   if (!coupon) {
+//     return next(new AppError("This coupon is not valid for your account, has expired, or has been fully redeemed.", 404));
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Coupon is valid",
+//     data: {
+//       discountAmount: discount,
+//     },
+//   });
+// });
 exports.applyCoupon = asyncHandler(async (req, res, next) => {
   const { code } = req.body;
   const institutionAdminId = req.userId;
@@ -90,8 +116,8 @@ exports.applyCoupon = asyncHandler(async (req, res, next) => {
     message: "Coupon applied successfully",
     data: {
       discountAmount: discount,
-    },
-  });
+    },
+  });
 });
 
 exports.listInstitutions = async (req, res, next) => {
