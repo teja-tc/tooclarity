@@ -1,4 +1,4 @@
-﻿const crypto = require("crypto");
+const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const logger = require("../config/logger");
 const AppError = require("../utils/appError");
