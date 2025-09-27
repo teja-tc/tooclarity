@@ -61,7 +61,15 @@ export default function BranchForm({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const currentBranch =
-    branches.find((b) => b.id === selectedBranchId) || branches[0];
+  branches?.find((b) => b.id === selectedBranchId) ||
+  branches?.[0] || {
+    id: 0,
+    branchName: "",
+    branchAddress: "",
+    contactInfo: "",
+    locationUrl: "",
+  };
+
 
   // ✅ 4. Create a handler to manage country selection
   const handleCountrySelect = (country: CountryOption) => {
