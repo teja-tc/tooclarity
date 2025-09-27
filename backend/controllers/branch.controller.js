@@ -8,7 +8,7 @@ const checkOwnership = async (institutionId, userId) => {
   if (!institution) {
     throw new AppError("No institution found with that ID", 404);
   }
-  if (institution.owner.toString() !== userId) {
+  if (institution.institutionAdmin.toString() !== userId) {
     throw new AppError(
       "You are not authorized to perform this action for this institution",
       403

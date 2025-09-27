@@ -5,16 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBell } from "@fortawesome/free-regular-svg-icons";
 import { faCheckDouble, faTrash, faInbox, faEnvelopeOpenText, faFilter, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import { useRouter } from "next/navigation";
-import { notificationsAPI, authAPI } from "@/lib/api";
-
-type NotificationItem = {
-  id: string;
-  title: string;
-  description?: string;
-  time: number; // epoch ms
-  read: boolean;
-  category?: "system" | "billing" | "user" | "security" | "other";
-};
+import { useNotifications, useNotificationActions, type NotificationItem } from "@/lib/hooks/notifications-hooks";
 
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts;
@@ -31,44 +22,12 @@ function timeAgo(ts: number): string {
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const [items, setItems] = React.useState<NotificationItem[]>([]);
   const [filter, setFilter] = React.useState<"all" | "unread">("all");
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [query, setQuery] = React.useState("");
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
-  const loadFromBackend = React.useCallback(async () => {
-    try {
-      setIsLoading(true);
-      // Default to admin scope if profile indicates admin; otherwise fetch generic (system + any matched)
-      let scopeParams: any = {};
-      try {
-        const prof = await authAPI.getProfile();
-        const role = (prof as any)?.data?.role;
-        const id = (prof as any)?.data?.id;
-        if (role && role.toString().toUpperCase().includes('ADMIN')) {
-          scopeParams.scope = 'admin';
-          scopeParams.ownerId = id;
-        }
-      } catch {}
-      const res = await notificationsAPI.list({ ...scopeParams, page: 1, limit: 100 });
-      if (res?.success) {
-        const mapped: NotificationItem[] = (res.data?.items || []).map((n: any) => ({
-          id: n._id,
-          title: n.title,
-          description: n.description,
-          time: n.createdAt ? new Date(n.createdAt).getTime() : Date.now(),
-          read: !!n.read,
-          category: n.category,
-        }));
-        setItems(mapped.sort((a, b) => b.time - a.time));
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  React.useEffect(() => { loadFromBackend(); }, [loadFromBackend]);
+  const { data: items = [], isLoading } = useNotifications();
+  const { markRead, markUnread, remove } = useNotificationActions();
 
   const unreadCount = React.useMemo(() => items.filter(i => !i.read).length, [items]);
 
@@ -99,33 +58,32 @@ export default function NotificationsPage() {
     setSelectedIds(next);
   };
 
-  const markRead = async (ids: string[]) => {
-    try { await notificationsAPI.markRead(ids); } catch {}
-    const next = items.map(i => ids.includes(i.id) ? { ...i, read: true } : i);
-    setItems(next);
+  const markAllRead = async () => {
+    const ids = items.filter(i => !i.read).map(i => i.id);
+    await markRead.mutateAsync(ids);
   };
 
-  const markUnread = async (ids: string[]) => {
-    try { await notificationsAPI.markUnread(ids); } catch {}
-    const next = items.map(i => ids.includes(i.id) ? { ...i, read: false } : i);
-    setItems(next);
+  const markReadOne = async (id: string) => {
+    await markRead.mutateAsync([id]);
   };
 
-  const remove = async (ids: string[]) => {
-    try { await notificationsAPI.remove(ids); } catch {}
-    const next = items.filter(i => !ids.includes(i.id));
-    setItems(next);
+  const markUnreadOne = async (id: string) => {
+    await markUnread.mutateAsync([id]);
+  };
+
+  const removeIds = async (ids: string[]) => {
+    await remove.mutateAsync(ids);
     const sel = new Set(selectedIds);
     ids.forEach(id => sel.delete(id));
     setSelectedIds(sel);
   };
 
   const clearAll = async () => {
-    await remove(items.map(i => i.id));
+    await removeIds(items.map(i => i.id));
   };
 
   const onItemClick = async (id: string) => {
-    await markRead([id]);
+    await markReadOne(id);
   };
 
   const goBack = () => {
@@ -135,7 +93,8 @@ export default function NotificationsPage() {
       } else {
         router.push("/");
       }
-    } catch {
+    } catch (err) {
+      console.error('Notifications: navigation fallback error', err);
       router.push("/");
     }
   };
@@ -189,7 +148,7 @@ export default function NotificationsPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => markRead(items.filter(i => !i.read).map(i => i.id))}
+              onClick={markAllRead}
               className="px-3 py-2 rounded-xl text-sm bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2"
               title="Mark all as read"
             >
@@ -213,9 +172,9 @@ export default function NotificationsPage() {
         <div className="mb-3 px-3 py-2 rounded-xl bg-blue-50 dark:bg-gray-800 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>{selectedIds.size} selected</div>
           <div className="flex items-center gap-2">
-            <button className="px-2 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700" onClick={() => markRead(Array.from(selectedIds))}>Mark read</button>
-            <button className="px-2 py-1 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => markUnread(Array.from(selectedIds))}>Mark unread</button>
-            <button className="px-2 py-1 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => remove(Array.from(selectedIds))}>Delete</button>
+            <button className="px-2 py-1 rounded-lg bg-blue-600 text-white hover:bg-blue-700" onClick={() => markRead.mutate(Array.from(selectedIds))}>Mark read</button>
+            <button className="px-2 py-1 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => markUnread.mutate(Array.from(selectedIds))}>Mark unread</button>
+            <button className="px-2 py-1 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => removeIds(Array.from(selectedIds))}>Delete</button>
           </div>
         </div>
       )}
@@ -263,11 +222,11 @@ export default function NotificationsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {!n.read ? (
-                    <button className="text-xs px-2 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700" onClick={() => markRead([n.id])}>Mark read</button>
+                    <button className="text-xs px-2 py-1 rounded-md bg-blue-600 text-white hover:bg-blue-700" onClick={() => markReadOne(n.id)}>Mark read</button>
                   ) : (
-                    <button className="text-xs px-2 py-1 rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => markUnread([n.id])}>Mark unread</button>
+                    <button className="text-xs px-2 py-1 rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => markUnreadOne(n.id)}>Mark unread</button>
                   )}
-                  <button className="text-xs px-2 py-1 rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => remove([n.id])}>Delete</button>
+                  <button className="text-xs px-2 py-1 rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" onClick={() => removeIds([n.id])}>Delete</button>
                 </div>
               </div>
             </li>

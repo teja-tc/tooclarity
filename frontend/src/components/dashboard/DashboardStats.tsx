@@ -64,11 +64,11 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({
   const [baseline, setBaseline] = useState<number>(stats.courseViews);
 
   useEffect(() => {
-    // fetch owner range value on range change
+    // fetch institutionAdmin range value on range change
     const fetchRange = async () => {
       try {
         const range = (filters.timeRange || 'Weekly').toString().toLowerCase() as 'weekly'|'monthly'|'yearly';
-        const res = await metricsAPI.getOwnerByRange('views', range);
+        const res = await metricsAPI.getInstitutionAdminByRange('views', range);
         if ((res as any)?.success) {
           const total = (res as any).data?.totalViews ?? 0;
           // compute trend vs previous baseline for this range
@@ -77,7 +77,9 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({
           // Update baseline for next comparison
           setBaseline(total);
         }
-      } catch {}
+      } catch (err) {
+        console.error('DashboardStats: institutionAdmin range fetch failed', err);
+      }
     };
     fetchRange();
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,38 +1,40 @@
 // controllers/payment.controller.js
+
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
+const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const AppError = require("../utils/appError");
 const Subscription = require("../models/Subscription");
-const { Institution } = require("../models/Institution");
 const InstituteAdmin = require("../models/InstituteAdmin");
-const RedisUtil = require("../utils/redis.util");
 const Coupon = require("../models/coupon");
-const mongoose = require("mongoose");
+const RedisUtil = require("../utils/redis.util");
+
+// CORRECT: Importing the job function
+const { addPaymentSuccessEmailJob } = require('../jobs/email.job.js');
+
+const PLANS = require("../config/plans");
+const logger = require('pino')();
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-const PLANS = {
-  monthly: 9900,
-  yearly: 118800,
-};
-
 exports.createOrder = asyncHandler(async (req, res, next) => {
-  const { planType = "yearly", coupon } = req.body;
+  const { planType = "yearly", couponCode } = req.body;
   const userId = req.userId;
-  const institution = await InstituteAdmin.findById(userId).select(
-    "institution"
-  );
-  const institutionId = institution.institution;
+
+  const institution = await InstituteAdmin.findById(userId).select("institution");
+  const institutionId = institution?.institution;
 
   console.log("[Payment] Create order request received:", {
     userId,
     institutionId,
     planType,
+    couponCode,
   });
+
   if (!institutionId) {
     console.error("[Payment] Institution not found:", institutionId);
     return next(new AppError("Institution not found", 404));
@@ -40,17 +42,45 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
 
   console.log("[Payment] Institution ownership verified:", institutionId);
 
-  // Validate plan
-  const amount = PLANS[planType];
+  // ✅ Validate plan
+  let amount = PLANS[planType];
   if (!amount) {
     console.error("[Payment] Invalid plan type:", planType);
     return next(new AppError("Invalid plan type specified", 400));
   }
-  console.log("[Payment] Plan validated:", { planType, amount });
+  console.log("[Payment] Plan validated:", { planType, baseAmount: amount });
 
-  // Razorpay order creation
+  // ✅ Check coupon
+  if (couponCode) {
+    const coupon = await Coupon.findOne({
+      code: couponCode,
+      // institutions: institutionId, // check institution-specific coupon
+    });
+
+    if (!coupon) {
+      return next(new AppError("Invalid or unauthorized coupon code", 400));
+    }
+
+    // ✅ Check expiry
+    if (coupon.validTill && new Date(coupon.validTill) < new Date()) {
+      return next(new AppError("Coupon has expired", 400));
+    }
+
+    // ✅ Apply discount
+    const discount = (amount * coupon.discountPercentage) / 100;
+    amount = Math.max(0, amount - discount); // don’t go below 0
+
+    console.log("[Payment] Coupon applied:", {
+      couponCode,
+      discountPercentage: coupon.discountPercentage,
+      discount,
+      finalAmount: amount,
+    });
+  }
+
+  // ✅ Razorpay order creation
   const options = {
-    amount,
+    amount: amount * 100, // Razorpay expects amount in paise
     currency: "INR",
     receipt: `receipt_order_${new Date().getTime()}`,
   };
@@ -66,7 +96,7 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
     return next(new AppError("Failed to create order with Razorpay", 500));
   }
 
-  // Save subscription record
+  // ✅ Save subscription record
   try {
     const subscription = await Subscription.findOneAndUpdate(
       { institution: institutionId },
@@ -95,110 +125,92 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
 });
 
 exports.verifyPayment = asyncHandler(async (req, res, next) => {
-  try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    if (!secret) {
-      console.error(
-        "[Payment Webhook] ❌ Missing RAZORPAY_WEBHOOK_SECRET in environment variables"
-      );
-      return res
-        .status(500)
-        .json({ status: "error", message: "Server misconfiguration" });
-    }
+  const shasum = crypto.createHmac("sha256", secret);
+  shasum.update(JSON.stringify(req.body));
+  const digest = shasum.digest("hex");
 
-    console.log("[Payment Webhook] 🔔 Webhook received:", {
-      headers: req.headers,
-      body: req.body,
-    });
+  if (digest !== req.headers["x-razorpay-signature"]) {
+    logger.warn("[Payment Webhook] Invalid signature received.");
+    return res.status(400).json({ status: "error", message: "Invalid signature" });
+  }
 
-    // Verify signature
-    const shasum = crypto.createHmac("sha256", secret);
-    shasum.update(JSON.stringify(req.body));
-    const digest = shasum.digest("hex");
+  const { event, payload } = req.body;
+  if (event === "payment.captured") {
+    const { order_id, id: payment_id, amount } = payload.payment.entity;
 
-    if (digest !== req.headers["x-razorpay-signature"]) {
-      console.warn("[Payment Webhook] ⚠️ Invalid signature");
-      return res
-        .status(400)
-        .json({ status: "error", message: "Invalid signature" });
-    }
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    console.log("[Payment Webhook] ✅ Signature verified");
+    let subscriptionDataForEmail;
 
-    // Extract event + payload safely
-    const { event, payload } = req.body || {};
-    if (!event || !payload) {
-      console.error("[Payment Webhook] ❌ Invalid payload structure", req.body);
-      return res
-        .status(400)
-        .json({ status: "error", message: "Invalid payload" });
-    }
+    try {
+      const subscription = await Subscription.findOne({ razorpayOrderId: order_id }).session(session);
 
-    if (event === "payment.captured") {
-      const { order_id, id: payment_id } = payload?.payment?.entity || {};
-
-      if (!order_id || !payment_id) {
-        console.error(
-          "[Payment Webhook] ❌ Missing order_id or payment_id in payload",
-          payload
-        );
-        return res
-          .status(400)
-          .json({ status: "error", message: "Invalid payment payload" });
+      if (!subscription || subscription.status !== 'pending') {
+        logger.warn({ order_id }, `[Payment Webhook] No pending subscription found or already processed.`);
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(200).send("OK");
       }
 
-      console.log(
-        `[Payment Webhook] 💰 Payment captured for order: ${order_id}, payment: ${payment_id}`
-      );
-
-      const subscription = await Subscription.findOne({
-        razorpayOrderId: order_id,
-      });
-
-      if (!subscription) {
-        console.warn(
-          `[Payment Webhook] ⚠️ No subscription found for orderId: ${order_id}`
-        );
-        return res.status(200).send("OK"); // still respond 200 so Razorpay doesn't retry forever
-      }
-
-      // Update subscription
       subscription.status = "active";
       subscription.razorpayPaymentId = payment_id;
       subscription.startDate = new Date();
+      subscription.endDate = subscription.planType === "yearly"
+        ? new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+        : new Date(new Date().setMonth(new Date().getMonth() + 1));
 
-      if (subscription.planType === "monthly") {
-        subscription.endDate = new Date(
-          new Date().setMonth(new Date().getMonth() + 1)
-        );
-      } else if (subscription.planType === "yearly") {
-        subscription.endDate = new Date(
-          new Date().setFullYear(new Date().getFullYear() + 1)
-        );
+      await subscription.save({ session });
+
+      if (subscription.coupon) {
+        await Coupon.updateOne({ _id: subscription.coupon }, { $inc: { useCount: 1 } }, { session });
+        logger.info({ couponId: subscription.coupon, order_id }, "[Payment Webhook] Coupon usage incremented.");
       }
 
-      await subscription.save();
-      await InstituteAdmin.findOneAndUpdate(
-        { institution: subscription.institution },
-        { $set: {
-          isPaymentDone: true
-        }}
-      )
-      await RedisUtil.deleteSubscription(order_id);
-      await RedisUtil.addSubscription(order_id, "active");
-      console.log(
-        `[Payment Webhook] ✅ Subscription updated successfully for user: ${subscription.userId}`
-      );
+      await InstituteAdmin.updateOne({ institution: subscription.institution }, { $set: { isPaymentDone: true } }, { session });
+
+      await session.commitTransaction();
+
+      subscriptionDataForEmail = {
+        institution: subscription.institution,
+        planType: subscription.planType,
+        startDate: subscription.startDate,
+        endDate: subscription.endDate
+      };
+
+      await RedisUtil.setex(`sub_status:${subscription.institution.toString()}`, 3600, "active");
+      logger.info({ order_id, institutionId: subscription.institution }, "[Payment Webhook] Subscription activated successfully.");
+
+    } catch (error) {
+      await session.abortTransaction();
+      logger.error({ error, order_id }, "[Payment Webhook] Transaction failed during payment verification.");
+      return next(new AppError("Failed to verify payment due to a server error.", 500));
+    } finally {
+      session.endSession();
     }
 
-    return res.status(200).json({ status: "success" });
-  } catch (err) {
-    console.error("[Payment Webhook] ❌ Error processing webhook:", err);
-    return res
-      .status(500)
-      .json({ status: "error", message: "Internal server error" });
+    if (subscriptionDataForEmail) {
+      const adminUser = await InstituteAdmin.findOne({ institution: subscriptionDataForEmail.institution }).select('email');
+
+      if (adminUser && adminUser.email) {
+        // CORRECT: Adding the job to the queue
+        await addPaymentSuccessEmailJob({
+          email: adminUser.email,
+          planType: subscriptionDataForEmail.planType,
+          amount: amount,
+          orderId: order_id,
+          startDate: subscriptionDataForEmail.startDate,
+          endDate: subscriptionDataForEmail.endDate,
+        });
+      } else {
+        logger.warn({ order_id, institutionId: subscriptionDataForEmail.institution }, "[Payment Webhook] Could not find user email to add email job.");
+      }
+    }
   }
+
+  res.status(200).json({ status: "success" });
 });
 
 exports.pollSubscriptionStatus = asyncHandler(async (req, res) => {
@@ -214,16 +226,16 @@ exports.pollSubscriptionStatus = asyncHandler(async (req, res) => {
     const subscription = await Subscription.aggregate([
       {
         $lookup: {
-          from: "instituteadmins", // collection name of InstituteAdmin
-          localField: "institution", // field in Subscription
-          foreignField: "institution", // field in InstituteAdmin
-          as: "admin", // put matches into "admin" array
+          from: "instituteadmins",
+          localField: "institution",
+          foreignField: "institution",
+          as: "admin",
         },
       },
-      { $unwind: "$admin" }, // flatten "admin" array into an object
+      { $unwind: "$admin" },
       {
         $match: {
-          "admin._id": new mongoose.Types.ObjectId(userId), // only keep docs where admin._id == userId
+          "admin._id": new mongoose.Types.ObjectId(userId),
         },
       },
       {

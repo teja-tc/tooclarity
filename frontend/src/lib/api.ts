@@ -1,6 +1,6 @@
 // API configuration and methods for authentication
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 // Types for API requests and responses
 
@@ -11,11 +11,13 @@ export interface SignUpData {
   designation: string;
   linkedin: string;
   password: string;
+  type?: "admin" | "institution";
 }
 
 export interface LoginData {
   email: string;
   password: string;
+  type?: "admin" | "institution";
 }
 
 export interface OTPData {
@@ -149,7 +151,23 @@ export interface UndergraduateData {
   busService: boolean;
 }
 
-async function apiRequest<T>(
+export interface PaymentInitPayload {
+  amount: number; // Payable amount in INR
+  planType?: string; // e.g., "yearly" | "monthly"
+  couponCode?: string | null;
+  // institutionId: string;
+}
+
+export interface PaymentVerifyPayload {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+  planType?: string;
+  coupon?: string | null;
+  amount?: number;
+}
+
+export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
@@ -170,22 +188,11 @@ async function apiRequest<T>(
       ...options,
     });
 
-    const contentType = response.headers.get("content-type") || "";
-    const isJson = contentType.includes("application/json");
-    const raw = isJson ? await response.json() : await response.text();
+    const data = await response.json();
 
     if (!response.ok) {
-      const message = isJson
-        ? (raw as any)?.message || `${response.status} ${response.statusText}`
-        : `${response.status} ${response.statusText}`;
-      return { success: false, message } as ApiResponse<T>;
+      throw new Error(data.message || "Something went wrong");
     }
-
-    if (!isJson) {
-      return { success: false, message: "Unexpected response format" } as ApiResponse<T>;
-    }
-
-    const data = raw as any;
 
     // Ensure the response always has a success field
     // Handle different response formats from backend
@@ -625,32 +632,6 @@ export const getMyInstitution = async (): Promise<any> => {
   return payload?.data || payload;
 };
 
-export const getInstitutionBranches = async (
-  institutionId: string
-): Promise<any[]> => {
-  const res = await apiRequest<any>(
-    `/v1/institutions/${institutionId}/branches`,
-    { method: "GET" }
-  );
-  const payload = res as any;
-  if (payload && Array.isArray(payload.data)) return payload.data;
-  if (Array.isArray(payload)) return payload;
-  return [];
-};
-
-export const getInstitutionCourses = async (
-  institutionId: string 
-): Promise<any[]> => {
-  const res = await apiRequest<any>(
-    `/v1/institutions/${institutionId}/courses`,
-    { method: "GET" }
-  );
-  const payload = res as any;
-  if (payload && Array.isArray(payload.data)) return payload.data;
-  if (Array.isArray(payload)) return payload;
-  return [];
-};
-
 // Analytics API helpers
 export type TimeRangeParam = "weekly" | "monthly" | "yearly";
 
@@ -675,27 +656,27 @@ export const metricsAPI = {
     return apiRequest(`/v1/institutions/${institutionId}/courses/${courseId}/metrics?metric=${metric}`, { method: "POST" });
   },
   // Accept optional institutionId; if missing, resolve via getMyInstitution()
-  getOwnerSummary: async (metric: 'views'|'comparisons', institutionId?: string): Promise<ApiResponse> => {
+  getInstitutionAdminSummary: async (metric: 'views'|'comparisons', institutionId?: string): Promise<ApiResponse> => {
     let iid = institutionId;
     if (!iid) {
-      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch (err) { console.error('metricsAPI.getInstitutionAdminSummary: resolve institution failed', err); }
     }
     if (!iid) throw new Error('institutionId not available');
-    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner?metric=${metric}`, { method: "GET" });
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/institution-admin?metric=${metric}`, { method: "GET" });
   },
-  getOwnerByRange: async (
+  getInstitutionAdminByRange: async (
     metric: 'views'|'comparisons'|'leads' | string,
     range: 'weekly'|'monthly'|'yearly',
     institutionId?: string
   ): Promise<ApiResponse> => {
     let iid = institutionId as string | undefined;
     if (!iid) {
-      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch (err) { console.error('metricsAPI.getInstitutionAdminByRange: resolve institution failed', err); }
     }
     if (!iid) throw new Error('institutionId not available');
-    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner/range?metric=${metric}&range=${range}`, { method: "GET" });
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/institution-admin/range?metric=${metric}&range=${range}`, { method: "GET" });
   },
-  getOwnerSeries: async (
+  getInstitutionAdminSeries: async (
     metric: 'views'|'comparisons'|'leads',
     year?: number,
     institutionId?: string
@@ -704,14 +685,14 @@ export const metricsAPI = {
     if (year) q.push(`year=${year}`);
     let iid = institutionId;
     if (!iid) {
-      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch {}
+      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch (err) { console.error('metricsAPI.getInstitutionAdminSeries: resolve institution failed', err); }
     }
     if (!iid) throw new Error('institutionId not available');
-    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/owner/series?${q.join('&')}`, { method: "GET" });
+    return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/institution-admin/series?${q.join('&')}`, { method: "GET" });
   }
 };
 
-// Enquiries API helpers (leads generated and recent enquiries)
+// Enquiries API helpers
 export const enquiriesAPI = {
   getLeadsSummary: async (): Promise<ApiResponse> => {
     return apiRequest(`/v1/enquiries/summary/leads`, { method: "GET" });
@@ -723,6 +704,10 @@ export const enquiriesAPI = {
   getRecentEnquiries: async (): Promise<ApiResponse> => {
     return apiRequest(`/v1/enquiries/recent`, { method: "GET" });
   },
+  getRecentEnquiriesWithOffset: async (offset: number, limit: number): Promise<ApiResponse> => {
+    const q = [`offset=${Math.max(0, offset)}`, `limit=${Math.max(1, Math.min(100, limit))}`].join('&');
+    return apiRequest(`/v1/enquiries/recent?${q}`, { method: "GET" });
+  },
   getTypeSummary: async (range: 'weekly'|'monthly'|'yearly'): Promise<ApiResponse> => {
     return apiRequest(`/v1/enquiries/summary/types?range=${range}`, { method: "GET" });
   },
@@ -732,9 +717,9 @@ export const enquiriesAPI = {
     return apiRequest(`/v1/enquiries/summary/types/range?${q.join('&')}`, { method: "GET" });
   },
   createEnquiry: async (enquiryData: {
-    customerName: string;
-    customerEmail: string;
-    customerPhone: string;
+    studentName: string;
+    studentEmail: string;
+    studentPhone: string;
     institution: string;
     programInterest: string;
     enquiryType: string;
@@ -749,11 +734,11 @@ export const enquiriesAPI = {
 // Notifications API helpers
 export const notificationsAPI = {
   list: async (params: {
-    scope?: 'customer'|'institution'|'branch'|'admin';
-    customerId?: string;
+    scope?: 'student'|'institution'|'branch'|'admin';
+    studentId?: string;
     institutionId?: string;
     branchId?: string;
-    ownerId?: string;
+    institutionAdminId?: string;
     page?: number;
     limit?: number;
     unread?: boolean;
@@ -770,11 +755,11 @@ export const notificationsAPI = {
     title: string;
     description?: string;
     category?: string;
-    recipientType: 'CUSTOMER'|'INSTITUTION'|'BRANCH'|'ADMIN'|'SYSTEM';
-    customer?: string;
+    recipientType: 'STUDENT'|'INSTITUTION'|'BRANCH'|'ADMIN'|'SYSTEM';
+    student?: string;
     institution?: string;
     branch?: string;
-    owner?: string;
+    institutionAdmin?: string;
     metadata?: any;
   }): Promise<ApiResponse> => {
     return apiRequest(`/v1/notifications`, { method: 'POST', body: JSON.stringify(payload) });
@@ -790,59 +775,142 @@ export const notificationsAPI = {
   }
 };
 
-// Payment API methods
-export interface PaymentInitPayload {
-  amount: number; // Payable amount in INR
-  planType?: string; // e.g., "yearly" | "monthly"
-  coupon?: string | null;
-  // institutionId: string;
-}
+export const getInstitutionBranches = async (
+  institutionId: string
+): Promise<any[]> => {
+  const res = await apiRequest<any>(
+    `/v1/institutions/${institutionId}/branches`,
+    { method: "GET" }
+  );
+  const payload = res as any;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
+
+export const getInstitutionCourses = async (
+  institutionId: string
+): Promise<any[]> => {
+  const res = await apiRequest<any>(
+    `/v1/institutions/${institutionId}/courses`,
+    { method: "GET" }
+  );
+  const payload = res as any;
+  if (payload && Array.isArray(payload.data)) return payload.data;
+  if (Array.isArray(payload)) return payload;
+  return [];
+};
 
 export const paymentAPI = {
-  applyCoupon: async (code: string): Promise<ApiResponse> => {
-    return apiRequest(`/v1/payment/apply-coupon`, {
-      method: "POST",
-      body: JSON.stringify({ code }),
-    });
-  },
+  /**
+   * Initiate a payment on the backend
+   * - Sends the payable amount and optional context to create an order/session
+   */
   initiatePayment: async (
     payload: PaymentInitPayload
   ): Promise<ApiResponse> => {
-    return apiRequest(`/v1/payment/initiate`, {
+    return apiRequest("/v1/payment/create-order", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
-  verifyPayment: async (payload: {
-    orderId: string;
-    paymentId: string;
-    signature: string;
-    planType?: string;
-    coupon?: string | null;
-    amount?: number;
-  }): Promise<ApiResponse> => {
-    const qs = new URLSearchParams({
-      orderId: payload.orderId,
-      paymentId: payload.paymentId,
-      signature: payload.signature,
-      ...(payload.planType ? { planType: payload.planType } : {}),
-      ...(payload.coupon ? { coupon: String(payload.coupon) } : {}),
-      ...(typeof payload.amount !== "undefined" ? { amount: String(payload.amount) } : {}),
-    }).toString();
-    return apiRequest(`/v1/payment/verify-payment?${qs}`, { method: "GET" });
+
+  /**
+   * Apply coupon to get discount amount from backend
+   */
+  applyCoupon: async (code: string): Promise<ApiResponse<{ discountAmount: number }>> => {
+    return apiRequest("/v1/coupon/apply-coupon", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
   },
-  getReceiptUrl: (params: {
-    transactionId?: string | null;
-    paymentId?: string | null;
-    orderId?: string | null;
-  }): string => {
-    const qs = new URLSearchParams(
-      Object.entries(params).reduce<Record<string, string>>((acc, [k, v]) => {
-        if (v) acc[k] = String(v);
-        return acc;
-      }, {})
-    ).toString();
-    return `${API_BASE_URL}/v1/payment/receipt${qs ? `?${qs}` : ""}`;
+
+  /**
+   * Verify Razorpay payment on backend with polling until status is final
+   * - Polls the backend until message is "active" or "expired"
+   * - Treats intermediate "pending" as continue polling
+   */
+  verifyPayment: async (
+    payload: PaymentVerifyPayload,
+    options?: { intervalMs?: number; timeoutMs?: number }
+  ): Promise<ApiResponse> => {
+    const intervalMs = options?.intervalMs ?? 2000; // 2s poll interval
+    const timeoutMs = options?.timeoutMs ?? 120000; // 2 min timeout
+    const start = Date.now();
+    let lastRes: ApiResponse | null = null;
+
+    while (Date.now() - start < timeoutMs) {
+      // Build query string for GET verification (preserves original method)
+      const qs = new URLSearchParams({
+        orderId: payload.orderId,
+        paymentId: payload.paymentId,
+        signature: payload.signature,
+        ...(payload.planType ? { planType: payload.planType } : {}),
+        ...(payload.coupon ? { coupon: String(payload.coupon) } : {}),
+        ...(typeof payload.amount !== "undefined" ? { amount: String(payload.amount) } : {}),
+      }).toString();
+      const endpoint = `/v1/payment/verify-payment?${qs}`;
+
+      lastRes = await apiRequest(endpoint, {
+        method: "GET",
+      });
+
+      const statusMsg = (lastRes.message || "").toLowerCase();
+
+      // Break on final states
+      if (statusMsg === "active" || statusMsg === "expired") {
+        return lastRes;
+      }
+
+      // Continue polling on pending/unknown states
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+
+    // Timed out waiting for final status
+    return {
+      success: false,
+      message: "verification_timeout",
+      data: lastRes?.data,
+    };
+  },
+
+  /**
+   * Build receipt URL for opening/downloading receipt
+   */
+  getReceiptUrl: (q: { transactionId?: string | null; paymentId?: string | null; orderId?: string | null }): string => {
+    const params = new URLSearchParams({
+      ...(q.paymentId ? { paymentId: q.paymentId } : {}),
+      ...(q.orderId ? { orderId: q.orderId } : {}),
+      ...(q.transactionId ? { transactionId: q.transactionId } : {}),
+    }).toString();
+    return `${API_BASE_URL}/v1/payment/receipt?${params}`;
+  },
+
+  /**
+   * Optional helper to programmatically download receipt as file
+   */
+  downloadReceiptFile: async (
+    q: { transactionId?: string | null; paymentId?: string | null; orderId?: string | null },
+    filename = "receipt.pdf"
+  ): Promise<ApiResponse> => {
+    try {
+      const url = paymentAPI.getReceiptUrl(q);
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) {
+        return { success: false, message: `Failed to download receipt (${res.status})` };
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+      return { success: true, message: "Receipt downloaded" };
+    } catch (e) {
+      return { success: false, message: e instanceof Error ? e.message : "Download failed" };
+    }
   },
 };
-
