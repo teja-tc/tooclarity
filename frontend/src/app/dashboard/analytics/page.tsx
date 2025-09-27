@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import AnalyticsTable, { CoursePerformanceRow } from "@/components/dashboard/AnalyticsTable";
 import CourseReachChart from "@/components/dashboard/CourseReachChart";
 import LeadTypeAnalytics, { LeadTypeData } from "@/components/dashboard/LeadTypeAnalytics";
-import { analyticsAPI, metricsAPI, enquiriesAPI, authAPI } from "@/lib/api";
+import {metricsAPI, enquiriesAPI, authAPI } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import { withAuth } from "@/lib/auth-context";
 import Loading from "@/components/ui/loading";

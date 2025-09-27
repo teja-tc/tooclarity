@@ -259,6 +259,26 @@ export const authAPI = {
     });
   },
 
+  // Phone OTP (student signup)
+  sendPhoneOTP: async (payload: { phone: string }): Promise<ApiResponse> => {
+    return apiRequest("/v1/auth/otp/phone/send", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  resendPhoneOTP: async (payload: { phone: string }): Promise<ApiResponse> => {
+    return apiRequest("/v1/auth/otp/phone/resend", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  verifyPhoneOTP: async (payload: { phone: string; otp: string }): Promise<ApiResponse> => {
+    return apiRequest("/v1/auth/otp/phone/verify", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
   // Google OAuth
   googleAuth: async (token: string): Promise<ApiResponse> => {
     return apiRequest("/v1/auth/google", {
