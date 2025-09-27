@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import InputField from "@/components/ui/InputField";
 import { authAPI } from "../../lib/api";
 import OtpDialogBox from "./OtpDialogBox";
+import TermsConditionsPage from "@/app/TermsConditions/page";
 import { useAuth } from "../../lib/auth-context";
 
 type SignUpCaller = "admin" | "institution";
@@ -172,7 +174,7 @@ export default function SignUpDialog({
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="signup" size="lg">
+          <Button size="lg">
             Sign Up
           </Button>
         </DialogTrigger>
@@ -330,7 +332,9 @@ export default function SignUpDialog({
                 htmlFor="terms"
                 className="text-sm sm:text-base leading-relaxed cursor-pointer"
               >
-                Accept terms & conditions*
+                Accept <Link href="/TermsConditions" className="text-blue-600 hover:underline">
+          Terms and Conditions*
+        </Link>
               </label>
             </div>
             {errors.terms && (

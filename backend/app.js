@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 // const rateLimit = require('express-rate-limit');
@@ -22,6 +22,7 @@ const {
   couponInstitutionAdminRoute: InstitutionAdminRoute,
 } = require("./routes/coupon.routes");
 const authorizeRoles = require("./middleware/role.middleware");
+const studentRoutes = require('./routes/student.routes');
 
 // import global auth middleware
 const globalAuthMiddleware = require("./middleware/globalAuth.middleware");
@@ -54,6 +55,9 @@ app.use(express.json({ limit: "10kb" }));
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/payment/", paymentPublicRoutes);
+
+// Public student auth endpoints (phone OTP + social)
+app.use('/api/v1', studentRoutes);
 
 // Apply Global Auth Middleware (for all routes below this line)
 app.use(globalAuthMiddleware);
