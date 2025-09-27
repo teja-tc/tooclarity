@@ -3,6 +3,7 @@
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 // Types for API requests and responses
+
 export interface SignUpData {
   name: string;
   email: string;
@@ -26,7 +27,7 @@ export interface OTPData {
 
 export interface ApiResponse<T = any> {
   success: boolean;
-  message: string;
+  message?: string;
   data?: T;
 }
 
@@ -620,8 +621,9 @@ export const institutionDetailsAPI = {
   createInstitutionDetails: async (
     detailsData: InstitutionDetailsData
   ): Promise<ApiResponse> => {
-    // // Get institution type to include in the request
+    // Get institution type to include in the request
     // const institutionType = getInstitutionType();
+
 
     const requestData = {
       ...detailsData,
