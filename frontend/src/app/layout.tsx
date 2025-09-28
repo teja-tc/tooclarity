@@ -35,12 +35,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${Montserrat.variable} antialiased`}
       >
-        <QueryProvider>
-          <AuthProvider>
-            {children}
-            <ToastProvider /> {/* �� This must exist ONCE globally */}
-          </AuthProvider>
-        </QueryProvider>
+       
+        <AuthProvider>
+          {children}
+           <ToastProvider /> {/* 👈 This must exist ONCE globally */}
+        </AuthProvider>
+       
       </body>
     </html>
   );

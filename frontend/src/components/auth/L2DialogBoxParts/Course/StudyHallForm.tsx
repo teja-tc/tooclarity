@@ -18,6 +18,7 @@ interface StudyHallFormProps {
   ) => void;
   setCourses: React.Dispatch<React.SetStateAction<Course[]>>;
   courses: Course[];
+  hallName?: string; 
   selectedCourseId: number;
   courseErrors: Record<string, string>;
 }
@@ -47,6 +48,15 @@ export default function StudyHallForm({
 
   return (
     <div className="grid md:grid-cols-2 gap-x-10 gap-y-6">
+       <InputField
+        label="Hall Name"
+        name="hallName"
+        value={currentCourse.hallName || ""}
+        onChange={handleCourseChange}
+        placeholder="Enter the hall name"
+        required
+        error={courseErrors.hallName}
+      />
       
       <InputField
         label="Seating option"
@@ -153,10 +163,10 @@ export default function StudyHallForm({
                 type="radio"
                 name={f.name}
                 value="yes" 
-                checked={currentCourse[f.name] === "yes"} 
+                checked={currentCourse[f.name] === "Yes"} 
                 // ✅ 2. Call handleCourseChange directly with a synthetic event
                 onChange={() => handleCourseChange({
-                  target: { name: f.name, value: "yes" },
+                  target: { name: f.name, value: "Yes" },
                 } as React.ChangeEvent<HTMLInputElement>)}
                 className="h-4 w-4" 
               />
@@ -167,10 +177,10 @@ export default function StudyHallForm({
                 type="radio"
                 name={f.name}
                 value="no" 
-                checked={currentCourse[f.name] === "no"} 
+                checked={currentCourse[f.name] === "No"} 
                 // ✅ 3. Call handleCourseChange directly with a synthetic event
                 onChange={() => handleCourseChange({
-                  target: { name: f.name, value: "no" },
+                  target: { name: f.name, value: "No" },
                 } as React.ChangeEvent<HTMLInputElement>)} 
                 className="h-4 w-4" 
               />

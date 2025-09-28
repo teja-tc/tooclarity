@@ -64,6 +64,7 @@ const courseSchema = new mongoose.Schema(
     graduationType: { type: String },
     streamType: { type: String },
     selectBranch: { type: String },
+    eligibilityCriteria: { type: String},
     aboutBranch: { type: String },
     educationType: { type: String },
     classSize: { type: String },
@@ -73,6 +74,8 @@ const courseSchema = new mongoose.Schema(
     domainType: { type: String },
 
     // Additional fields for Study Hall
+    // --- ✅ UPDATED Study Hall Section ---
+    hallName: {type: String,trim: true},
     seatingOption: { type: String },
     openingTime: { type: String },
     closingTime: { type: String },
@@ -80,12 +83,10 @@ const courseSchema = new mongoose.Schema(
     totalSeats: { type: String },
     availableSeats: { type: String },
     pricePerSeat: { type: String },
-    hasWifi: { type: String, enum: ["yes", "no"] }, // ✅ Changed to String to match form
-    hasChargingPoints: { type: String, enum: ["yes", "no"] }, // ✅ Changed to String
-    hasAC: { type: String, enum: ["yes", "no"] },       // ✅ Changed to String
-    hasPersonalLocker: { type: String, enum: ["yes", "no"] }, // ✅ Changed to String
-
-
+    hasWifi: { type: String, enum: ["Yes", "No"] },
+    hasChargingPoints: { type: String, enum: ["Yes", "No"] },
+    hasAC: { type: String, enum: ["Yes", "No"] },
+    hasPersonalLocker: { type: String, enum: ["Yes", "No"] },
     // Additional fields for Tuition Centers
     tuitionType: { type: String },
     instructorProfile: { type: String },
