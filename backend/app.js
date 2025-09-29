@@ -23,6 +23,8 @@ const {
 } = require("./routes/coupon.routes");
 const authorizeRoles = require("./middleware/role.middleware");
 
+const googleRoutes = require('./routes/google.routes');
+
 // import global auth middleware
 const globalAuthMiddleware = require("./middleware/globalAuth.middleware");
 
@@ -55,7 +57,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10kb" }));
 
 app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/auth", require("./routes/google.routes"));
+app.use("/auth/google", googleRoutes);
 app.use("/api/v1/payment/", paymentPublicRoutes);
 
 // Apply Global Auth Middleware (for all routes below this line)
@@ -63,8 +65,9 @@ app.use(globalAuthMiddleware);
 
 const requireInstituteAdmin = [authorizeRoles(["INSTITUTE_ADMIN"])];
 const requireAdmin = [authorizeRoles(["ADMIN"])];
+const requireStudent = [authorizeRoles(["STUDENT"])];
 
-app.use("/api/v1/students", studentRoutes); 
+app.use("/api/v1/students", studentRoutes, requireStudent); 
 
 app.use("/api/v1/payment", requireInstituteAdmin, paymentProtectedRoutes);
 app.use("/api/v1/admin/coupon", requireAdmin, adminRoute);

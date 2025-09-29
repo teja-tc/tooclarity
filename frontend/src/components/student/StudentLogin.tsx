@@ -1,17 +1,24 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Loader2, Smartphone, type LucideIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Mail,
+  Lock,
+  Apple,
+  type LucideIcon,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { authAPI } from "@/lib/api";
+import { studentAuthAPI } from "@/lib/students-api";
 import { useAuth } from "@/lib/auth-context";
-import { useUserStore } from "@/lib/user-store";
 import {
-  GoogleCredentialResponse,
   initializeGoogleIdentity,
   loadGoogleIdentityScript,
+  GoogleCredentialResponse,
   redirectToGoogleOAuth,
 } from "@/lib/google-auth";
 
@@ -21,58 +28,45 @@ type OAuthProvider = {
   icon: string | LucideIcon;
 };
 
-interface StudentRegistrationProps {
-  onSuccess?: () => Promise<void>;
-}
-
 const oauthProviders: OAuthProvider[] = [
   {
     id: "google",
     label: "Continue with Google",
     icon: "/google.png",
   },
+//   {
+//     id: "microsoft",
+//     label: "Continue with Microsoft",
+//     icon: "/window.svg",
+//   },
+//   {
+//     id: "apple",
+//     label: "Continue with Apple",
+//     icon: Apple,
+//   },
 ];
 
-const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) => {
+interface StudentLoginProps {
+  onSuccess?: () => void;
+}
+
+const StudentLogin: React.FC<StudentLoginProps> = ({ onSuccess }) => {
   const router = useRouter();
   const { refreshUser } = useAuth();
 
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Handle success flow (same as login)
-  const handleRegisterSuccess = async () => {
-    await refreshUser();
-    
-    // Call the onSuccess prop if provided
-    if (onSuccess) {
-      await onSuccess();
-    }
-    
-    const latestUser = useUserStore.getState().user;
-
-    console.log("[Student Registration Route] Zustand user after signup:", latestUser);
-
-    const role = latestUser?.role;
-    const isPaymentDone = !!latestUser?.isPaymentDone;
-    const isProfileCompleted = !!latestUser?.isProfileCompleted;
-
-    console.log("[Student Registration Route] Flags:", { role, isPaymentDone, isProfileCompleted });
-
-    if (role === "STUDENT") {
-      if (!isProfileCompleted) {
-        router.replace("/student/onboarding");
-        return;
-      }
-      if (isProfileCompleted) {
-        router.replace("/dashboard");
-        return;
-      }
-    }
-  };
-
-  // Google script + identity init
-  useEffect(() => {
+  // Load Google Script
+  React.useEffect(() => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
     if (!clientId) {
       console.error("NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured");
@@ -102,11 +96,18 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
             try {
               const response = await authAPI.googleAuth(credential);
               if (!response.success) {
-                console.error("Google sign-up failed", response.message);
+                console.error("Google sign-in failed", response.message);
                 return;
               }
 
-              await handleRegisterSuccess();
+              await refreshUser();
+              
+              // If parent provided a success handler, use it
+              if (onSuccess) {
+                onSuccess();
+                return;
+              }
+
             } catch (error) {
               console.error("Error sending Google token", error);
             } finally {
@@ -115,9 +116,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
           },
         });
 
-        if (isMounted) {
-          setIsScriptLoaded(true);
-        }
+        if (isMounted) setIsScriptLoaded(true);
       } catch (error) {
         console.error("Failed to initialize Google Identity Services", error);
       }
@@ -127,20 +126,63 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [refreshUser, router]);
 
   const handleGoogleClick = () => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
     const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ?? "";
-    const state = JSON.stringify({ state: "student", type: "register" });
-
+    const state = JSON.stringify({ state: "student", type: "login" });
     redirectToGoogleOAuth({
       clientId,
       redirectUri,
       userType: "student",
-      state,
-      type: "register",
+      state: state,
+      type: "login",
     });
+  };
+
+  // Handle input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+    // Clear error when user starts typing
+    if (error) setError(null);
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await studentAuthAPI.login(formData);
+      
+      if (!response.success) {
+        setError(response.message || "Login failed");
+        return;
+      }
+
+      // Refresh user context to get latest user data
+      await refreshUser();
+      
+      // If parent provided a success handler, use it
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
+
+      // Default redirect if no success handler
+      router.replace("/student/dashboard");
+    } catch (error) {
+      console.error("Login error:", error);
+      setError("An error occurred during login. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderedProviders = useMemo(
@@ -161,9 +203,15 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
               className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
             >
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-900">
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Icon className="h-5 w-5" />}
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Icon className="h-5 w-5" />
+                )}
               </span>
-              <span>{disableGoogleButton ? "Loading Google..." : provider.label}</span>
+              <span>
+                {disableGoogleButton ? "Loading Google..." : provider.label}
+              </span>
             </button>
           );
         }
@@ -189,7 +237,9 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
                 />
               )}
             </span>
-            <span>{disableGoogleButton ? "Loading Google..." : provider.label}</span>
+            <span>
+              {disableGoogleButton ? "Loading Google..." : provider.label}
+            </span>
           </button>
         );
       }),
@@ -200,10 +250,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
     <section className="flex min-h-screen flex-col bg-gradient-to-b from-white via-white to-blue-50 px-4 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-16">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
         <header className="flex items-center gap-3 text-blue-600">
-          <button
-            onClick={() => router.back()}
-            className="rounded-full p-1 transition hover:bg-blue-50"
-          >
+          <button className="rounded-full p-1 transition hover:bg-blue-50">
             <ArrowLeft className="h-5 w-5" />
           </button>
         </header>
@@ -221,46 +268,74 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Enter your phone number
-          </h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Login</h1>
           <p className="text-sm text-gray-500">
-            We&apos;ll send you a text with a verification code.
+            Enter your credentials to access your account.
           </p>
         </div>
 
-        <form className="mt-6 space-y-6">
+        <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+          {/* Error message */}
+          {error && (
+            <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+              {error}
+            </div>
+          )}
+
+          {/* Email field */}
           <label className="block">
-            <span className="sr-only">Mobile number</span>
+            <span className="sr-only">Email</span>
             <div className="relative">
               <span className="absolute inset-y-0 left-3 flex items-center text-gray-400">
-                <Smartphone className="h-5 w-5" />
+                <Mail className="h-5 w-5" />
               </span>
               <input
-                type="tel"
-                inputMode="numeric"
-                placeholder="+91 Mobile number"
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-12 pr-4 text-base text-gray-900 outline-none transition hover:border-blue-200 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="Enter your email"
+                required
+                disabled={isLoading}
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-12 pr-4 text-base text-gray-900 outline-none transition hover:border-blue-200 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </div>
+          </label>
+
+          {/* Password field */}
+          <label className="block">
+            <span className="sr-only">Password</span>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-3 flex items-center text-gray-400">
+                <Lock className="h-5 w-5" />
+              </span>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Enter your password"
+                required
+                disabled={isLoading}
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-12 pr-4 text-base text-gray-900 outline-none transition hover:border-blue-200 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           </label>
 
           <button
             type="submit"
-            disabled
-            className="w-full rounded-2xl bg-gray-200 py-3 text-base font-semibold text-gray-500"
+            disabled={isLoading || !formData.email || !formData.password}
+            className="w-full rounded-2xl bg-blue-600 py-3 text-base font-semibold text-white shadow-md transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Continue
+            {isLoading && <Loader2 className="h-5 w-5 animate-spin" />}
+            {isLoading ? "Logging in..." : "Login"}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-600">
-          Already have an account?{" "}
-          <button
-            onClick={() => router.push("/student/login")}
-            className="font-semibold text-blue-600 hover:underline"
-          >
-            Sign in
+          Don&apos;t have an account?{" "}
+          <button className="font-semibold text-blue-600 hover:underline">
+            Sign up
           </button>
         </div>
 
@@ -276,4 +351,4 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
   );
 };
 
-export default StudentRegistration;
+export default StudentLogin;
