@@ -97,10 +97,11 @@ const features = [
 /* ---------------------------- FeaturesPage ------------------------------ */
 const FeaturesPage = () => {
   const [isSignUpOpen, setIsSignUpOpen] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
 
   return (
     <>
-    <Header setIsSignUpOpen={setIsSignUpOpen} />
+    <Header setIsSignUpOpen={setIsSignUpOpen} setIsLoginOpen={setIsLoginOpen} />
       <div className="min-h-screen bg-white text-gray-900">
         <section className="max-w-7xl mx-auto px-6 py-16 space-y-24">
           {features.map((feature, index) => {
@@ -185,7 +186,7 @@ const FeaturesPage = () => {
 
      <Footer />
      <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} />
-    <LoginDialogBox />
+    <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen}/>
 
     </>
   );
