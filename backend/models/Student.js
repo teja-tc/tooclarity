@@ -1,6 +1,11 @@
 const mongoose = require("mongoose");
 
 const studentSchema = new mongoose.Schema({
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
     studentName: {
         type: String,
         trim: true,
@@ -12,7 +17,7 @@ const studentSchema = new mongoose.Schema({
         required: true,
     },
     studentPhone: {
-        type: String,
+      type: String,
         trim: true,
         required: true,
     },
