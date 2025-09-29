@@ -5,44 +5,18 @@
 // import { useEffect } from "react";
 
 
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+
 import Footer from "@/components/ui/footer";
 import React, { useState, useEffect } from "react";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  ChevronDown,
-  Users,
-  BarChart3,
-  ArrowRight,
-  X,
-  Menu,
-  Check,
-  Target,
-  Award,
-  BookOpen,
-  Globe,
-  Shield,
-  Zap,
-  Divide,
-} from "lucide-react";
+
+
+import {ArrowRight} from "lucide-react";
 import Header from "@/components/ui/Header";
 import SignUpDialog from "@/components/auth/SignUpDialog";
 import LoginDialogBox from "@/components/auth/LoginDialogBox";
 import { useAuth } from "../lib/auth-context";
 
 import { useRouter, usePathname } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import StaticDashboardCard from "@/components/LandingPage/DashboardCard";
 import StaticLeadsManagementCard from "@/components/LandingPage/LeadManagementCard";
@@ -84,7 +58,7 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-[#F5F6F9]">
-      <Header setIsSignUpOpen={setIsSignUpOpen} />
+      <Header setIsSignUpOpen={setIsSignUpOpen} setIsLoginOpen={setIsLoginOpen} />
       <main className="pt-20">
         {pathname === "/features" ? (
           <FeaturesPage />
@@ -98,8 +72,8 @@ const App = () => {
       <Footer />
 
       {/* Authentication Dialogs */}
-      <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} />
-      {/* <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen} /> */}
+      <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} /> {/* Pass open and onOpenChange props */}
+      <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen} /> {/* Pass open and onOpenChange props */}
     </div>
   );
 };
@@ -209,27 +183,25 @@ const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open:
       Get started →
     </button>
   </p>
-
-  {/* Close button */}
-  <button
-    className="absolute right-4 text-gray-500 hover:text-gray-700 font-bold"
-    onClick={() => console.log("Close clicked")}
-  >
-    ×
-  </button>
 </div>
 
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-100 via-blue-50 to-white py-20 px-4">
+      <section  className="py-20 px-4"
+  style={{
+    background: `linear-gradient(to bottom, rgba(189, 197, 241, 1) 0%, rgba(176, 186, 241, 0.7) 40%, rgba(255, 255, 255, 0.85) 100%)`
+  }}>
         <div className="max-w-4xl mx-auto text-center">
           <h1
-  className="font-sora font-semibold text-[40px] leading-[100%] tracking-[0] text-center text-[#060B13] mb-6  p-4 rounded-lg"
+  className="font-sora font-semibold text-[40px] leading-[100%] tracking-[0] text-center text-[#060B13]   p-4 rounded-lg"
 >
   Unlock Your Institution's
-  <br />
-  <span className="text-[#060B13]-400">Global Reach</span>
-</h1>
+  </h1>
+  <h1
+  className="font-sora font-semibold text-[40px] leading-[100%] tracking-[0] text-center text-[#060B13]  p-4 rounded-lg"
+>
+  Global Reach
+  </h1>
 
           <p className="font-montserrat font-medium text-[20px] leading-[100%] tracking-[0] text-center text-gray-600 mb-8 max-w-3xl mx-auto">
   Connect directly with students actively seeking quality education with a verified marketplace.
@@ -250,7 +222,6 @@ const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open:
   {/* Contact Sales Button */}
   <button
     className="w-[200px] h-[48px] hover:cursor-pointer bg-white text-gray-700 font-medium text-[16px] rounded-[12px] border border-[#808897] flex items-center justify-center transition-colors hover:bg-gray-5"
-    onClick={() => setIsLoginOpen(true)}
   >
     Contact sales
   </button>

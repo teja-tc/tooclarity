@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils"; // A utility for conditional class names
 
 interface HeaderProps {
   setIsSignUpOpen: (isOpen: boolean) => void;
+  setIsLoginOpen: (isOpen: boolean) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ setIsSignUpOpen }) => {
+const Header: React.FC<HeaderProps> = ({ setIsSignUpOpen ,setIsLoginOpen}) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
   const router = useRouter();
@@ -55,13 +56,23 @@ const Header: React.FC<HeaderProps> = ({ setIsSignUpOpen }) => {
 
       {/* Desktop Button */}
       <div className="hidden md:flex items-center space-x-4">
-        <button
-          className="w-[200px] h-[48px] hover:cursor-pointer bg-[#0222D7] text-white font-medium text-[16px] rounded-[12px] flex items-center justify-center transition-colors hover:bg-blue-800"
-          onClick={() => setIsSignUpOpen(true)}
-        >
-          Sign up for free
-        </button>
-      </div>
+  {/* Sign Up Button */}
+  <button
+    className="hover:cursor-pointer w-[191px] h-[48px] pt-4 pr-6 pb-4 pl-6 gap-[10px] bg-[#0222D7] text-white font-medium text-[16px] rounded-[12px] flex items-center justify-center transition-colors hover:bg-blue-800 opacity-100"
+    onClick={() => setIsSignUpOpen(true)}
+  >
+    Sign up for free
+  </button>
+
+  {/* Log In Button */}
+  <button
+    className="hover:cursor-pointer  w-[191px] h-[48px] pt-4 pr-6 pb-4 pl-6 gap-[10px] bg-[#0222D7] text-white font-medium text-[16px] rounded-[12px] flex items-center justify-center transition-colors hover:bg-blue-800 opacity-100"
+    onClick={() => setIsLoginOpen(true)}
+  >
+    Log In
+  </button>
+</div>
+
 
       {/* Mobile Menu Toggle */}
       <button
