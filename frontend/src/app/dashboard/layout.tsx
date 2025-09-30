@@ -7,6 +7,7 @@ import Topbar from "@/components/dashboard/Topbar";
 import { useAuth } from "@/lib/auth-context";
 import { motion } from "framer-motion";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
+import StudentDashboard from "@/components/student/StudentDashboard";
 
 export default function DashboardLayout({
   children,
@@ -45,6 +46,10 @@ export default function DashboardLayout({
 
   if (user?.role === "ADMIN") {
     return <AdminDashboard />;
+  }
+
+  if(user?.role === "STUDENT"){
+    return <StudentDashboard/>;
   }
 
   if (

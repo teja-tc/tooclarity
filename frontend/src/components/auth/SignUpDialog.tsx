@@ -19,6 +19,7 @@ import { authAPI } from "../../lib/api";
 import OtpDialogBox from "./OtpDialogBox";
 import TermsConditionsPage from "@/app/TermsConditions/page";
 import { useAuth } from "../../lib/auth-context";
+import { redirectToGoogleOAuth } from "@/lib/google-auth";
 
 type SignUpCaller = "admin" | "institution";
 
@@ -166,8 +167,21 @@ export default function SignUpDialog({
     router.push('/signup');
   };
 
-  const handleGoogleSignUp = async () => {
-    alert("Google sign up integration would go here");
+  const handleGoogleSignUp = () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+    const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ?? "";
+
+    if (!clientId || !redirectUri) {
+      console.error("Missing Google OAuth configuration");
+      return;
+    }
+
+    const userType = "institution";
+    // const state = "institution";
+    const type = "register"
+    const state = JSON.stringify({ state: "institution", type: "register" });
+
+    redirectToGoogleOAuth({ clientId, redirectUri, userType, state, type });
   };
 
   return (
