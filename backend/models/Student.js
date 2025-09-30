@@ -1,6 +1,11 @@
 const mongoose = require("mongoose");
 
 const studentSchema = new mongoose.Schema({
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
     studentName: {
         type: String,
         trim: true,
@@ -12,9 +17,9 @@ const studentSchema = new mongoose.Schema({
         required: true,
     },
     studentPhone: {
-        type: String,
+      type: String,
         trim: true,
-        required: true,
+        // required: true,
     },
      /*       document size increases more than 16MB 
       enquiries: [{
@@ -25,15 +30,25 @@ const studentSchema = new mongoose.Schema({
     studentAddress: {
         type: String,
         trim: true,
-        required: true,
+        // required: true,
+    },
+    role:{
+        type:String,
+        default:'STUDENT',
+    },
+    studentPassword:{
+        type:String,
+    },
+    studentProfilePic:{
+        type:String,
     },
     // Relation
-    institution: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Institution",
-        required: true,
-        index: true,
-      },
+    // institution: {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: "Institution",
+    //     required: true,
+    //     index: true,
+    //   },
     // all enquiries that this student made IDs will be stored in this array
   enquiries: [{ type: mongoose.Schema.Types.ObjectId, ref: "Enquiries" }],
 },{timestamps:true});

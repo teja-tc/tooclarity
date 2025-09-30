@@ -79,7 +79,7 @@ export default function LandingPage() {
   const { isAuthenticated, user, logout } = useAuth();
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
 
-  /*useEffect(() => {
+  useEffect(() => {
     if (!isAuthenticated || !user) return;
 
     // Redirect rules for INSTITUTE_ADMIN
@@ -97,7 +97,17 @@ export default function LandingPage() {
         return;
       }
     }
-  }, [isAuthenticated, user, router]); */
+
+    if(user.role === "STUDENT"){
+      if(user.isProfileCompleted === false){
+        router.replace("/student/onboarding");
+        return;
+      }
+      router.replace("/dashboard");
+      return;
+    }
+
+  }, [isAuthenticated, user, router]);
 
   const handleLogout = async () => {
     await logout();

@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const instituteAdminSchema = new mongoose.Schema({
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true,
+    },
     name: {
         type: String,
         required: [true, 'Name is required.'],
@@ -16,7 +21,7 @@ const instituteAdminSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: [true, 'Password is required.'],
+        // required: [true, 'Password is required.'],
         minlength: 8,
         select: false,
     },
@@ -24,11 +29,11 @@ const instituteAdminSchema = new mongoose.Schema({
         type: String,
         match: [/^\d{10}$/, 'Contact number must be 10 digits'],
         trim: true,
-        required: [true, 'Contact number is required']
+        // required: [true, 'Contact number is required']
     },
     designation: {
         type: String,
-        required: [true, 'Designation is required.'],
+        // required: [true, 'Designation is required.'],
         trim: true,
     },
     linkedinUrl: {
@@ -44,6 +49,10 @@ const instituteAdminSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Institution',
     },
+    ProfilePicutre:{
+        type:String,
+        trim:true,
+    },
     isEmailVerified:{
         type:Boolean,
         default:false,
@@ -52,12 +61,6 @@ const instituteAdminSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    // role:{
-    //     type:String,
-    //     enum:['INSTITUTE_ADMIN','ADMIN','STUDENT'],
-    //     // default:'INSTITUTE_ADMIN',
-    //     required:true
-    // },
     isPaymentDone:{
         type:Boolean,
         default:false
@@ -65,11 +68,33 @@ const instituteAdminSchema = new mongoose.Schema({
     isProfileCompleted:{
         type:Boolean,
         default:false
-    }
+    },
+    address:{
+        type:String,
+        trim:true,
+    },
+    academicProfile: {
+        profileType: {
+        type: String,
+        enum: [
+            'KINDERGARTEN',
+            'SCHOOL',
+            'INTERMEDIATE',
+            'GRADUATION',
+            'COACHING',
+            'STUDY_HALLS',
+            'TUITION_CENTER',
+            'STUDY_ABROAD',
+        ],
+        },
+        details: {
+        type: mongoose.Schema.Types.Mixed,
+        },
+    },
 }, { timestamps: true});
 
 instituteAdminSchema.pre('save', async function(next) {
-    if (!this.isModified('password')) {
+    if (!this.isModified('password') || !this.password) {
         return next();
     }
 
@@ -78,9 +103,14 @@ instituteAdminSchema.pre('save', async function(next) {
     next();
 })
 
-instituteAdminSchema.methods.comparePassword = async function(candidatePassword) { 
-    return await bcrypt.compare(candidatePassword, this.password);
-}
+// instituteAdminSchema.methods.comparePassword = async function(candidatePassword) { 
+//     return await bcrypt.compare(candidatePassword, this.password);
+// }
+
+instituteAdminSchema.methods.comparePassword = async function (candidatePassword) {
+  if (!this.password) return false; // No password set (Google login)
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
 const InstituteAdmin = mongoose.model('InstituteAdmin', instituteAdminSchema);
 

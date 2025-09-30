@@ -128,9 +128,9 @@ exports.createEnquiry = asyncHandler(async (req, res, next) => {
   const { studentName, studentEmail, studentPhone, institution, programInterest, enquiryType } = req.body;
   
   const enquiry = await Enquiries.create({
-    studentName,
-    studentEmail, 
-    studentPhone,
+    // studentName,
+    // studentEmail, 
+    // studentPhone,
     institution,
     programInterest,
     enquiryType

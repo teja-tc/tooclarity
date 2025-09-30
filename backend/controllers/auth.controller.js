@@ -1,47 +1,24 @@
 const InstituteAdmin = require("../models/InstituteAdmin");
 const otpService = require("../services/otp.service");
 
-const JwtUtil = require("../utils/jwt.util");
-const CookieUtil = require("../utils/cookie.util");
-const RedisUtil = require("../utils/redis.util");
+const { sendTokens } = require("../utils/token.utils");
 
-// helper to send tokens
-const sendTokens = async (user, res, message) => {
-
-  const userId = user._id;
-  const username = user.name;
-  const role = user.role;
-
-  // 1. generate tokens
-  const accessToken = JwtUtil.generateToken(userId, username, "access", role);
-  const refreshToken = JwtUtil.generateToken(userId, username, "refresh", role);
-
-  // 2. decode refresh to calculate expiry
-  const decodedRefresh = JwtUtil.decodeToken(refreshToken);
-  const ttlSeconds = decodedRefresh.exp - Math.floor(Date.now() / 1000);
-
-  // 3. save refresh token in redis
-  await RedisUtil.saveRefreshToken(userId, refreshToken, ttlSeconds);
-
-  // 4. send access token in cookie (expiry handled by CookieUtil.updateCookie)
-  CookieUtil.setCookie(res, "access_token", accessToken);
-  CookieUtil.setCookie(res, "username", username, { maxAge: 7 * 24 * 60 * 60 * 1000 });
-
-  // 5. respond
-  return res.status(200).json({
-    status: "success",
-    message,
-  });
-};
-
-
-exports.register = async (req, res, next) => {
+exports.register = async (req, res, next, options = {}) => {
   try {
-    const { name, email, password, contactNumber, designation, linkedinUrl, type } =
-      req.body;
+    const {
+      name,
+      email,
+      password,
+      contactNumber,
+      designation,
+      linkedinUrl,
+      type,
+      googleId,
+      profilePicture,
+    } = req.body;
 
     const existingUser = await InstituteAdmin.findOne({
-      $or: [{ email }, { contactNumber }],
+      $or: [{ email }],
     });
     if (existingUser) {
       return res.status(409).json({
@@ -53,29 +30,31 @@ exports.register = async (req, res, next) => {
     let newUser;
 
     if (type === "institution") {
-      // Institution registration
       newUser = await InstituteAdmin.create({
         name,
         email,
-        password,
-        contactNumber,
-        designation,
-        linkedinUrl,
+        password: password || undefined,
+        contactNumber: contactNumber || "",
+        designation: designation || "",
+        linkedinUrl: linkedinUrl || "",
         role: "INSTITUTE_ADMIN",
         isPaymentDone: false,
         isProfileCompleted: false,
+        address: undefined,
+        ProfilePicutre: undefined,
+        googleId: googleId || undefined,
+        isEmailVerified: true,
+        isPhoneVerified: false,
       });
 
-      // Send OTP for email verification
-      await otpService.sendVerificationToken(email);
-
-      return res.status(201).json({
-        status: "success",
-        message:
-          "User registered successfully. An OTP has been sent to your email for verification.",
-      });
+      if (!googleId) {
+        await otpService.sendVerificationToken(email);
+        return res.status(201).json({
+          status: "success",
+          message: "OTP sent to email. Please verify to complete registration.",
+        });
+      }
     } else if (type === "admin") {
-      // Admin registration
       newUser = await InstituteAdmin.create({
         name,
         email,
@@ -83,15 +62,56 @@ exports.register = async (req, res, next) => {
         contactNumber,
         designation,
         role: "ADMIN",
+        isPaymentDone: undefined,
+        isProfileCompleted: undefined,
+        address: undefined,
+        ProfilePicutre: undefined,
+        googleId: googleId || undefined,
+        institution: undefined,
+        isEmailVerified: false,
+        isPhoneVerified: false,
+        linkedinUrl: undefined,
       });
-
-      return await sendTokens(newUser, res, "ADMIN REGISTERED SUCCESSFULLY");
+    } else if (type === "student") {
+      newUser = await InstituteAdmin.create({
+        name,
+        email,
+        password: password || undefined,
+        contactNumber,
+        designation: undefined,
+        linkedinUrl: undefined,
+        role: "STUDENT",
+        isPaymentDone: undefined,
+        isProfileCompleted: false,
+        address: "",
+        ProfilePicutre: profilePicture || "",
+        googleId: googleId || undefined,
+        institution: undefined,
+        isEmailVerified: false,
+        isPhoneVerified: false,
+      });
     } else {
-      return res.status(400).json({
-        status: "fail",
-        message: "Invalid user type.",
-      });
+      return res
+        .status(400)
+        .json({ status: "fail", message: "Invalid user type." });
     }
+
+    // ✅ Issue tokens
+    const tokenData = await sendTokens(
+      newUser,
+      res,
+      `${type.toUpperCase()} REGISTERED SUCCESSFULLY`,
+      options
+    );
+
+    // ✅ If returnTokens is true, we are in Google OAuth flow, so just return tokenData
+    if (options.returnTokens) return tokenData;
+
+    // ✅ Otherwise normal email/password registration
+    return res.status(201).json({
+      status: "success",
+      message: "User registered successfully",
+    });
   } catch (error) {
     next(error);
   }
@@ -135,25 +155,42 @@ exports.verifyEmailOtp = async (req, res, next) => {
   }
 };
 
-exports.login = async (req, res, next) => {
+exports.login = async (req, res, next, options = {}) => {
   try {
-    const { email, password} = req.body;
+    const { email, password, googleId } = req.body;
 
-    const user = await InstituteAdmin.findOne({ email }).select("+password");
-    if (!user || !(await user.comparePassword(password))) {
-      return res
-        .status(401)
-        .json({ status: "fail", message: "Incorrect email or password." });
+    let user;
+
+    if (googleId) {
+      // ✅ Google OAuth login
+      user = await InstituteAdmin.findOne({ email, googleId });
+      if (!user) {
+        return res.status(404).json({
+          status: "fail",
+          message:
+            "No account found for this Google user. Please register first.",
+        });
+      }
+    } else {
+      // ✅ Normal email + password login
+      user = await InstituteAdmin.findOne({ email }).select("+password");
+      if (!user || !(await user.comparePassword(password))) {
+        return res
+          .status(401)
+          .json({ status: "fail", message: "Incorrect email or password." });
+      }
     }
 
-    if (user.role == "INSTITUTE_ADMIN" && !user.isEmailVerified) {
+    // ✅ Common checks for Institute Admins
+    if (user.role === "INSTITUTE_ADMIN" && !user.isEmailVerified && !googleId) {
       return res.status(403).json({
         status: "fail",
         message: "Account not verified. Please verify your Email first.",
       });
     }
 
-    return await sendTokens(user, res, "Login successful.");
+    // ✅ Issue tokens
+    return await sendTokens(user, res, "Login successful.", options);
   } catch (error) {
     next(error);
   }
