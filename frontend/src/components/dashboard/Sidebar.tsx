@@ -1,13 +1,13 @@
-﻿"use client";
+"use client";
 
 import React from "react";
 import { Button } from "../ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { 
-  faHome, 
-  faUser, 
-  faChartBar, 
+import {
+  faHome,
+  faUser,
+  faChartBar,
   faCreditCard,
 } from "@fortawesome/free-regular-svg-icons";
 import { faGear, faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
@@ -22,7 +22,11 @@ const Sidebar: React.FC = () => {
     { icon: faHome, label: "Dashboard", href: "/dashboard" },
     { icon: faUser, label: "Leads", href: "/dashboard/leads" },
     { icon: faChartBar, label: "Analytics", href: "/dashboard/analytics" },
-    { icon: faCreditCard, label: "Subscription", href: "/dashboard/subscription" },
+    {
+      icon: faCreditCard,
+      label: "Subscription",
+      href: "/dashboard/subscription",
+    },
     { icon: faGear, label: "Settings", href: "/dashboard/settings" },
   ];
 
@@ -32,7 +36,11 @@ const Sidebar: React.FC = () => {
     let bestIdx = 0;
     let bestLen = -1;
     items.forEach((it, idx) => {
-      if (pathname === it.href || pathname.startsWith(it.href + "/") || pathname.startsWith(it.href) && it.href !== "/dashboard") {
+      if (
+        pathname === it.href ||
+        pathname.startsWith(it.href + "/") ||
+        (pathname.startsWith(it.href) && it.href !== "/dashboard")
+      ) {
         const len = it.href.length;
         if (len > bestLen) {
           bestLen = len;
@@ -55,8 +63,8 @@ const Sidebar: React.FC = () => {
     visible: {
       x: 0,
       opacity: 1,
-      transition: { duration: 0.5, ease: easeInOut }
-    }
+      transition: { duration: 0.5, ease: easeInOut },
+    },
   };
 
   const iconVariants = {
@@ -64,21 +72,22 @@ const Sidebar: React.FC = () => {
     visible: (i: number) => ({
       opacity: 1,
       scale: 1,
-      transition: { delay: i * 0.1, duration: 0.3, ease: easeOut }
-    })
+      transition: { delay: i * 0.1, duration: 0.3, ease: easeOut },
+    }),
   };
 
   const handleLogout = async () => {
     try {
       await useAuth().logout();
     } catch (err) {
-      console.error('Sidebar: logout failed', err);
+      console.error("Sidebar: logout failed", err);
     }
     try {
       localStorage.removeItem("auth_token");
-      document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+      document.cookie =
+        "username=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
     } catch (err) {
-      console.error('Sidebar: clearing client auth state failed', err);
+      console.error("Sidebar: clearing client auth state failed", err);
     }
     window.location.href = "/";
   };
@@ -112,15 +121,17 @@ const Sidebar: React.FC = () => {
   return (
     <>
       {/* Desktop / large screens */}
-      <motion.aside 
-        className={`hidden lg:flex relative group flex-col items-center gap-3 py-6 w-18 bg-gray-50 dark:bg-gray-900 shadow-sm rounded-2xl ml-[50px] my-6 border border-gray-100 dark:border-gray-800 h-100vh ${isHovered ? "bg-transparent shadow-none border-transparent z-50" : ""}`}
+      <motion.aside
+        className={`hidden lg:flex relative group flex-col items-center gap-3 py-6 w-18 bg-gray-50 dark:bg-gray-900 shadow-sm rounded-2xl ml-[50px] my-6 border border-gray-100 dark:border-gray-800 h-100vh ${
+          isHovered ? "bg-transparent shadow-none border-transparent z-50" : ""
+        }`}
         variants={sidebarVariants}
         initial="hidden"
         animate="visible"
         onMouseEnter={showNow}
         onMouseLeave={hideNow}
       >
-        <motion.div 
+        <motion.div
           className="text-blue-600 font-bold text-xl mb-4 cursor-pointer relative z-20"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.98 }}
@@ -150,15 +161,22 @@ const Sidebar: React.FC = () => {
                   animate="visible"
                   className="relative z-20"
                 >
-                  <Link href={item.href} prefetch className="block focus:outline-none">
+                  <Link
+                    href={item.href}
+                    prefetch
+                    className="block focus:outline-none"
+                  >
                     <div
                       className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/40 ${
-                        activeIndex === idx 
-                          ? "bg-blue-600 text-white shadow-sm" 
+                        activeIndex === idx
+                          ? "bg-blue-600 text-white shadow-sm"
                           : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 hover:text-blue-600"
                       }`}
                     >
-                      <FontAwesomeIcon icon={item.icon} className="text-[18px]" />
+                      <FontAwesomeIcon
+                        icon={item.icon}
+                        className="text-[18px]"
+                      />
                     </div>
                   </Link>
                 </motion.div>
@@ -168,7 +186,10 @@ const Sidebar: React.FC = () => {
                   onClick={handleLogout}
                   className="h-11 w-11 rounded-xl flex items-center justify-center transition-all duration-200 ease-in-out hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/40"
                 >
-                  <FontAwesomeIcon icon={faRightFromBracket} className="text-[18px]" />
+                  <FontAwesomeIcon
+                    icon={faRightFromBracket}
+                    className="text-[18px]"
+                  />
                 </button>
               </div>
             </motion.div>
@@ -178,7 +199,7 @@ const Sidebar: React.FC = () => {
         {/* Expanded panel (replaces rail when hovered) */}
         <AnimatePresence initial={false}>
           {isHovered && (
-            <motion.div 
+            <motion.div
               key="expanded"
               className="absolute inset-y-0 left-0 w-[calc(4.5rem+14rem)] z-50"
               onMouseEnter={showNow}
@@ -194,18 +215,28 @@ const Sidebar: React.FC = () => {
                 </div>
                 <nav className="px-2 space-y-3">
                   {items.map((item, idx) => (
-                    <Link href={item.href} key={idx} prefetch className="block focus:outline-none">
+                    <Link
+                      href={item.href}
+                      key={idx}
+                      prefetch
+                      className="block focus:outline-none"
+                    >
                       <div
                         className={`h-11 w-full rounded-xl flex items-center gap-3 px-3 transition-colors duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/40 ${
-                          activeIndex === idx 
-                            ? "bg-blue-600 text-white shadow-sm" 
+                          activeIndex === idx
+                            ? "bg-blue-600 text-white shadow-sm"
                             : "hover:bg-indigo-100 dark:hover:bg-gray-800 text-gray-800 dark:text-gray-200"
                         }`}
                       >
                         <div className="h-11 w-11 rounded-xl flex items-center justify-center">
-                          <FontAwesomeIcon icon={item.icon} className="text-[18px]" />
+                          <FontAwesomeIcon
+                            icon={item.icon}
+                            className="text-[18px]"
+                          />
                         </div>
-                        <span className="text-sm font-medium">{item.label}</span>
+                        <span className="text-sm font-medium">
+                          {item.label}
+                        </span>
                       </div>
                     </Link>
                   ))}
@@ -216,7 +247,10 @@ const Sidebar: React.FC = () => {
                     className="h-11 w-full rounded-xl flex items-center gap-3 px-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/40"
                   >
                     <div className="h-11 w-11 rounded-xl flex items-center justify-center">
-                      <FontAwesomeIcon icon={faRightFromBracket} className="text-[18px]" />
+                      <FontAwesomeIcon
+                        icon={faRightFromBracket}
+                        className="text-[18px]"
+                      />
                     </div>
                     <span className="text-sm font-medium">Logout</span>
                   </button>
@@ -237,7 +271,7 @@ const Sidebar: React.FC = () => {
 
       {/* Mobile / small screens bottom bar */}
       <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 lg:hidden">
-        <motion.div 
+        <motion.div
           className="bg-white dark:bg-gray-900 shadow-lg rounded-2xl px-3 py-2 flex items-center gap-1 border border-gray-100 dark:border-gray-800"
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -250,8 +284,8 @@ const Sidebar: React.FC = () => {
               size="icon"
               variant="ghost"
               className={`h-10 w-10 rounded-xl transition-all duration-200 ease-in-out ${
-                activeIndex === idx 
-                  ? "bg-blue-600 text-white" 
+                activeIndex === idx
+                  ? "bg-blue-600 text-white"
                   : "hover:bg-blue-50 text-gray-600"
               }`}
               aria-current={activeIndex === idx ? "page" : undefined}

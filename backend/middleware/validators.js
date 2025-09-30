@@ -380,10 +380,8 @@ const l2UgPgCourseRules = [
     body('eligibilityCriteria')
         .trim()
         .notEmpty().withMessage('Eligibility criteria is required.'),
-
-    // This field links the course to a branch created in L2
-    body('createdBranch')
-        .notEmpty().withMessage('The course must be assigned to a branch.'),
+        // This field is handled by the branch assignment logic, so it can be optional here.
+    body('createdBranch').optional({ checkFalsy: true }).trim()
 ];
 
 
@@ -488,6 +486,9 @@ const l2TuitionCourseRules = [
 
 // ✅ --- L2 STUDY HALL COURSE RULES ---
 const l2StudyHallRules = [
+     body('hallName')
+        .trim()
+        .notEmpty().withMessage('Hall name is required.'),
     // Validates 'seatingOption' dropdown
     body('seatingOption')
         .isIn(["Individual Desk", "Shared Table", "Private Cabin", "Open Seating"])
@@ -525,11 +526,15 @@ const l2StudyHallRules = [
         .notEmpty().withMessage('Price per seat is required.')
         .isFloat({ min: 0 }).withMessage('Price must be a non-negative number.'),
     
-     // ✅ Validates that the facility fields are either "yes" or "no"
-  body('hasWifi').isIn(['yes', 'no']).withMessage('A selection for Wi-Fi is required.'),
-  body('hasChargingPoints').isIn(['yes', 'no']).withMessage('A selection for Charging Points is required.'),
-  body('hasAC').isIn(['yes', 'no']).withMessage('A selection for Air Conditioner is required.'),
-  body('hasPersonalLocker').isIn(['yes', 'no']).withMessage('A selection for Personal Lockers is required.'),
+//      // ✅ Validates that the facility fields are either "yes" or "no"
+//   body('hasWifi').isIn(['yes', 'no']).withMessage('A selection for Wi-Fi is required.'),
+//   body('hasChargingPoints').isIn(['yes', 'no']).withMessage('A selection for Charging Points is required.'),
+//   body('hasAC').isIn(['yes', 'no']).withMessage('A selection for Air Conditioner is required.'),
+//   body('hasPersonalLocker').isIn(['yes', 'no']).withMessage('A selection for Personal Lockers is required.'),
+    body('hasWifi').isIn(['Yes', 'No']).withMessage('A selection for Wi-Fi is required.'),
+    body('hasChargingPoints').isIn(['Yes', 'No']).withMessage('A selection for Charging Points is required.'),
+    body('hasAC').isIn(['Yes', 'No']).withMessage('A selection for Air Conditioner is required.'),
+    body('hasPersonalLocker').isIn(['Yes', 'No']).withMessage('A selection for Personal Lockers is required.'),
 
 
     // Allows 'createdBranch' to be optional
@@ -860,3 +865,24 @@ exports.validateUploadedFile = async (req, res, next) => {
         return res.status(400).json({ message: "Invalid JSON format or file structure." });
     }
 };
+
+
+
+// =======================
+// --- L2 COURSE RULES ---
+// =======================
+module.exports.l2BaseCourseRules = l2BaseCourseRules;
+module.exports.l2UgPgCourseRules = l2UgPgCourseRules;
+module.exports.l2CoachingCourseRules = l2CoachingCourseRules;
+module.exports.l2TuitionCourseRules = l2TuitionCourseRules;
+module.exports.l2StudyHallRules = l2StudyHallRules;
+
+// =======================
+// --- L3 DETAILS RULES ---
+// =======================
+module.exports.kindergartenL3Rules = kindergartenL3Rules;
+module.exports.schoolL3Rules = schoolL3Rules;
+module.exports.intermediateCollegeL3Rules = intermediateCollegeL3Rules;
+module.exports.ugPgUniversityL3Rules = ugPgUniversityL3Rules;
+module.exports.coachingCenterL3Rules = coachingCenterL3Rules;
+

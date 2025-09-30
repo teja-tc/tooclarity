@@ -22,13 +22,14 @@ const {
   couponInstitutionAdminRoute: InstitutionAdminRoute,
 } = require("./routes/coupon.routes");
 const authorizeRoles = require("./middleware/role.middleware");
+const dashboardRoutes = require("./routes/dashboard.routes");
 
 const googleRoutes = require('./routes/google.routes');
 
 // import global auth middleware
 const globalAuthMiddleware = require("./middleware/globalAuth.middleware");
 
-const studentRoutes = require("./routes/students/students.routes"); 
+const studentRoutes = require("./routes/student/student.routes"); 
 
 const app = express();
 
@@ -93,6 +94,9 @@ app.use(
 app.use("/api/v1/notifications", notificationRoutes);
 
 app.get("/health", (req, res) => res.status(200).send("OK"));
+
+// ✅ Secure Dashboard routes
+app.use("/api/v1/dashboard", dashboardRoutes);
 
 
 app.use((err, req, res, next) => {

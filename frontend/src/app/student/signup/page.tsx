@@ -1,12 +1,3 @@
-// import React from "react";
-// import StudentRegistration from "@/components/student/StudentRegistration";
-
-// const StudentSignupPage = () => {
-//   return <StudentRegistration />;
-// };
-
-// export default StudentSignupPage;
-
 "use client";
 
 import React, { useEffect } from "react";

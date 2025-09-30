@@ -40,7 +40,11 @@ This code is valid for the next 15 minutes. Please do not share this code with a
 Note: This is an automated message. Please do not reply to this email.
 
 Best regards,  
-The TooClarity Team`,
+The TooClarity Team
+
+---
+Note: This is a system-generated message. Please do not reply to this email.`
+,
     };
 
     await transporter.sendMail(mailOptions);
@@ -117,6 +121,70 @@ The TooClarity Team`,
       { err: error, event: "payment_email_failed", email, orderId },
       "Failed to send payment success email."
     );
+    return false;
+  }
+};
+
+
+// ... (keep your existing generateOtp, sendVerificationToken functions) ...
+
+exports.sendPasswordChangeToken = async (email) => {
+  try {
+    const otp = this.generateOtp();
+
+    // Save OTP to Redis with a different key prefix and 10 min expiry
+    await RedisUtil.saveOtp(`password-change:${email}`, otp, 600);
+
+    const mailOptions = {
+      from: `"No Reply" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Password Change Request - Verification Code",
+     text: `Dear User,
+
+A request has been made to change your password. Please use the verification code below to proceed.
+
+Your verification code is: ${otp}
+
+This code is valid for the next 10 minutes. 
+For your security, do NOT share this code with anyone. 
+If you did not request a password change, please report it to TooClarity Support immediately so we can help secure your account.
+
+Best regards,
+The TooClarity Team
+
+---
+Note: This is a system-generated message. Please do not reply to this email.`,
+    };
+
+    await transporter.sendMail(mailOptions);
+    logger.info({ event: "password_otp_sent", email }, "Password change OTP sent.");
+    return true;
+  } catch (error) {
+    logger.error(
+      { err: error, event: "password_otp_failed", email },
+      "Password change OTP sending failed."
+    );
+    throw new AppError("Could not send verification code.", 500);
+  }
+};
+
+exports.checkPasswordChangeToken = async (email, otp) => {
+  try {
+    // use the same Redis key prefix as in sendPasswordChangeToken
+    const redisKey = `password-change:${email}`;
+    const isValid = await RedisUtil.validateOtp(redisKey, otp);
+
+    if (isValid) {
+      logger.info({ event: "password_otp_verified", email }, "Password OTP verified successfully.");
+      // Delete OTP after successful verification
+      await RedisUtil.deleteOtp(redisKey);
+      return true;
+    } else {
+      logger.warn({ event: "password_otp_invalid", email }, "Password OTP invalid or expired.");
+      return false;
+    }
+  } catch (error) {
+    logger.error({ err: error, event: "password_otp_check_error", email }, "Password OTP check failed.");
     return false;
   }
 };

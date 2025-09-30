@@ -127,13 +127,15 @@ import { cn } from "@/lib/utils";
 interface InputFieldProps {
   label: string;
   name: string;
-  value: string;
+  value: string | number;
   onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
+  
   placeholder?: string;
   type?: string;
   isSelect?: boolean;
   isRadio?: boolean;
   isTextarea?: boolean;
+   as?: 'textarea';
   options?: string[];
   icon?: ReactNode;
   inputMode?: "text" | "numeric" | "decimal" | "tel" | "email" | "search" | "url";
