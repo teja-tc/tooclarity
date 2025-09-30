@@ -22,6 +22,7 @@ const {
   couponInstitutionAdminRoute: InstitutionAdminRoute,
 } = require("./routes/coupon.routes");
 const authorizeRoles = require("./middleware/role.middleware");
+const dashboardRoutes = require("./routes/dashboard.routes");
 
 const googleRoutes = require('./routes/google.routes');
 
@@ -93,6 +94,9 @@ app.use(
 app.use("/api/v1/notifications", notificationRoutes);
 
 app.get("/health", (req, res) => res.status(200).send("OK"));
+
+// ✅ Secure Dashboard routes
+app.use("/api/v1/dashboard", dashboardRoutes);
 
 
 app.use((err, req, res, next) => {

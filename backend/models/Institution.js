@@ -119,7 +119,7 @@ const kindergartenSchema = new mongoose.Schema({
   operationalDays: {
     type: [String],
     required: true,
-    enum: ["Mon", "Tues", "Wed", "Thur", "Fri", "Sat"],
+    enum: ["Mon", "Tues", "Wed", "Thur", "Fri", "Sat","Sun"],
     default: [],
   },
   extendedCare: {
@@ -287,8 +287,33 @@ const ugPgUniversitySchema = new mongoose.Schema({
     resumeBuilding: { type: Boolean, default: false },
     linkedinOptimization: { type: Boolean, default: false },
     exclusiveJobPortal: { type: Boolean, default: false },
-    certification: { type: Boolean, default: false },
+    // certification: { type: Boolean, default: false },
   },
+  // --- ✅ ADD THESE MISSING INSTITUTION-WIDE (L3) FIELDS ---
+    library: {
+        type: Boolean,
+        default: false
+    },
+    hostelFacility: {
+        type: Boolean,
+        default: false
+    },
+    entranceExam: {
+        type: Boolean,
+        default: false
+    },
+    managementQuota: {
+        type: Boolean,
+        default: false
+    },
+    playground: {
+        type: Boolean,
+        default: false
+    },
+    busService: {
+        type: Boolean,
+        default: false
+    },
 });
 const UgPgUniversity = Institution.discriminator(
   "Under Graduation/Post Graduation",

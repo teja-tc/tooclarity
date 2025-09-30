@@ -68,6 +68,7 @@ const App = () => {
   return (
     <div className="min-h-screen bg-[#F5F6F9]">
       <Header setIsSignUpOpen={setIsSignUpOpen} setIsLoginOpen={setIsLoginOpen} />
+      <Header setIsSignUpOpen={setIsSignUpOpen} setIsLoginOpen={setIsLoginOpen} />
       <main className="pt-20">
         {pathname === "/features" ? (
           <FeaturesPage />
@@ -81,6 +82,8 @@ const App = () => {
       <Footer />
 
       {/* Authentication Dialogs */}
+      <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} /> {/* Pass open and onOpenChange props */}
+      <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen} /> {/* Pass open and onOpenChange props */}
       <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} /> {/* Pass open and onOpenChange props */}
       <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen} /> {/* Pass open and onOpenChange props */}
     </div>
