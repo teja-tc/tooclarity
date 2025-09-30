@@ -143,36 +143,36 @@ const FAQ = () => {
 
   return (
     <div className="max-w-4xl mx-auto py-16 px-4">
-  <div className="text-center mb-12">
-    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-      Have Questions? We Have <br /> Answers.
-    </h2>
-    <p className="text-xl text-gray-600">
-      We've compiled answers to the most common questions
-      <br /> we get from institutions.
-    </p>
-  </div>
+      <div className="text-center mb-12">
+        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+          Have Questions? We Have <br /> Answers.
+        </h2>
+        <p className="text-xl text-gray-600">
+          We've compiled answers to the most common questions
+          <br /> we get from institutions.
+        </p>
+      </div>
 
-  {/* FAQ Accordion */}
-  <section className="max-w-4xl mx-auto py-16 px-4">
-    <Accordion type="single" collapsible className="w-full flex flex-col font-montserrat">
-      {faqs.map((item, idx) => (
-        <AccordionItem
-          key={idx}
-          value={`item-${idx + 1}`}
-          className="w-full border-b border-gray-700 last:border-b-0" // darker border // bottom border line separation
-        >
-          <AccordionTrigger className="flex w-full items-center justify-between px-6 py-4 font-medium transition-colors hover:bg-gray-100 hover:no-underline text-left text-sm sm:text-base">
-            {item.question}
-          </AccordionTrigger>
-          <AccordionContent className="w-full px-6 pb-4 pt-2 text-gray-600 text-sm sm:text-base">
-            {item.answer}
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
-  </section>
-</div>
+      {/* FAQ Accordion */}
+      <section className="max-w-4xl mx-auto py-16 px-4">
+        <Accordion type="single" collapsible className="w-full flex flex-col font-montserrat">
+          {faqs.map((item, idx) => (
+            <AccordionItem
+              key={idx}
+              value={`item-${idx + 1}`}
+              className="w-full border-b border-gray-700 last:border-b-0" // darker border // bottom border line separation
+            >
+              <AccordionTrigger className="flex w-full items-center justify-between px-6 py-4 font-medium transition-colors hover:bg-gray-100 hover:no-underline text-left text-sm sm:text-base">
+                {item.question}
+              </AccordionTrigger>
+              <AccordionContent className="w-full px-6 pb-4 pt-2 text-gray-600 text-sm sm:text-base">
+                {item.answer}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </section>
+    </div>
 
   );
 };
@@ -180,6 +180,21 @@ const FAQ = () => {
 // Home Page Component
 const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open: boolean) => void; setIsLoginOpen: (open: boolean) => void }) => {
   const router = useRouter();
+
+  const leftBoxes = [
+    { id: 1, component: <StaticDashboardCard /> },
+    { id: 2, component: <StaticLeadsManagementCard /> },
+    { id: 3, component: <AnalyticsDashboardCard /> },
+    { id: 4, component: <SettingsDashboardCard /> },
+  ];
+
+  const rightBoxes = [
+    { id: 5, component: <ListedProgramsCard /> },
+    { id: 6, component: <SettingsDashboardCard /> },
+    { id: 7, component: <AnalyticsDashboardCard /> },
+    { id: 8, component: <StaticLeadsManagementCard /> },
+  ];
+
   const { isAuthenticated, user, logout } = useAuth();
   const [signUpDialogOpen, setSignUpDialogOpen] = useState(false);
 
@@ -192,7 +207,7 @@ const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open:
         router.replace("/dashboard");
         return;
       }
-      if(user.isPaymentDone === false && user.isProfileCompleted == false){
+      if (user.isPaymentDone === false && user.isProfileCompleted == false) {
         router.replace("/signup");
         return;
       }
@@ -202,8 +217,8 @@ const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open:
       }
     }
 
-    if(user.role === "STUDENT"){
-      if(user.isProfileCompleted === false){
+    if (user.role === "STUDENT") {
+      if (user.isProfileCompleted === false) {
         router.replace("/student/onboarding");
         return;
       }
@@ -229,62 +244,62 @@ const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open:
     <div className="min-h-screen bg-[#F5F6F9]">
       {/* Promo Banner */}
       <div className="bg-blue-50 py-3 px-4 flex items-center justify-center relative">
-  <p className="text-gray-700">
-    First two months listing free{" "}
-    <button
-      className="text-blue-600 hover:underline font-semibold"
-      onClick={() => setIsSignUpOpen(true)}
-    >
-      Get started →
-    </button>
-  </p>
+        <p className="text-gray-700">
+          First two months listing free{" "}
+          <button
+            className="text-blue-600 hover:underline font-semibold"
+            onClick={() => setIsSignUpOpen(true)}
+          >
+            Get started →
+          </button>
+        </p>
 
-  {/* Close button */}
-  <button
-    className="absolute right-4 text-gray-500 hover:text-gray-700 font-bold"
-    onClick={() => console.log("Close clicked")}
-  >
-    ×
-  </button>
-</div>
+        {/* Close button */}
+        <button
+          className="absolute right-4 text-gray-500 hover:text-gray-700 font-bold"
+          onClick={() => console.log("Close clicked")}
+        >
+          ×
+        </button>
+      </div>
 
 
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-blue-100 via-blue-50 to-white py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h1
-  className="font-sora font-semibold text-[40px] leading-[100%] tracking-[0] text-center text-[#060B13] mb-6  p-4 rounded-lg"
->
-  Unlock Your Institution's
-  <br />
-  <span className="text-[#060B13]-400">Global Reach</span>
-</h1>
+            className="font-sora font-semibold text-[40px] leading-[100%] tracking-[0] text-center text-[#060B13] mb-6  p-4 rounded-lg"
+          >
+            Unlock Your Institution's
+            <br />
+            <span className="text-[#060B13]-400">Global Reach</span>
+          </h1>
 
           <p className="font-montserrat font-medium text-[20px] leading-[100%] tracking-[0] text-center text-gray-600 mb-8 max-w-3xl mx-auto">
-  Connect directly with students actively seeking quality education with a verified marketplace.
-</p>
+            Connect directly with students actively seeking quality education with a verified marketplace.
+          </p>
 
-         <div className="flex flex-col sm:flex-row justify-center gap-[24px] w-[424px] h-[48px] opacity-100 mx-auto">
-  {/* Sign Up Button */}
-  <button
-    className="w-[200px] h-[48px] hover:cursor-pointer bg-[#0222D7] text-white font-medium text-[16px] rounded-[12px] flex items-center justify-center transition-colors hover:bg-blue-80"
-    onClick={() => setIsSignUpOpen(true)}
-  >
-   <div className="font-montserrat font-semibold text-[18px] leading-[100%] tracking-[0]">
-  Sign up for free
-</div>
+          <div className="flex flex-col sm:flex-row justify-center gap-[24px] w-[424px] h-[48px] opacity-100 mx-auto">
+            {/* Sign Up Button */}
+            <button
+              className="w-[200px] h-[48px] hover:cursor-pointer bg-[#0222D7] text-white font-medium text-[16px] rounded-[12px] flex items-center justify-center transition-colors hover:bg-blue-80"
+              onClick={() => setIsSignUpOpen(true)}
+            >
+              <div className="font-montserrat font-semibold text-[18px] leading-[100%] tracking-[0]">
+                Sign up for free
+              </div>
 
-  </button>
+            </button>
 
-  {/* Contact Sales Button */}
-  <button
-    className="w-[200px] h-[48px] hover:cursor-pointer bg-white text-gray-700 font-medium text-[16px] rounded-[12px] border border-[#808897] flex items-center justify-center transition-colors hover:bg-gray-5"
-    onClick={() => setIsLoginOpen(true)}
-  >
-    Contact sales
-  </button>
-</div>
-</div>
+            {/* Contact Sales Button */}
+            <button
+              className="w-[200px] h-[48px] hover:cursor-pointer bg-white text-gray-700 font-medium text-[16px] rounded-[12px] border border-[#808897] flex items-center justify-center transition-colors hover:bg-gray-5"
+              onClick={() => setIsLoginOpen(true)}
+            >
+              Contact sales
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* Card Stacks */}
@@ -323,7 +338,7 @@ const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open:
           />
         </div>
       </div>
-      
+
       {/* Getting Started Section */}
       <section className="py-20 px-4 bg-gray-50">
         <div className="min-h-screen bg-white py-16">
@@ -428,36 +443,36 @@ const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open:
         </div>
       </section>
       {/* Features Section with Scrolling Boxes */}
-<section className="py-20 px-4 bg-white">
-  <div className="max-w-7xl mx-auto">
-    <div className="grid lg:grid-cols-2 gap-12 items-center">
-      
-      {/* Left Content */}
-      <div>
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-          The clear path to better admissions.
-        </h2>
-        <p className="text-xl text-gray-600 mb-8">
-          Packed with tools to grow your reach without increasing your costs,
-          all focused on quality leads.
-        </p>
-        <button
-  onClick={() => router.push("/features")}
-  className="inline-flex items-center justify-center gap-2 w-[216px] h-[40px] px-4 py-2 border border-gray-300 rounded-[24px] text-gray-700 font-medium text-sm hover:bg-gray-100 hover:text-gray-900 transition-colors"
->
-  Show all features <ArrowRight className="h-4 w-4" />
-</button>
+      <section className="py-20 px-4 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
 
-      </div>
+            {/* Left Content */}
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+                The clear path to better admissions.
+              </h2>
+              <p className="text-xl text-gray-600 mb-8">
+                Packed with tools to grow your reach without increasing your costs,
+                all focused on quality leads.
+              </p>
+              <button
+                onClick={() => router.push("/features")}
+                className="inline-flex items-center justify-center gap-2 w-[216px] h-[40px] px-4 py-2 border border-gray-300 rounded-[24px] text-gray-700 font-medium text-sm hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              >
+                Show all features <ArrowRight className="h-4 w-4" />
+              </button>
 
-      {/* Scrolling Columns */}
-      <div className="grid grid-cols-2 gap-6 overflow-hidden">
-        <ScrollingBoxContainer direction="up" boxes={leftBoxes} />
-        <ScrollingBoxContainer direction="down" boxes={rightBoxes} />
-      </div>
-    </div>
-  </div>
-</section>
+            </div>
+
+            {/* Scrolling Columns */}
+            <div className="grid grid-cols-2 gap-6 overflow-hidden">
+              <ScrollingBoxContainer direction="up" boxes={leftBoxes} />
+              <ScrollingBoxContainer direction="down" boxes={rightBoxes} />
+            </div>
+          </div>
+        </div>
+      </section>
 
 
       {/* FAQ Section */}
@@ -467,34 +482,34 @@ const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open:
 
       {/* CTA Section */}
       <section className="py-20 px-4 bg-white">
-  <div
-    className="mx-auto bg-white shadow-lg rounded-[12px] flex flex-col items-center text-center"
-    style={{
-      maxWidth: "1122px",
-      minHeight: "296px",
-      padding: "24px 24px 50px 24px",
-      gap: "42px",
-      opacity: 1,
-    }}
-  >
-    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
-      Your future students are searching.
-      <br />
-      Will they find you?
-    </h2>
-    <p className="text-xl text-gray-600 max-w-2xl">
-      Don't miss out on connecting with the next generation of talent.
-      Create your listing on Too Clarity today
-    </p>
+        <div
+          className="mx-auto bg-white shadow-lg rounded-[12px] flex flex-col items-center text-center"
+          style={{
+            maxWidth: "1122px",
+            minHeight: "296px",
+            padding: "24px 24px 50px 24px",
+            gap: "42px",
+            opacity: 1,
+          }}
+        >
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
+            Your future students are searching.
+            <br />
+            Will they find you?
+          </h2>
+          <p className="text-xl text-gray-600 max-w-2xl">
+            Don't miss out on connecting with the next generation of talent.
+            Create your listing on Too Clarity today
+          </p>
 
-    <button
-      className="w-[176px] h-[48px] bg-[#0222D7] hover:cursor-pointer text-white font-semibold text-[16px] rounded-[12px] flex items-center justify-center transition-colors hover:bg-blue-800"
-      onClick={() => setIsSignUpOpen(true)}
-    >
-      Sign up for free
-    </button>
-  </div>
-</section>
+          <button
+            className="w-[176px] h-[48px] bg-[#0222D7] hover:cursor-pointer text-white font-semibold text-[16px] rounded-[12px] flex items-center justify-center transition-colors hover:bg-blue-800"
+            onClick={() => setIsSignUpOpen(true)}
+          >
+            Sign up for free
+          </button>
+        </div>
+      </section>
 
     </div>
   );
