@@ -10,9 +10,17 @@ export default function AdminLoginPage() {
         <h1 className="text-2xl font-bold mb-2">Admin Login</h1>
         <p className="text-gray-600 mb-6">Sign in to manage your institution</p>
         <div className="flex flex-col items-center gap-4">
-          <LoginDialogBox caller="admin" onSuccess={() => window.location.assign('/dashboard')} />
+          <LoginDialogBox
+            caller="admin"
+            onSuccess={() => window.location.assign("/dashboard")}
+            open={false}
+            onOpenChange={() => {}}
+          />
           <div className="text-gray-500 text-sm">or</div>
-          <SignUpDialog caller="admin" onSuccess={() => window.location.assign('/dashboard')} />
+          <SignUpDialog
+            caller="admin"
+            onSuccess={() => window.location.assign("/dashboard")}
+          />
         </div>
       </div>
     </main>
