@@ -67,6 +67,7 @@ export interface Course {
   seatingOption: string;
   openingTime: string;
   closingTime: string;
+  hallName?: string; 
   operationalDays: string[];
   totalSeats: string;
   availableSeats: string;
@@ -513,7 +514,12 @@ const [courseErrorsById, setCourseErrorsById] = useState<Record<number, Record<s
 
     return null;
   };
-
+  useEffect(() => {
+    if (dialogOpen) {
+      setIsCourseOrBranch(localStorage.getItem("selected"));
+      setInstitutionType(localStorage.getItem("institutionType"));
+    }
+  }, [dialogOpen]); // Dependency on dialogOpen is the key.
 
   // Inside L2DialogBox.tsx
 

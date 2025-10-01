@@ -29,8 +29,12 @@ export const baseCourseSchema = Joi.object({
     "string.max": "About Course must be at most 500 characters",
   }),
   courseDuration: durationRule, 
-  priceOfCourse: Joi.number().required().messages({
+  priceOfCourse: Joi.number()
+  .greater(0) // ensures value is > 0
+  .required()
+  .messages({
     "number.base": "Price must be a number",
+    "number.greater": "Price must be greater than 0",
     "any.required": "Price is required",
   }),
   location: urlRule.required(),
@@ -59,14 +63,23 @@ export const CoachingCenterSchema = Joi.object({
   // --- Coaching-specific rules ---
   categoriesType: categoriesTypeRule,
   domainType: domainTypeRule,
-  classSize: Joi.number().required(),
+ classSize: Joi.number()
+    .min(0)      // Ensures the number is at least 0
+    .required()
+    .messages({
+      "number.base": "Class size must be a number",
+      "number.min": "Class size cannot be negative",
+      "any.required": "Class size is required",
+    }),
 });
 
 
 
 export const StudyHallSchema = Joi.object({
   // This schema is now self-contained and does not inherit from baseCourseSchema
-  
+  hallName: nameRule.required().messages({ // Assumes nameRule is imported
+        "any.required": "Hall name is required.",
+    }),
   seatingOption: nameRule.required().messages({
     "string.empty": "Please select a seating option.",
     "any.required": "Please select a seating option.",
@@ -102,15 +115,17 @@ export const StudyHallSchema = Joi.object({
 
   // ✅ UPDATED VALIDATION FOR AVAILABLE SEATS
   availableSeats: Joi.number()
-    .min(0)
-    .required()
-    .max(Joi.ref('totalSeats')) // Ensures available seats is not greater than total seats
-    .messages({
-      "number.base": "Value must be a number.",
-      "number.min": "Available Seats cannot be negative.", // Fixed typo
-      "any.required": "Available Seats is required.",     // Fixed typo
-      "number.max": "Available seats cannot be greater than total seats.", // New error message
-    }),
+  .integer()
+  .min(0)
+  .required()
+  .max(Joi.ref('totalSeats')) // ✅ Compares dynamically to totalSeats
+  .messages({
+    "number.base": "Value must be a number.",
+    "number.min": "Available Seats cannot be negative.",
+    "any.required": "Available Seats is required.",
+    "number.integer": "Available Seats must be a whole number.",
+    "number.max": "Available seats cannot be greater than total seats.",
+  }),
 
 
   pricePerSeat: Joi.number().min(0).required().messages({
@@ -121,23 +136,18 @@ export const StudyHallSchema = Joi.object({
 
   // Boolean fields should be explicitly required as the user must select one
   // ✅ Add .allow(null) to each boolean validation rule
-  // ✅ Facility fields updated to validate for "yes" or "no" strings
-  hasWifi: Joi.string().valid('yes', 'no').required().messages({
-    'any.only': 'Please select an option for Wi-Fi.',
-    'string.empty': 'Please select an option for Wi-Fi.',
-  }),
-  hasChargingPoints: Joi.string().valid('yes', 'no').required().messages({
-    'any.only': 'Please select an option for Charging Points.',
-    'string.empty': 'Please select an option for Charging Points.',
-  }),
-  hasAC: Joi.string().valid('yes', 'no').required().messages({
-    'any.only': 'Please select an option for Air Conditioner.',
-    'string.empty': 'Please select an option for Air Conditioner.',
-  }),
-  hasPersonalLocker: Joi.string().valid('yes', 'no').required().messages({
-    'any.only': 'Please select an option for Personal Lockers.',
-    'string.empty': 'Please select an option for Personal Lockers.',
-  }),
+   hasWifi: Joi.string().valid('Yes', 'No').required().messages({
+        'any.only': 'Please select an option for Wi-Fi.',
+    }),
+    hasChargingPoints: Joi.string().valid('Yes', 'No').required().messages({
+        'any.only': 'Please select an option for Charging Points.',
+    }),
+    hasAC: Joi.string().valid('Yes', 'No').required().messages({
+        'any.only': 'Please select an option for Air Conditioner.',
+    }),
+    hasPersonalLocker: Joi.string().valid('Yes', 'No').required().messages({
+        'any.only': 'Please select an option for Personal Lockers.',
+    }),
   image: Joi.any().optional(),
   createdBranch: createdBranchRule,
 });
@@ -173,14 +183,16 @@ export const TuitionCenterSchema = Joi.object({
     "number.min": "Total Seats cannot be negative.",
     "any.required": "Total Seats is required.",
   }),
-
-  // ✅ Validation for available seats <= total seats is re-added
-  availableSeats: Joi.number().min(0).required().messages({
-    "number.base": "Value must be a number.",
-    "number.min": "Avaible Seats cannot be negative.",
-    "any.required": "Avaible Seats is required.",
-  }),
-  
+  availableSeats: Joi.number()
+    .min(0)
+    .required()
+    .max(Joi.ref('totalSeats')) // Ensures available seats is not greater than total seats
+    .messages({
+      "number.base": "Value must be a number.",
+      "number.min": "Available Seats cannot be negative.", // Fixed typo
+      "any.required": "Available Seats is required.",     // Fixed typo
+      "number.max": "Available seats cannot be greater than total seats.", // New error message
+    }), 
   operationalDays: Joi.array().items(Joi.string()).min(1).required().messages({
       // ✅ Added custom messages for operational days
       "array.min": "At least one operational day must be selected.",

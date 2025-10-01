@@ -22,9 +22,14 @@ const {
   couponInstitutionAdminRoute: InstitutionAdminRoute,
 } = require("./routes/coupon.routes");
 const authorizeRoles = require("./middleware/role.middleware");
+const dashboardRoutes = require("./routes/dashboard.routes");
+
+const googleRoutes = require('./routes/google.routes');
 
 // import global auth middleware
 const globalAuthMiddleware = require("./middleware/globalAuth.middleware");
+
+const studentRoutes = require("./routes/student/student.routes"); 
 
 const app = express();
 
@@ -53,6 +58,7 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10kb" }));
 
 app.use("/api/v1/auth", authRoutes);
+app.use("/auth/google", googleRoutes);
 app.use("/api/v1/payment/", paymentPublicRoutes);
 
 // Apply Global Auth Middleware (for all routes below this line)
@@ -60,6 +66,9 @@ app.use(globalAuthMiddleware);
 
 const requireInstituteAdmin = [authorizeRoles(["INSTITUTE_ADMIN"])];
 const requireAdmin = [authorizeRoles(["ADMIN"])];
+const requireStudent = [authorizeRoles(["STUDENT"])];
+
+app.use("/api/v1/students", studentRoutes, requireStudent); 
 
 app.use("/api/v1/payment", requireInstituteAdmin, paymentProtectedRoutes);
 app.use("/api/v1/admin/coupon", requireAdmin, adminRoute);
@@ -84,9 +93,10 @@ app.use(
 
 app.use("/api/v1/notifications", notificationRoutes);
 
-app.use("/api/v1/notifications", notificationRoutes);
-
 app.get("/health", (req, res) => res.status(200).send("OK"));
+
+// ✅ Secure Dashboard routes
+app.use("/api/v1/dashboard", dashboardRoutes);
 
 
 app.use((err, req, res, next) => {
