@@ -118,11 +118,15 @@ const FeaturesPage = () => {
                   isReversed && "md:flex-row-reverse"
                 )}
               >
-                <div className="w-full md:w-1/2 overflow-hidden">
-                  {feature.component}
+                <div className="w-[500px] h-[355.83px] rounded-[10px] bg-[#EBEEFF] opacity-100 relative overflow-hidden">
+                  <div className="absolute top-[14.17px] bottom-[14.17px] left-[20.33px] right-[20.33px] w-[459.33px] h-[326.66px] rounded-[6.67px] opacity-100 bg-white overflow-hidden ">
+                      {feature.component}
                 </div>
+            </div>
+
                 <div className="w-full md:w-1/2 space-y-4">
-                  <Badge className="bg-blue-600 text-white">
+                  <Badge className="bg-blue-800 text-white px-[10px] py-[10px] gap-[10px] rounded-[12px] opacity-100">
+                    
                     {feature.badge}
                   </Badge>
                   <h3

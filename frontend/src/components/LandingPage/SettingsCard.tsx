@@ -42,7 +42,7 @@ const SettingsDashboardCard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="p-4">
+      <div className="p-4 bg-white">
         {/* Settings Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-lg font-bold text-gray-900">Settings</h1>

@@ -39,22 +39,22 @@ const App = () => {
   const router = useRouter();
   const pathname = usePathname();
 
-  // // Handle automatic redirects based on user state
-  // useEffect(() => {
-  //   if (!isAuthenticated || !user) return;
+  // Handle automatic redirects based on user state
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
 
-  //   // Redirect rules for INSTITUTE_ADMIN
-  //   if (user.role === "INSTITUTE_ADMIN") {
-  //     if (user.isPaymentDone === true && user.isProfileCompleted === true) {
-  //       router.replace("/dashboard");
-  //       return;
-  //     }
-  //     if (user.isPaymentDone === false && user.isProfileCompleted === true) {
-  //       router.replace("/payment");
-  //       return;
-  //     }
-  //   }
-  // }, [isAuthenticated, user, router]); 
+    // Redirect rules for INSTITUTE_ADMIN
+    if (user.role === "INSTITUTE_ADMIN") {
+      if (user.isPaymentDone === true && user.isProfileCompleted === true) {
+        router.replace("/dashboard");
+        return;
+      }
+      if (user.isPaymentDone === false && user.isProfileCompleted === true) {
+        router.replace("/payment");
+        return;
+      }
+    }
+  }, [isAuthenticated, user, router]); 
 
   return (
     <div className="min-h-screen bg-[#F5F6F9]">
@@ -65,7 +65,7 @@ const App = () => {
         ) : (
           <HomePage
             setIsSignUpOpen={setIsSignUpOpen}
-            setIsLoginOpen={setIsLoginOpen}
+            // setIsLoginOpen={setIsLoginOpen} not required in the home page as it already in the headers
           />
         )}
       </main>
@@ -152,7 +152,8 @@ const FAQ = () => {
 };
 
 // Home Page Component
-const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open: boolean) => void; setIsLoginOpen: (open: boolean) => void }) => {
+//removed the setIsLoginOpen
+const HomePage = ({ setIsSignUpOpen }: { setIsSignUpOpen: (open: boolean) => void }) => {
   const router = useRouter();
 
    const leftBoxes = [
@@ -239,9 +240,10 @@ const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open:
                 name: "",
                 designation: "",
                 content: (
-                  <div className="h-full w-full flex items-stretch">
-                    <DummyDashboard />
+                  <div className="h-full w-full flex items-center justify-center overflow-hidden">   
+                        <DummyDashboard />                   
                   </div>
+
                 ),
               },
               {
@@ -385,7 +387,7 @@ const HomePage = ({ setIsSignUpOpen, setIsLoginOpen }: { setIsSignUpOpen: (open:
         </p>
         <button
   onClick={() => router.push("/features")}
-  className="inline-flex items-center justify-center gap-2 w-[216px] h-[40px] px-4 py-2 border border-gray-300 rounded-[24px] text-gray-700 font-medium text-sm hover:bg-gray-100 hover:text-gray-900 transition-colors"
+  className="inline-flex cursor-pointer items-center justify-center gap-2 w-[216px] h-[40px] px-4 py-2 border border-gray-300 rounded-[24px] text-gray-700 font-medium text-sm hover:bg-gray-100 hover:text-gray-900 transition-colors"
 >
   Show all features <ArrowRight className="h-4 w-4" />
 </button>
