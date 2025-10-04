@@ -261,7 +261,7 @@ exports.resetPassword = async (req, res, next) => {
     const user = await InstituteAdmin.findOne({
       passwordResetToken: hashedToken,
       passwordResetExpires: { $gt: Date.now() }
-    });
+    }).select('+password');
 
     if (!user) {
       return next(new AppError('Token is invalid or has expired.', 400));
@@ -273,6 +273,11 @@ exports.resetPassword = async (req, res, next) => {
 
     if (password.length < 8) {
       return next(new AppError('Password must be at least 8 characters long.', 400));
+    }
+    
+    const isSamePassword = await user.comparePassword(password);
+    if (isSamePassword) {
+      return next(new AppError('Your new password must be different from your old password.', 400));
     }
 
     // 3. Set the new password
