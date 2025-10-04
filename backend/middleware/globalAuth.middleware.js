@@ -12,7 +12,7 @@ const globalAuthMiddleware = async (req, res, next) => {
   try {
     console.log("➡️ Incoming request:", req.method, req.path);
 
-    const publicPaths = ["/login", "/register", "/otp", "/verify-email","/payment/verify"];
+    const publicPaths = ["/login", "/register", "/otp", "/verify-email","/payment/verify", "/forgot-password", "/reset-password" ];
     if (publicPaths.includes(req.path)) {
       console.log("✅ Public path, skipping auth");
       return next();
@@ -124,3 +124,119 @@ const globalAuthMiddleware = async (req, res, next) => {
 };
 
 module.exports = globalAuthMiddleware;
+
+
+// backend/middleware/globalAuth.middleware.js
+
+// const { verifyToken, decodeToken } = require("../utils/jwt.util");
+// const CookieUtil = require("../utils/cookie.util");
+// const { getRefreshToken, deleteRefreshToken } = require("../utils/redis.util");
+// const User = require("../models/InstituteAdmin");
+// const AppError = require('../utils/appError'); // It's better to use your AppError class
+
+// const globalAuthMiddleware = async (req, res, next) => {
+//   try {
+//     // --- NO CHANGE HERE ---
+//     const publicPaths = ["/login", "/register", "/otp", "/verify-email", "/payment/verify", "/forgot-password", "/verify-password-otp", "/reset-password", "/refresh-token"];
+    
+//     // A more robust way to check public paths
+//     if (publicPaths.some(path => req.path.includes(path))) {
+//       return next();
+//     }
+
+//     // 1️⃣ Extract access token from the cookie
+//     const accessToken = req.cookies.access_token; // Switched to req.cookies for consistency with industry practice
+
+//     if (accessToken) {
+//       try {
+//         // --- MODIFIED: Added password change check ---
+//         const decoded = verifyToken(accessToken);
+        
+//         // Fetch user from DB to check for password changes
+//         const currentUser = await User.findById(decoded.id).select('+passwordChangedAt');
+
+//         if (!currentUser) {
+//             return next(new AppError('The user belonging to this token no longer exists.', 401));
+//         }
+
+//         // Check if password was changed after the token was issued
+//         if (currentUser.passwordChangedAt) {
+//             const changedTimestamp = parseInt(currentUser.passwordChangedAt.getTime() / 1000, 10);
+//             if (decoded.iat < changedTimestamp) {
+//                 // Invalidate tokens and force re-login
+//                 res.cookie('access_token', 'loggedout', { httpOnly: true, expires: new Date(Date.now() + 10 * 1000) });
+//                 res.cookie('refresh_token', 'loggedout', { httpOnly: true, expires: new Date(Date.now() + 10 * 1000) });
+//                 return next(new AppError('User recently changed password! Please log in again.', 401));
+//             }
+//         }
+        
+//         req.user = currentUser; // Attach user to request
+//         req.userId = currentUser._id;
+//         req.userRole = currentUser.role;
+
+//         return next(); // Access token is valid and password has not been changed
+
+//       } catch (err) {
+//         if (err.name !== "TokenExpiredError") {
+//           console.log("❌ Invalid access token:", err.message);
+//           return res.status(401).json({ message: "Invalid access token" });
+//         }
+//         // If token is expired, we will proceed to the refresh token logic below.
+//       }
+//     }
+
+//     // --- REFRESH TOKEN LOGIC ---
+//     // This part of the logic will now execute only if the access token is expired or missing.
+
+//     const refreshToken = req.cookies.refresh_token;
+
+//     if (!refreshToken) {
+//       return res.status(401).json({ message: "Session expired, please login again" });
+//     }
+
+//     // 2️⃣ Verify refresh token
+//     let decodedRefresh;
+//     try {
+//       decodedRefresh = verifyToken(refreshToken, 'refresh'); // Assuming you have a separate secret for refresh tokens
+
+//       // Check if refresh token is still valid in Redis
+//       const redisToken = await getRefreshToken(decodedRefresh.id);
+//       if (!redisToken || redisToken !== refreshToken) {
+//           await deleteRefreshToken(decodedRefresh.id); // Clean up stale token
+//           return res.status(401).json({ message: "Session invalid, please login again" });
+//       }
+
+//     } catch (err) {
+//       // If refresh token itself is invalid/expired, delete from Redis and force re-login
+//       if (err.name === 'TokenExpiredError' || err.name === 'JsonWebTokenError') {
+//          // Attempt to decode to get user ID for cleanup
+//          const decoded = decodeToken(refreshToken);
+//          if (decoded && decoded.id) {
+//             await deleteRefreshToken(decoded.id);
+//          }
+//       }
+//       return res.status(401).json({ message: "Refresh token expired, please login again" });
+//     }
+
+//     // 3️⃣ Issue new tokens
+//     const user = await User.findById(decodedRefresh.id);
+//     if (!user) {
+//         return res.status(401).json({ message: "User not found." });
+//     }
+
+//     const newAccessToken = require('../utils/jwt.util').generateToken({ id: user._id, role: user.role }, 'access');
+//     CookieUtil.setCookie(res, "access_token", newAccessToken);
+    
+//     req.user = user;
+//     req.userId = user._id;
+//     req.userRole = user.role;
+    
+//     return next();
+
+//   } catch (err) {
+//     console.error("🔥 Auth Middleware Error:", err);
+//     return res.status(500).json({ message: "Internal auth error" });
+//   }
+// };
+
+// module.exports = globalAuthMiddleware;
