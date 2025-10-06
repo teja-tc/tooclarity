@@ -13,11 +13,9 @@ import {
   DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import InputField from "@/components/ui/InputField";
 import { authAPI } from "../../lib/api";
 import OtpDialogBox from "./OtpDialogBox";
-import TermsConditionsPage from "@/app/TermsConditions/page";
 import { useAuth } from "../../lib/auth-context";
 import { redirectToGoogleOAuth } from "@/lib/google-auth";
 
@@ -177,7 +175,6 @@ export default function SignUpDialog({
     }
 
     const userType = "institution";
-    // const state = "institution";
     const type = "register"
     const state = JSON.stringify({ state: "institution", type: "register" });
 
@@ -187,12 +184,6 @@ export default function SignUpDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <Button size="lg">
-            Sign Up
-          </Button>
-        </DialogTrigger>
-
         <DialogContent 
           className="max-w-lg flex flex-col justify-between scrollbar-hide"
           overlayClassName="bg-black/50"
