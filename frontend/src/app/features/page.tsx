@@ -16,6 +16,7 @@ import ListedProgramsCard from "@/components/LandingPage/BillingListingCard";
 import SettingsDashboardCard from "@/components/LandingPage/SettingsCard";
 import Header from "@/components/ui/Header";
 import Footer from "@/components/ui/footer";
+
 /* -------------------------------- data ---------------------------------- */
 const features = [
   {
@@ -101,8 +102,8 @@ const FeaturesPage = () => {
 
   return (
     <>
-    <Header setIsSignUpOpen={setIsSignUpOpen} setIsLoginOpen={setIsLoginOpen} />
-      <div className="min-h-screen bg-white text-gray-900">
+    <Header />
+      <div className="min-h-screen bg-gray-100 text-gray-900">
         <section className="max-w-7xl mx-auto px-6 py-16 space-y-24">
           {features.map((feature, index) => {
             const isReversed = index % 2 !== 0;
@@ -118,14 +119,21 @@ const FeaturesPage = () => {
                   isReversed && "md:flex-row-reverse"
                 )}
               >
-                <div className="w-[500px] h-[355.83px] rounded-[10px] bg-[#EBEEFF] opacity-100 relative overflow-hidden">
-                  <div className="absolute top-[14.17px] bottom-[14.17px] left-[20.33px] right-[20.33px] w-[459.33px] h-[326.66px] rounded-[6.67px] opacity-100 bg-white overflow-hidden ">
-                      {feature.component}
-                </div>
+                {/* <div className="flex items-center w-full h-full bg-gray-50 overflow-hidden"> */}
+  <div className="w-full max-w-[525px] aspect-[525/355.83] rounded-[10px] bg-[#EBEEFF] relative overflow-hidden mt-20 sm:mt-24 lg:mt-28">
+    <div className="scale-[0.9] origin-top w-full h-full">
+      <div className="absolute inset-[4%] rounded-[6.67px] bg-white pointer-events-none">
+        {feature.component}
+      </div>
+    </div>
+
+
+
+
             </div>
 
                 <div className="w-full md:w-1/2 space-y-4">
-                  <Badge className="bg-blue-800 text-white px-[10px] py-[10px] gap-[10px] rounded-[12px] opacity-100">
+                  <Badge className="bg-blue-800 text-white px-[10px] py-[10px] gap-[10px] rounded-[12px] opacity-100 ">
                     
                     {feature.badge}
                   </Badge>
