@@ -123,7 +123,7 @@ const [scale, setScale] = useState(1);
 
       {/* Card Stacks - Responsive */}
 {/* Card Stacks */}
-<div className="flex justify-center items-start min-h-screen p-4 bg-gray-100">
+<div className="flex justify-center items-start p-4 bg-gray-100">
   <div
     className="
       w-full max-w-[393px] sm:max-w-[90%]
