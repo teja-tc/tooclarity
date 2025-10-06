@@ -1,9 +1,11 @@
+
 import React from 'react';
 import Image from 'next/image';
 
 const TermsConditionsPage: React.FC = () => {
   return (
     <>
+    
       {/* Header Section */}
       <div className="flex justify-between items-center p-6 border-b border-gray-200">
         <div className="text-4xl font-bold text-blue-800">
@@ -20,10 +22,10 @@ const TermsConditionsPage: React.FC = () => {
         </div>
       </div>
     <div 
-      className="bg-white text-gray-900" 
+      className="bg-white text-gray-900 overflow-hidden" 
       style={{ 
-        width: '1280px', 
-        height: '17404px', 
+        width: 'full', 
+        height: 'full', 
         opacity: 1, 
         position: 'relative', 
         top: '94px', 
@@ -66,8 +68,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -113,8 +115,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -141,8 +143,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -161,8 +163,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -179,8 +181,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -211,8 +213,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -260,8 +262,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -278,8 +280,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -308,8 +310,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -334,8 +336,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -382,8 +384,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -397,8 +399,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -424,8 +426,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -442,8 +444,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -457,8 +459,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -484,8 +486,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -499,8 +501,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -514,8 +516,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -532,8 +534,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -550,8 +552,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -565,8 +567,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -576,8 +578,8 @@ const TermsConditionsPage: React.FC = () => {
       <h3 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -597,8 +599,8 @@ const TermsConditionsPage: React.FC = () => {
       <h3 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -615,8 +617,8 @@ const TermsConditionsPage: React.FC = () => {
       <h3 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -630,8 +632,8 @@ const TermsConditionsPage: React.FC = () => {
       <h3 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -645,8 +647,8 @@ const TermsConditionsPage: React.FC = () => {
       <h3 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -663,8 +665,8 @@ const TermsConditionsPage: React.FC = () => {
       <h3 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -681,8 +683,8 @@ const TermsConditionsPage: React.FC = () => {
       <h3 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -696,8 +698,8 @@ const TermsConditionsPage: React.FC = () => {
       <h3 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -714,8 +716,8 @@ const TermsConditionsPage: React.FC = () => {
       <h3 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -729,8 +731,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -820,8 +822,8 @@ const TermsConditionsPage: React.FC = () => {
       <h2 
         style={{ 
           fontFamily: 'Montserrat', 
-          fontWeight: 500, 
-          fontSize: '18px', 
+          fontWeight: 600, 
+          fontSize: '24px', 
           lineHeight: '100%', 
           letterSpacing: '0%' 
         }}
@@ -832,6 +834,7 @@ const TermsConditionsPage: React.FC = () => {
         If you have any queries regarding this Privacy Policy or wish to exercise your rights, please contact: Data Protection Officer / Grievance Officer (Saikiran Chindam) TOOCLARITY SEARCH PRIVATE LIMITED 12-15-11, MANIKESWAR NAGAR, Tarnaka, Secunderabad, Hyderabad- 500007, Telangana Email ID: Tooclarity0@gmail.com
       </p>
     </div>
+    
     </>
   );
 };
