@@ -3,7 +3,11 @@
 import { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { validateField, validateForm } from "@/lib/validations/validateField";
-import { addInstitutionToDB, getAllInstitutionsFromDB, updateInstitutionInDB } from "@/lib/localDb";
+import {
+  addInstitutionToDB,
+  getAllInstitutionsFromDB,
+  updateInstitutionInDB,
+} from "@/lib/localDb";
 
 import {
   Dialog,
@@ -25,6 +29,8 @@ import InputField from "@/components/ui/InputField";
 // import { institutionAPI, clearInstitutionData } from "@/lib/api";
 import { L1Schema } from "@/lib/validations/L1Schema";
 import { toast } from "react-toastify";
+import { Upload } from "lucide-react";
+import { uploadToS3 } from "@/lib/awsUpload";
 
 interface FormData {
   instituteType: string;
@@ -39,6 +45,9 @@ interface FormData {
   state: string;
   pincode: string;
   locationURL: string;
+  logo?: File | null;
+  logoUrl?: string;
+  logoPreviewUrl?: string;
 }
 
 interface Errors {
@@ -73,11 +82,16 @@ export default function L1DialogBox({
     state: "",
     pincode: "",
     locationURL: "",
+    logo: null,
+    logoUrl: "",
+    logoPreviewUrl: "",
   });
 
   const [errors, setErrors] = useState<Errors>({});
   const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const MAX_LOG_FILE_SIZE = 1 * 1024 * 1024; // 1 MB
 
   // Handle controlled open state
   const dialogOpen = open !== undefined ? open : isOpen;
@@ -95,7 +109,9 @@ export default function L1DialogBox({
         if (!isMounted) return;
 
         if (institutions && institutions.length > 0) {
-          const latest = institutions.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+          const latest = institutions.sort(
+            (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+          )[0];
           setFormData({
             instituteType: latest.instituteType || "",
             instituteName: latest.instituteName || "",
@@ -107,6 +123,8 @@ export default function L1DialogBox({
             state: latest.state || "",
             pincode: latest.pincode || "",
             locationURL: latest.locationURL || "",
+            logoUrl: latest.logoUrl || "",
+            logoPreviewUrl: latest.logoPreviewUrl || "",
           });
         } else {
           // ensure blank state
@@ -121,6 +139,9 @@ export default function L1DialogBox({
             state: "",
             pincode: "",
             locationURL: "",
+            logo: null,
+            logoUrl: "",
+            logoPreviewUrl: "",
           });
         }
       } catch (err) {
@@ -132,45 +153,47 @@ export default function L1DialogBox({
       isMounted = false;
     };
   }, [dialogOpen]);
-// L1DialogBox.tsx
+  // L1DialogBox.tsx
 
-const handleChange = (
-  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-) => {
-  const { name, value } = e.target;
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
 
-  if (name === "instituteType" && value === "Study Abroad") {
-    toast.error("Please select another type. 'Study Abroad' is not allowed.");
-    return; // stop updating form
-  }
-  // 1. Create an updated copy of the form data with the new value
-  const updatedFormData = {
-    ...formData,
-    [name]: value,
+    if (name === "instituteType" && value === "Study Abroad") {
+      toast.error("Please select another type. 'Study Abroad' is not allowed.");
+      return; // stop updating form
+    }
+    // 1. Create an updated copy of the form data with the new value
+    const updatedFormData = {
+      ...formData,
+      [name]: value,
+    };
+
+    // 2. Update the component's state to reflect the change in the UI
+    setFormData(updatedFormData);
+
+    // 3. Validate the *entire updated form object* to give Joi the full context
+    const { error } = L1Schema.validate(updatedFormData, { abortEarly: false });
+
+    // 4. Find the specific error message only for the field that was just changed
+    const fieldError = error?.details.find((detail) => detail.path[0] === name);
+
+    // 5. Update the errors state for the current field
+    //    - If an error is found for this field, set it.
+    //    - If no error is found for this field (meaning it's now valid), clear it.
+    setErrors((prev) => ({
+      ...prev,
+      [name]: fieldError ? fieldError.message : undefined,
+    }));
+
+    // Also, handle the side-effect for onInstituteTypeChange
+    if (name === "instituteType" && onInstituteTypeChange) {
+      onInstituteTypeChange(value);
+    }
   };
-
-  // 2. Update the component's state to reflect the change in the UI
-  setFormData(updatedFormData);
-
-  // 3. Validate the *entire updated form object* to give Joi the full context
-  const { error } = L1Schema.validate(updatedFormData, { abortEarly: false });
-
-  // 4. Find the specific error message only for the field that was just changed
-  const fieldError = error?.details.find((detail) => detail.path[0] === name);
-
-  // 5. Update the errors state for the current field
-  //    - If an error is found for this field, set it.
-  //    - If no error is found for this field (meaning it's now valid), clear it.
-  setErrors((prev) => ({
-    ...prev,
-    [name]: fieldError ? fieldError.message : undefined,
-  }));
-
-  // Also, handle the side-effect for onInstituteTypeChange
-  if (name === "instituteType" && onInstituteTypeChange) {
-    onInstituteTypeChange(value);
-  }
-};
   interface CountryOption {
     code: string;
     dialCode: string;
@@ -212,55 +235,170 @@ const handleChange = (
       }));
     }
   };
-// This effect runs whenever the institute type changes
-// L1DialogBox.tsx
+  // This effect runs whenever the institute type changes
+  // L1DialogBox.tsx
 
-// L1DialogBox.tsx
+  // L1DialogBox.tsx
 
-useEffect(() => {
-  if (formData.instituteType === "Study Halls") {
+  useEffect(() => {
+    if (formData.instituteType === "Study Halls") {
+      setFormData((prev) => ({
+        ...prev,
+        approvedBy: "", // Use the correct field name
+        establishmentDate: "",
+      }));
+
+      setErrors((prev) => ({
+        ...prev,
+        approvedBy: undefined, // Use the correct field name
+        establishmentDate: undefined,
+      }));
+    }
+  }, [formData.instituteType]);
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+
+    if (!selectedFile) {
+      setFormData((prev) => ({
+        ...prev,
+        logo: null,
+        logoPreviewUrl: "",
+      }));
+      setErrors((prev) => ({ ...prev, logo: undefined }));
+      return;
+    }
+
+    // ✅ Validate file type
+    const validTypes = ["image/jpeg", "image/jpg", "image/png"];
+    if (!validTypes.includes(selectedFile.type)) {
+      setFormData((prev) => ({
+        ...prev,
+        logo: null,
+        logoPreviewUrl: "",
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        logo: "Logo must be a valid image file (.jpg, .jpeg, .png).",
+      }));
+      return;
+    }
+
+    // ✅ Validate file size
+    if (selectedFile.size > MAX_LOG_FILE_SIZE) {
+      setFormData((prev) => ({
+        ...prev,
+        logo: null,
+        logoPreviewUrl: "",
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        logo: "File size must be 1 MB or less.",
+      }));
+      return;
+    }
+
+    // ✅ Release previous blob URL to avoid memory leaks
+    if (formData.logoPreviewUrl) {
+      URL.revokeObjectURL(formData.logoPreviewUrl);
+    }
+
+    // ✅ Store file for upload + temporary preview URL
     setFormData((prev) => ({
       ...prev,
-      approvedBy: "", // Use the correct field name
-      establishmentDate: "",
+      logo: selectedFile,
+      logoPreviewUrl: URL.createObjectURL(selectedFile),
     }));
 
-    setErrors((prev) => ({
-      ...prev,
-      approvedBy: undefined, // Use the correct field name
-      establishmentDate: undefined,
-    }));
-  }
-}, [formData.instituteType]);
-  
-const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setSubmitted(true);
+    setErrors((prev) => ({ ...prev, logo: undefined }));
+  };
 
-  // ✅ Validate with Joi
-  const { error } = activeSchema.validate(formData, { abortEarly: false });
-
-  if (error) {
-    const validationErrors: Errors = {};
-    error.details.forEach((err) => {
-      const fieldName = err.path[0] as string;
-      // Ensure friendly messages
-      validationErrors[fieldName] = err.message.replace('"value"', fieldName);
-    });
-    setErrors(validationErrors);
-    return; // stop if errors
-  }
-  
-
-    // ✅ No errors → proceed
-    setErrors({});
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSubmitted(true);
     setIsLoading(true);
 
     try {
-      // 1) Load existing institutions
-      const institutions = await getAllInstitutionsFromDB();
+      let logoUrl = formData.logoUrl;
 
-      // Normalize for comparison (same keys as formData)
+      // ✅ Get the most recently saved institution (for comparison)
+      const institutions = await getAllInstitutionsFromDB();
+      const latest =
+        institutions && institutions.length > 0
+          ? institutions.sort(
+              (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+            )[0]
+          : null;
+
+      const latestLogoUrl = latest?.logoUrl || "";
+      const latestLogoPreview = latest?.logoPreviewUrl || "";
+
+      console.log("🔍 Latest saved logo:", latestLogoUrl);
+      console.log("🔍 Latest saved preview:", latestLogoPreview);
+      console.log("🆕 Current preview:", formData.logoPreviewUrl);
+
+      // ✅ 1) Check if logo changed before uploading
+      const isLogoChanged =
+        formData.logo &&
+        formData.logo instanceof File &&
+        formData.logoPreviewUrl !== latestLogoPreview;
+
+      if (isLogoChanged && formData.logo instanceof File) {
+        try {
+          console.log("⬆️ Uploading new logo to AWS S3...");
+
+          // 🧠 Support both single & multiple files
+          const uploadResult = await uploadToS3(formData.logo);
+
+          if (Array.isArray(uploadResult)) {
+            const first = uploadResult[0];
+            if (!first?.success)
+              throw new Error(first?.error || "Upload failed");
+            logoUrl = first.fileUrl || logoUrl;
+          } else {
+            if (!uploadResult.success)
+              throw new Error(uploadResult.error || "Upload failed");
+            logoUrl = uploadResult.fileUrl || logoUrl;
+          }
+
+          console.log("✅ Logo uploaded successfully:", logoUrl);
+        } catch (uploadError) {
+          console.error("❌ AWS upload failed:", uploadError);
+          setErrors((prev) => ({
+            ...prev,
+            logo: "Failed to upload logo. Try again.",
+          }));
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        console.log("⚡ Skipping logo upload — same preview detected.");
+      }
+
+      // ✅ 2) Prepare data for validation and saving
+      const dataToValidate = { ...formData, logoUrl };
+
+      // ✅ 3) Validate after upload
+      const { error } = activeSchema.validate(dataToValidate, {
+        abortEarly: false,
+      });
+      if (error) {
+        const validationErrors: Errors = {};
+        error.details.forEach((err) => {
+          const fieldName = err.path[0] as string;
+          validationErrors[fieldName] = err.message.replace(
+            '"value"',
+            fieldName
+          );
+        });
+        setErrors(validationErrors);
+        setIsLoading(false);
+        return;
+      }
+
+      setErrors({});
+
+      // ✅ 4) Normalize data before saving
       const normalize = (x: any) => ({
         instituteType: x.instituteType || "",
         instituteName: x.instituteName || "",
@@ -272,47 +410,60 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         state: x.state || "",
         pincode: x.pincode || "",
         locationURL: x.locationURL || "",
+        logoUrl: x.logoUrl || "",
+        logoPreviewUrl: x.logoPreviewUrl || "",
       });
 
-      const latest = institutions && institutions.length > 0
-        ? institutions.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
-        : null;
-
-      const current = normalize(formData);
+      const current = normalize(dataToValidate);
       let effectiveId: number | null = null;
 
       if (latest) {
         const latestNormalized = normalize(latest);
-        const isSame = JSON.stringify(latestNormalized) === JSON.stringify(current);
+        const isSame =
+          JSON.stringify(latestNormalized) === JSON.stringify(current);
 
         if (isSame) {
-          // Data unchanged → skip saving
+          console.log("✅ No changes detected. Skipping DB update.");
           effectiveId = latest.id || null;
         } else {
-          // Different → update existing record
-          await updateInstitutionInDB({ ...(latest as any), ...current, id: latest.id });
+          console.log("🔄 Updating institution in IndexedDB...");
+          await updateInstitutionInDB({
+            ...(latest as any),
+            ...current,
+            id: latest.id,
+          });
           effectiveId = latest.id || null;
         }
       } else {
-        // No record → create new
+        console.log("🆕 Adding new institution to IndexedDB...");
         const id = await addInstitutionToDB(current);
         effectiveId = id;
-        console.log("Institution saved locally with id:", id);
+        console.log("✅ Institution saved locally with id:", id);
       }
 
-      // 2) Continue normally (set localStorage, close, callbacks)
+      // ✅ 5) Update localStorage
       if (typeof window !== "undefined") {
         localStorage.setItem("institutionType", current.instituteType);
-        if (effectiveId !== null) localStorage.setItem("institutionId", String(effectiveId));
+        if (effectiveId !== null)
+          localStorage.setItem("institutionId", String(effectiveId));
+        if (current.logoUrl)
+          localStorage.setItem("institutionLogFileName", current.logoUrl);
+        else localStorage.removeItem("institutionLogFileName");
       }
 
       setDialogOpen(false);
-
       setSubmitted(false);
       setErrors({});
       onSuccess?.();
     } catch (error) {
-      console.error("Error saving/updating institution in IndexedDB:", error);
+      console.error(
+        "❌ Error saving/updating institution in IndexedDB:",
+        error
+      );
+      setErrors((prev) => ({
+        ...prev,
+        logo: "Failed to save institution. Try again.",
+      }));
     } finally {
       setIsLoading(false);
     }
@@ -321,8 +472,15 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
   const [isDropdownOpenAdditional, setIsDropdownOpenAdditional] =
     useState(false);
 
-  const isFormComplete = !activeSchema.validate(formData, { abortEarly: false })
-    .error;
+  const isBaseFormValid = !activeSchema.validate(formData, {
+    abortEarly: false,
+  }).error;
+
+  const isLogoValid =
+    !errors.logFile &&
+    (formData.logo === null || formData.logo instanceof File);
+
+  const isFormComplete = isBaseFormValid && isLogoValid;
 
   const countryFlags = {
     "+91": "/India-flag.png",
@@ -405,18 +563,17 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
               {formData.instituteType !== "Study Halls" && (
                 <>
                   <div>
-                  
-<InputField
-  label="Recognition by"
-  name="approvedBy" // Renamed from approvedBy
-  value={formData.approvedBy} // Renamed from approvedBy
-  onChange={handleChange}
-  placeholder="State Recognised"
-  required
-  error={
-    submitted || errors.approvedBy ? errors.approvedBy : "" // Renamed from approvedBy
-  }
-/>
+                    <InputField
+                      label="Recognition by"
+                      name="approvedBy" // Renamed from approvedBy
+                      value={formData.approvedBy} // Renamed from approvedBy
+                      onChange={handleChange}
+                      placeholder="State Recognised"
+                      required
+                      error={
+                        submitted || errors.approvedBy ? errors.approvedBy : "" // Renamed from approvedBy
+                      }
+                    />
                   </div>
 
                   <div>
@@ -440,9 +597,9 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
               <div className="flex flex-col gap-3 w-full relative">
                 {/* Label */}
                 <label
-  htmlFor="contactInfo"
-  className="font-montserrat font-normal text-base text-black"
->
+                  htmlFor="contactInfo"
+                  className="font-montserrat font-normal text-base text-black"
+                >
                   Contact Info<span className="text-red-500 ml-1">*</span>
                 </label>
 
@@ -517,7 +674,6 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
                     onChange={handleChange}
                     className="flex-1 text-[#060B13] font-montserrat text-[16px] sm:text-[16px] leading-[20px] focus:outline-none"
                     // className="flex-1 text-[#060B13] font-montserrat text-[16px] sm:text-[16px] leading-[20px] focus:outline-none"
-                
                   />
                 </div>
 
@@ -530,10 +686,10 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
 
               {/* Repeat same for additionalContactInfo */}
               <div className="flex flex-col gap-3 w-full relative">
-               <label
-  htmlFor="contactInfo"
-  className="font-montserrat font-normal text-base text-gray-950"
->
+                <label
+                  htmlFor="contactInfo"
+                  className="font-montserrat font-normal text-base text-gray-950"
+                >
                   Additional Contact
                 </label>
                 <div className="flex flex-row items-center gap-3 px-4 h-[48px] w-full bg-[#F5F6F9] border border-[#DADADD] rounded-[12px]">
@@ -607,10 +763,12 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
              focus:outline-none"
                   />
                 </div>
-                  {errors.additionalContactInfo && (
-                   <p className="text-red-500 text-sm mt-1">{errors.additionalContactInfo}</p>
-                   )}
-                </div>
+                {errors.additionalContactInfo && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.additionalContactInfo}
+                  </p>
+                )}
+              </div>
               <div>
                 <InputField
                   label="Main Campus Address"
@@ -668,6 +826,106 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
                     submitted || errors.locationURL ? errors.locationURL : ""
                   }
                 />
+              </div>
+
+              {/* <div className="grid md:grid-cols-1 gap-6">
+                <label className="font-medium text-[16px]">{"Logo"}</label>
+                <label className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors">
+                  <Upload size={24} className="text-gray-400 mb-2" />
+                  <span className="text-sm text-gray-500">
+                    "Upload Logo (jpg / png)"
+                  </span>
+                  <input
+                    id="logo"
+                    name="logo"
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    
+                    // className="hidden"
+                    onChange={(e) => handleFileChange(e)}
+                    // required
+                  />
+                </label>
+              </div> */}
+              {/* <div>
+                <label className="font-montserrat font-normal text-base text-black">
+                  Logo <span className="text-red-500">*</span>
+                </label>
+
+                <div
+                  className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA]
+               flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2]
+               transition-colors mt-2 relative"
+                >
+                  <input
+                    id="logo"
+                    name="logo"
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+
+                  {!formData.logoPreviewUrl ? (
+                    <>
+                      <Upload size={24} className="text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-500">
+                        Upload Logo (jpg / png)
+                      </span>
+                    </>
+                  ) : (
+                    <img
+                      src={formData.logoPreviewUrl}
+                      alt="Logo preview"
+                      className="w-[100px] h-[100px] object-cover rounded-md"
+                    />
+                  )}
+                </div>
+
+                {errors.logoUrl && (
+                  <p className="text-red-500 text-sm mt-1">{errors.logoUrl}</p>
+                )}
+              </div> */}
+
+              <div>
+                <label className="font-montserrat font-normal text-base text-black">
+                  Logo <span className="text-red-500">*</span>
+                </label>
+
+                <div
+                  className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA]
+     flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2]
+     transition-colors mt-2 relative"
+                >
+                  <input
+                    id="logo"
+                    name="logo"
+                    type="file"
+                    accept=".jpg,.jpeg,.png"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+
+                  {!formData.logoPreviewUrl ? (
+                    <>
+                      <Upload size={24} className="text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-500">
+                        Upload Logo (jpg / jpeg / png)
+                      </span>
+                    </>
+                  ) : (
+                    <img
+                      src={formData.logoPreviewUrl}
+                      alt="Logo preview"
+                      className="w-[100px] h-[100px] object-cover rounded-md"
+                    />
+                  )}
+                </div>
+
+                {/* ✅ Show validation error here */}
+                {errors.logo && (
+                  <p className="text-red-500 text-sm mt-1">{errors.logo}</p>
+                )}
               </div>
             </CardContent>
 

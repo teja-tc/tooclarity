@@ -67,20 +67,42 @@ exports.googleAuthCallback = async (req, res, next) => {
       req.body
     );
 
-    // 4. Forward to proper flow
     if (type === "login") {
-      await login(req, res, next, { returnTokens: true });
-      if (state === "student") {
-        return res.redirect(`${process.env.CLIENT_ORIGIN}/student/login`);
-      } else if (state === "institution") {
-        return res.redirect(`${process.env.CLIENT_ORIGIN}`);
+      try {
+        await login(req, res, next, { returnTokens: true });
+        if (state === "student") {
+          return res.redirect(`${process.env.CLIENT_ORIGIN}/student/login`);
+        } else if (state === "institution") {
+          return res.redirect(`${process.env.CLIENT_ORIGIN}`);
+        }
+      } catch (err) {
+        console.warn("Login failed:", err.message);
+        if(state === "student"){
+          return res.redirect(`${process.env.CLIENT_ORIGIN}/student/login?error=not_registered`)
+        }
+        if(state === "institution"){
+          return res.redirect(`${process.env.CLIENT_ORIGIN}?error=not_registered`)
+        }
       }
-    } else if (type === "register") {
-      await register(req, res, next, { returnTokens: true });
-      if (state === "student") {
-        return res.redirect(`${process.env.CLIENT_ORIGIN}/student/onboarding`);
-      } else if (state === "institution") {
-        return res.redirect(`${process.env.CLIENT_ORIGIN}/`);
+    }
+    else if(type === "register"){
+      try{
+        await register(req, res, next, { returnTokens: true});
+        if(state === "student"){
+           return res.redirect(`${process.env.CLIENT_ORIGIN}/student/onboarding`);
+        }
+        else if(state === "institution"){
+          return res.redirect(`${process.env.CLIENT_ORIGIN}`)
+        }
+      }
+      catch(err){
+        console.warn("Registeration failed:", err.message)
+        if(state === "student"){
+          return res.redirect(`${process.env.CLIENT_ORIGIN}/student/register?error=already_registered`)
+        }
+        else if(state === "institution"){
+          return res.redirect(`${process.env.CLIENT_ORIGIN}?error=already_registered`)
+        }
       }
     }
 

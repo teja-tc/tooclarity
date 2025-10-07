@@ -3,6 +3,7 @@ const { decodeToken } = require("./jwt.util");
 class CookieUtil {
   static defaultOptions = {
     secure: process.env.NODE_ENV === "production",
+    // secure: true,
     sameSite: "none",
     path: "/", // default root path
     maxAge: 15 * 60 * 1000,
@@ -33,6 +34,16 @@ class CookieUtil {
    * @param {string} name - Cookie name
    * @param {Object} options - Extra options (path must match original cookie path)
    */
+  static clearAllCookies(req, res, options = {}) {
+    const cookies = req.cookies || {};
+    Object.keys(cookies).forEach((cookieName) => {
+      res.clearCookie(cookieName, {
+        ...this.defaultOptions,
+        ...options,
+      });
+    });
+  }
+
   static clearCookie(res, name, options = {}) {
     res.clearCookie(name, {
       ...this.defaultOptions,

@@ -138,8 +138,8 @@ const willExpireSoon = (token, minutes) => {
   return decoded.exp - now <= threshold;
 };
 
-const refreshAccessTokenIfNeeded = (req, res) => {
-  const token = CookieUtil.getCookie(req, "access_token");
+const refreshAccessTokenIfNeeded = (req, res, token) => {
+  // const token = CookieUtil.getCookie(req, "access_token");
   if (!token) return null;
 
   try {

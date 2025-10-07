@@ -11,7 +11,7 @@ import {
   selectBranchRule,
   phoneRule,
   domainTypeRule,
-  durationRule
+  durationRule,
 } from "./ValidationRules";
 import {
   branchNameRule,
@@ -28,21 +28,33 @@ export const baseCourseSchema = Joi.object({
     "string.min": "About Course must be at least 10 characters",
     "string.max": "About Course must be at most 500 characters",
   }),
-  courseDuration: durationRule, 
+  courseDuration: durationRule,
   priceOfCourse: Joi.number()
-  .greater(0) // ensures value is > 0
-  .required()
-  .messages({
-    "number.base": "Price must be a number",
-    "number.greater": "Price must be greater than 0",
-    "any.required": "Price is required",
-  }),
+    .greater(0) // ensures value is > 0
+    .required()
+    .messages({
+      "number.base": "Price must be a number",
+      "number.greater": "Price must be greater than 0",
+      "any.required": "Price is required",
+    }),
   location: urlRule.required(),
   mode: Joi.string().valid("Offline", "Online", "Hybrid").required().messages({
     "any.only": "Mode must be Offline, Online, or Hybrid",
     "string.empty": "Mode is required",
   }),
-  createdBranch: createdBranchRule, 
+  createdBranch: createdBranchRule,
+  image: Joi.any().optional(),
+  imageUrl: Joi.string().uri().required().messages({
+    "string.empty": "Image is required",
+    "string.uri": "Must be a valid URL (e.g., https://...)",
+  }),
+  imagePreviewUrl: Joi.string().allow("").optional(), // ✅ only preview, not mandatory
+  brochure: Joi.any().optional(),
+  brochureUrl: Joi.string().uri().required().messages({
+    "string.empty": "Brochure URL is required",
+    "string.uri": "Must be a valid URL (e.g., https://...)",
+  }),
+  brochurePreviewUrl: Joi.string().allow("").optional(),
 });
 
 export const CoachingCenterSchema = Joi.object({
@@ -59,12 +71,12 @@ export const CoachingCenterSchema = Joi.object({
     "string.empty": "Mode is required",
   }),
   createdBranch: createdBranchRule,
-  
+
   // --- Coaching-specific rules ---
   categoriesType: categoriesTypeRule,
   domainType: domainTypeRule,
- classSize: Joi.number()
-    .min(0)      // Ensures the number is at least 0
+  classSize: Joi.number()
+    .min(0) // Ensures the number is at least 0
     .required()
     .messages({
       "number.base": "Class size must be a number",
@@ -73,13 +85,12 @@ export const CoachingCenterSchema = Joi.object({
     }),
 });
 
-
-
 export const StudyHallSchema = Joi.object({
   // This schema is now self-contained and does not inherit from baseCourseSchema
-  hallName: nameRule.required().messages({ // Assumes nameRule is imported
-        "any.required": "Hall name is required.",
-    }),
+  hallName: nameRule.required().messages({
+    // Assumes nameRule is imported
+    "any.required": "Hall name is required.",
+  }),
   seatingOption: nameRule.required().messages({
     "string.empty": "Please select a seating option.",
     "any.required": "Please select a seating option.",
@@ -107,7 +118,7 @@ export const StudyHallSchema = Joi.object({
     "array.min": "At least one operational day must be selected.",
     "any.required": "At least one operational day must be selected.",
   }),
-   totalSeats: Joi.number().min(0).required().messages({
+  totalSeats: Joi.number().min(0).required().messages({
     "number.base": "Value must be a number.",
     "number.min": "Total Seats cannot be negative.",
     "any.required": "Total Seats is required.",
@@ -115,18 +126,17 @@ export const StudyHallSchema = Joi.object({
 
   // ✅ UPDATED VALIDATION FOR AVAILABLE SEATS
   availableSeats: Joi.number()
-  .integer()
-  .min(0)
-  .required()
-  .max(Joi.ref('totalSeats')) // ✅ Compares dynamically to totalSeats
-  .messages({
-    "number.base": "Value must be a number.",
-    "number.min": "Available Seats cannot be negative.",
-    "any.required": "Available Seats is required.",
-    "number.integer": "Available Seats must be a whole number.",
-    "number.max": "Available seats cannot be greater than total seats.",
-  }),
-
+    .integer()
+    .min(0)
+    .required()
+    .max(Joi.ref("totalSeats")) // ✅ Compares dynamically to totalSeats
+    .messages({
+      "number.base": "Value must be a number.",
+      "number.min": "Available Seats cannot be negative.",
+      "any.required": "Available Seats is required.",
+      "number.integer": "Available Seats must be a whole number.",
+      "number.max": "Available seats cannot be greater than total seats.",
+    }),
 
   pricePerSeat: Joi.number().min(0).required().messages({
     "number.base": "Value must be a number.",
@@ -136,25 +146,25 @@ export const StudyHallSchema = Joi.object({
 
   // Boolean fields should be explicitly required as the user must select one
   // ✅ Add .allow(null) to each boolean validation rule
-   hasWifi: Joi.string().valid('Yes', 'No').required().messages({
-        'any.only': 'Please select an option for Wi-Fi.',
-    }),
-    hasChargingPoints: Joi.string().valid('Yes', 'No').required().messages({
-        'any.only': 'Please select an option for Charging Points.',
-    }),
-    hasAC: Joi.string().valid('Yes', 'No').required().messages({
-        'any.only': 'Please select an option for Air Conditioner.',
-    }),
-    hasPersonalLocker: Joi.string().valid('Yes', 'No').required().messages({
-        'any.only': 'Please select an option for Personal Lockers.',
-    }),
+  hasWifi: Joi.string().valid("Yes", "No").required().messages({
+    "any.only": "Please select an option for Wi-Fi.",
+  }),
+  hasChargingPoints: Joi.string().valid("Yes", "No").required().messages({
+    "any.only": "Please select an option for Charging Points.",
+  }),
+  hasAC: Joi.string().valid("Yes", "No").required().messages({
+    "any.only": "Please select an option for Air Conditioner.",
+  }),
+  hasPersonalLocker: Joi.string().valid("Yes", "No").required().messages({
+    "any.only": "Please select an option for Personal Lockers.",
+  }),
   image: Joi.any().optional(),
   createdBranch: createdBranchRule,
 });
 
 export const TuitionCenterSchema = Joi.object({
   // This schema is now defined from scratch to match your form exactly.
-  
+
   tuitionType: Joi.string()
     .valid("Home Tuition", "Center Tuition")
     .required()
@@ -174,7 +184,8 @@ export const TuitionCenterSchema = Joi.object({
     .required()
     .messages({
       "string.empty": "Subject is required.",
-      "string.pattern.base": "Subject can only contain letters, spaces, and commas.",
+      "string.pattern.base":
+        "Subject can only contain letters, spaces, and commas.",
       "any.required": "Subject is required.",
     }),
 
@@ -186,17 +197,17 @@ export const TuitionCenterSchema = Joi.object({
   availableSeats: Joi.number()
     .min(0)
     .required()
-    .max(Joi.ref('totalSeats')) // Ensures available seats is not greater than total seats
+    .max(Joi.ref("totalSeats")) // Ensures available seats is not greater than total seats
     .messages({
       "number.base": "Value must be a number.",
       "number.min": "Available Seats cannot be negative.", // Fixed typo
-      "any.required": "Available Seats is required.",     // Fixed typo
+      "any.required": "Available Seats is required.", // Fixed typo
       "number.max": "Available seats cannot be greater than total seats.", // New error message
-    }), 
+    }),
   operationalDays: Joi.array().items(Joi.string()).min(1).required().messages({
-      // ✅ Added custom messages for operational days
-      "array.min": "At least one operational day must be selected.",
-      "any.required": "At least one operational day must be selected.",
+    // ✅ Added custom messages for operational days
+    "array.min": "At least one operational day must be selected.",
+    "any.required": "At least one operational day must be selected.",
   }),
 
   // ✅ Improved time validation to check for HH:MM format
@@ -223,16 +234,13 @@ export const TuitionCenterSchema = Joi.object({
     "number.min": "Price cannot be negative.",
     "any.required": "Price Per Seat is required.",
   }),
-  
+
   // You might need to add 'image' validation if it's required
   image: Joi.any().optional(), // Or .required() if needed
 
   // This field is used for associating with a branch
   createdBranch: createdBranchRule,
 });
-
-
-
 
 export const UGPGSchema = Joi.object({
   // This schema is now defined from scratch and does NOT inherit from baseCourseSchema.
@@ -241,17 +249,20 @@ export const UGPGSchema = Joi.object({
   graduationType: graduationTypeRule,
   streamType: streamTypeRule,
   selectBranch: selectBranchRule,
-  
+
   aboutBranch: Joi.string().min(10).max(500).required().messages({
     "string.empty": "About branch is required.",
     "string.min": "About branch must be at least 10 characters.",
     "string.max": "About branch cannot exceed 500 characters.",
   }),
-  
-  educationType: Joi.string().valid("Full time", "part time", "Distance").required().messages({
+
+  educationType: Joi.string()
+    .valid("Full time", "part time", "Distance")
+    .required()
+    .messages({
       "string.empty": "Please select an education type.",
       "any.required": "Please select an education type.",
-  }),
+    }),
 
   mode: Joi.string().valid("Offline", "Online", "Hybrid").required().messages({
     "string.empty": "Please select a mode.",
@@ -259,12 +270,12 @@ export const UGPGSchema = Joi.object({
   }),
 
   courseDuration: durationRule,
-  
+
   priceOfCourse: Joi.number().required().messages({
-      "number.base": "Price must be a number.",
-      "any.required": "Price is required.",
+    "number.base": "Price must be a number.",
+    "any.required": "Price is required.",
   }),
-  
+
   classSize: Joi.number().required().messages({
     "number.base": "Class size must be a number.",
     "any.required": "Class size is required.",
@@ -273,11 +284,11 @@ export const UGPGSchema = Joi.object({
   eligibilityCriteria: nameRule.messages({
     "string.empty": "Eligibility criteria is required.",
     "any.required": "Eligibility criteria is required.",
-    "string.pattern.base": "Eligibility criteria Including at least one letter and can only include letters, numbers, spaces, . & ' -",
+    "string.pattern.base":
+      "Eligibility criteria Including at least one letter and can only include letters, numbers, spaces, . & ' -",
   }),
-  createdBranch: createdBranchRule, 
+  createdBranch: createdBranchRule,
 });
-
 
 // ✅ Branch Schema
 export const branchSchema = Joi.object({
@@ -294,10 +305,10 @@ export const branchSchema = Joi.object({
         "Branch Name must start with a letter and may include numbers, spaces, and . & ' -",
     }),
 
-   contactInfo: phoneRule.messages({
-      "string.empty": "Contact info is required.",
-      "any.required": "Contact info is required.",
-      "string.pattern.base": "Please enter a valid 10-digit mobile number.",
+  contactInfo: phoneRule.messages({
+    "string.empty": "Contact info is required.",
+    "any.required": "Contact info is required.",
+    "string.pattern.base": "Please enter a valid 10-digit mobile number.",
   }),
 
   branchAddress: Joi.string().min(5).required().messages({

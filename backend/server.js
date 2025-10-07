@@ -3,7 +3,12 @@ const dotenv = require('dotenv');
 const { Institution } = require('./models/Institution');
 // const {Course} =require('./models/Course')
 
-dotenv.config();
+// dotenv.config();
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+dotenv.config({ path: envFile });
+
+console.log(`Enviourment loaded :${process.env.NODE_ENV}`)
+console.log(`Using ile ${envFile}`);
 const app = require('./app');
 
 const DB = process.env.MONGO_URI;
