@@ -1,4 +1,5 @@
 import React from 'react';
+import AdCard from '../dashboard/AdCard';
 import { Search, Calendar, MessageCircle, Linkedin } from 'lucide-react';
 
 const StaticDashboardCard = () => {
@@ -42,7 +43,7 @@ const StaticDashboardCard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="p-4 overflow-hidden">
+      <div className="p-4 bg-white overflow-hidden">
         {/* Dashboard Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-lg font-bold text-gray-900">Dashboard</h1>
@@ -82,6 +83,8 @@ const StaticDashboardCard = () => {
 
           {/* Social Section */}
           <div className="bg-white border border-gray-200 rounded-lg p-3 relative">
+            {/* <AdCard/> */}
+
             <div className="text-xs font-medium text-gray-900 mb-2">Increase your reach</div>
             <div className="flex space-x-2 mb-2">
               <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">

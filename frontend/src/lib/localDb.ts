@@ -7,7 +7,11 @@ export type CourseRecord = {
   priceOfCourse?: string;
   location?: string;
   image?: File | null;
+  imageUrl?: string,
+  imagePreviewUrl?: string,
+  brochureUrl?: string,
   brochure?: File | null;
+  brochurePreviewUrl?: string,
   graduationType?: string;
   streamType?: string;
   selectBranch?: string;
@@ -93,6 +97,8 @@ export type InstitutionRecord = {
   extendedCare?: string;
   mealsProvided?: string;
   outdoorPlayArea?: string;
+  logoUrl?: string,
+  logoPreviewUrl?: string,
 };
 
 // ------- Dashboard data types (for caching) -------
