@@ -23,12 +23,12 @@ const StudentLoginPage = () => {
     if (!user) return;
 
     const role = user.role;
-    const isPaymentDone = !!user.isPaymentDone;
+    // const isPaymentDone = !!user.isPaymentDone;
     const isProfileCompleted = !!user.isProfileCompleted;
 
     console.log("[Student Login Page] Redirecting with flags:", {
       role,
-      isPaymentDone,
+      // isPaymentDone,
       isProfileCompleted,
     });
 

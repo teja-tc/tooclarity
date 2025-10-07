@@ -17,6 +17,13 @@ export async function exportInstitutionAndCoursesToFile(): Promise<File> {
       ? institutions.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
       : null;
 
+  const sanitizedInstitution = latestInstitution
+    ? (() => {
+        const { logoPreviewUrl, ...restInstitution } = latestInstitution;
+        return restInstitution;
+      })()
+    : null;
+
   // 2) Fetch all courses grouped by branch
   const coursesGroups = await getCoursesGroupsByBranchName();
 
@@ -25,14 +32,14 @@ export async function exportInstitutionAndCoursesToFile(): Promise<File> {
     return {
       ...branchRest,
       courses: branch.courses.map((course: any) => {
-        const { id, ...courseRest } = course;
+        const { id, image, imagePreviewUrl, brochure, brochurePreviewUrl, ...courseRest } = course;
         return courseRest;
       }),
     };
   });
   // 3) Build final JSON
   const exportData = {
-    institution: latestInstitution,
+    institution: sanitizedInstitution,
     courses: sanitizedCourses,
     exportedAt: new Date().toISOString(),
   };

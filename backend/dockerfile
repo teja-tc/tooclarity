@@ -68,6 +68,7 @@ COPY --from=builder /app/models ./models
 COPY --from=builder /app/routes ./routes
 COPY --from=builder /app/services ./services
 COPY --from=builder /app/utils ./utils
+COPY --from=builder /app/jobs ./jobs
 # (Add more app files here explicitly if needed)
 
 # Create non-root user for better security

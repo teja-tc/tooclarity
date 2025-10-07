@@ -69,27 +69,6 @@ exports.createCoupon = asyncHandler(async (req, res, next) => {
  * @route   POST /api/v1/coupon/apply
  * @access  Private/InstitutionAdmin
  */
-// exports.applyCoupon = asyncHandler(async (req, res, next) => {
-//   const { code } = req.body;
-//   const institutionAdminId = req.userId;
-
-//   const coupon = await Coupon.findOne({
-//     code: code,
-//     // institutions: institutionAdminId,
-//   });
-
-//   if (!coupon) {
-//     return next(new AppError("This coupon is not valid for your account, has expired, or has been fully redeemed.", 404));
-//   }
-
-//   res.status(200).json({
-//     success: true,
-//     message: "Coupon is valid",
-//     data: {
-//       discountAmount: discount,
-//     },
-//   });
-// });
 exports.applyCoupon = asyncHandler(async (req, res, next) => {
   const { code } = req.body;
   const institutionAdminId = req.userId;

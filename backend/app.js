@@ -25,6 +25,7 @@ const authorizeRoles = require("./middleware/role.middleware");
 const dashboardRoutes = require("./routes/dashboard.routes");
 
 const googleRoutes = require('./routes/google.routes');
+const s3Routes = require("./routes/s3.routes")
 
 // import global auth middleware
 const globalAuthMiddleware = require("./middleware/globalAuth.middleware");
@@ -79,6 +80,8 @@ app.use("/api/v1/", profileRoutes);
 app.use("/api/v1/enquiries", enquiriesRoutes);
 
 app.use("/api/v1/institutions", requireInstituteAdmin, institutionRoutes);
+
+app.use("/api/s3", s3Routes);
 
 app.use(
   "/api/v1/institutions/:institutionId/branches",

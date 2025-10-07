@@ -34,7 +34,7 @@ const globalAuthMiddleware = async (req, res, next) => {
         // normal verify
         const decoded = verifyToken(accessToken);
         console.log("✅ Access token valid:", decoded);
-        refreshAccessTokenIfNeeded(req, res);
+        refreshAccessTokenIfNeeded(req, res, accessToken);
         req.userId = decoded.id;
         req.userRole = decoded.role;
         return next(); // valid access token
@@ -64,8 +64,11 @@ const globalAuthMiddleware = async (req, res, next) => {
             console.log("✅ Found userId from username cookie:", userId);
             // Short-circuit for dev usage when username cookie is present
             req.userId = userId;
-            req.userRole = decodedAccess.role;
-            await refreshRefreshTokenIfNeeded(userId, usernameCookie, );
+            req.userRole = user.role;
+            const newAccessToken = generateToken(userId, usernameCookie,"access", user.role);
+            CookieUtil.setCookie(res, "access_token", newAccessToken);
+            console.log("🔹 New access token issued");
+            await refreshRefreshTokenIfNeeded(userId, usernameCookie,  refreshToken );
             return next();
           } else {
             console.log("❌ No user found for username cookie");
