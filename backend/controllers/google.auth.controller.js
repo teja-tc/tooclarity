@@ -24,6 +24,12 @@ exports.googleAuthCallback = async (req, res, next) => {
 
     const state = stateData.state; // student | institution | admin
     const type = stateData.type; // login | register
+    const device = stateData.device; // web | mobile
+
+    const CLIENT_ORIGIN =
+      device === "web"
+        ? process.env.CLIENT_ORIGIN_WEB
+        : process.env.CLIENT_ORIGIN_MOBILE
 
     // 1. Exchange code for tokens from Google
     const { data } = await axios.post(
@@ -62,26 +68,21 @@ exports.googleAuthCallback = async (req, res, next) => {
       type: state, // student | institution | admin
     };
 
-    console.log(
-      `Google OAuth callback → forwarding to ${type} controller`,
-      req.body
-    );
-
     if (type === "login") {
       try {
         await login(req, res, next, { returnTokens: true });
         if (state === "student") {
-          return res.redirect(`${process.env.CLIENT_ORIGIN}/student/login`);
+          return res.redirect(`${CLIENT_ORIGIN}/student/login`);
         } else if (state === "institution") {
-          return res.redirect(`${process.env.CLIENT_ORIGIN}`);
+          return res.redirect(`${CLIENT_ORIGIN}`);
         }
       } catch (err) {
         console.warn("Login failed:", err.message);
         if(state === "student"){
-          return res.redirect(`${process.env.CLIENT_ORIGIN}/student/login?error=not_registered`)
+          return res.redirect(`${CLIENT_ORIGIN}/student/login?error=not_registered`)
         }
         if(state === "institution"){
-          return res.redirect(`${process.env.CLIENT_ORIGIN}?error=not_registered`)
+          return res.redirect(`${CLIENT_ORIGIN}?error=not_registered`)
         }
       }
     }
@@ -89,19 +90,19 @@ exports.googleAuthCallback = async (req, res, next) => {
       try{
         await register(req, res, next, { returnTokens: true});
         if(state === "student"){
-           return res.redirect(`${process.env.CLIENT_ORIGIN}/student/onboarding`);
+           return res.redirect(`${CLIENT_ORIGIN}/student/onboarding`);
         }
         else if(state === "institution"){
-          return res.redirect(`${process.env.CLIENT_ORIGIN}`)
+          return res.redirect(`${CLIENT_ORIGIN}`)
         }
       }
       catch(err){
         console.warn("Registeration failed:", err.message)
         if(state === "student"){
-          return res.redirect(`${process.env.CLIENT_ORIGIN}/student/register?error=already_registered`)
+          return res.redirect(`${CLIENT_ORIGIN}/student/register?error=already_registered`)
         }
         else if(state === "institution"){
-          return res.redirect(`${process.env.CLIENT_ORIGIN}?error=already_registered`)
+          return res.redirect(`${CLIENT_ORIGIN}?error=already_registered`)
         }
       }
     }

@@ -8,12 +8,6 @@ const crypto = require('crypto');
 const CookieUtil = require("../utils/cookie.util");
 const RedisUtil = require("../utils/redis.util");
 
-const jwt = require("jsonwebtoken");
-const { promisify } = require("util");
-const AppError = require("../utils/appError");
-const crypto = require('crypto');
-
-
 const { sendTokens } = require("../utils/token.utils");
 
 exports.register = async (req, res, next, options = {}) => {
