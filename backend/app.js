@@ -38,11 +38,26 @@ app.use(helmet());
 const pinoMiddleware = pinoHttp({ logger: logger });
 app.use(pinoMiddleware);
 
+const allowedOrigins = [
+  process.env.CLIENT_ORIGIN_WEB,
+  process.env.MOBILE_CLIENT_ORIGIN,
+]
+
 const corsOptions = {
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
-  credentials: true,
+  origin: function(origin, callback){
+    if(!origin){ return callback(null, true)};
+    if(allowedOrigins.includes(origin)){
+      callback(null, true);
+    }
+    else{
+      console.warn(`Origin ${origin} not allowed by CORS`);
+      callback(new Error("CORS policy voilation"))
+    }
+  },
+  credentials:true,
   optionsSuccessStatus: 200,
-};
+}
+
 app.use(cors(corsOptions));
 app.use(cookieParser());
 

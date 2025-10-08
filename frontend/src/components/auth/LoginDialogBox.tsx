@@ -161,7 +161,7 @@ export default function LoginDialogBox({
   const handleGoogleClick = () => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
     const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ?? "";
-    const state = JSON.stringify({ state: "institution", type: "login" });
+    const state = JSON.stringify({ state: "institution", type: "login", device: "web" });
 
     redirectToGoogleOAuth({
       clientId,
