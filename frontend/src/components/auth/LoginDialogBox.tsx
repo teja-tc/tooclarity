@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState,useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff ,Loader2, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -14,9 +15,41 @@ import {
 import InputField from "@/components/ui/InputField";
 import { useAuth } from "@/lib/auth-context";
 import { useUserStore } from "@/lib/user-store";
+import { authAPI } from "@/lib/api";
+
+import {
+  initializeGoogleIdentity,
+  loadGoogleIdentityScript,
+  GoogleCredentialResponse,
+  redirectToGoogleOAuth,
+} from "@/lib/google-auth";
 import ForgotPasswordDialogBox from "./ForgotPasswordDialogBox";
 
 type LoginCaller = "admin" | "institution";
+
+type OAuthProvider = {
+  id: string;
+  label: string;
+  icon: string | LucideIcon;
+};
+
+const oauthProviders: OAuthProvider[] = [
+  {
+    id: "google",
+    label: "Continue with Google",
+    icon: "/google.png",
+  },
+//   {
+//     id: "microsoft",
+//     label: "Continue with Microsoft",
+//     icon: "/window.svg",
+//   },
+//   {
+//     id: "apple",
+//     label: "Continue with Apple",
+//     icon: Apple,
+//   },
+];
 
 interface LoginDialogBoxProps {
   open: boolean;
@@ -76,6 +109,109 @@ export default function LoginDialogBox({
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
+
+  // Google OAuth State
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+
+  // ✅ Initialize Google Identity
+  useEffect(() => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.error("NEXT_PUBLIC_GOOGLE_CLIENT_ID is not configured");
+      return;
+    }
+
+    let isMounted = true;
+
+    const initialize = async () => {
+      const loaded = await loadGoogleIdentityScript();
+      if (!loaded) {
+        console.error("Failed to load Google Identity Services script");
+        return;
+      }
+
+      try {
+        initializeGoogleIdentity({
+          clientId,
+          autoSelect: false,
+          uxMode: "redirect",
+          callback: async ({ credential }: GoogleCredentialResponse) => {
+            if (!credential) {
+              setLoadingProvider(null);
+              return;
+            }
+
+            try {
+              // 🔹 Send credential to backend for institution login
+              const response = await authAPI.googleAuth(credential);
+              if (!response.success) {
+                console.error("Google sign-in failed", response.message);
+                return;
+              }
+
+              await refreshUser();
+              const latestUser = useUserStore.getState().user;
+
+              onOpenChange(false);
+
+              if (onSuccess) {
+                onSuccess();
+                return;
+              }
+
+              // 🔹 Redirects based on institution user profile
+              if (latestUser?.role === "INSTITUTE_ADMIN") {
+                if (!latestUser.isPaymentDone && !latestUser.isProfileCompleted) {
+                  router.push("/signup");
+                  return;
+                }
+                if (!latestUser.isPaymentDone && latestUser.isProfileCompleted) {
+                  router.push("/payment");
+                  return;
+                }
+                if (latestUser.isPaymentDone && latestUser.isProfileCompleted) {
+                  router.push("/dashboard");
+                  return;
+                }
+              }
+
+              router.push("/");
+            } catch (error) {
+              console.error("Error sending Google token", error);
+            } finally {
+              setLoadingProvider(null);
+            }
+          },
+        });
+
+        if (isMounted) setIsScriptLoaded(true);
+      } catch (error) {
+        console.error("Failed to initialize Google Identity Services", error);
+      }
+    };
+
+    void initialize();
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshUser, router, onOpenChange, onSuccess]);
+
+  // ✅ Handle Google OAuth button click
+  const handleGoogleClick = () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+    const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ?? "";
+    const state = JSON.stringify({ state: "institution", type: "login", device: "web" });
+
+    redirectToGoogleOAuth({
+      clientId,
+      redirectUri,
+      userType: "institution",
+      state: state,
+      type: "login",
+    });
+  };
+
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
 
   const validateForm = () => {
@@ -123,18 +259,57 @@ export default function LoginDialogBox({
     }
   };
 
-  const handleOAuthLogin = (provider: "google" | "microsoft" | "apple") => {
-    console.log(`Trigger ${provider} login`);
-  };
+  // ---- Render OAuth Providers ----
+  const renderedProviders = useMemo(
+    () =>
+      oauthProviders.map((provider) => {
+        const isGoogle = provider.id === "google";
+        const isLoading = loadingProvider === provider.id;
+        const disableGoogleButton = isGoogle && !isScriptLoaded;
+
+        return (
+          <button
+            key={provider.id}
+            type="button"
+            onClick={isGoogle ? handleGoogleClick : undefined}
+            disabled={disableGoogleButton}
+            className="flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Image
+                  src={provider.icon as string}
+                  alt={provider.label}
+                  width={20}
+                  height={20}
+                  className="object-contain"
+                />
+              )}
+            </span>
+            <span>
+              {disableGoogleButton ? "Loading Google..." : provider.label}
+            </span>
+          </button>
+        );
+      }),
+    [handleGoogleClick, isScriptLoaded, loadingProvider]
+  );
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader className="text-center">
-            <DialogTitle className="text-xl font-bold">Welcome Back!</DialogTitle>
-            <DialogDescription>Sign in to your account</DialogDescription>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg flex flex-col justify-between scrollbar-hide"
+      overlayClassName="bg-black/50"
+      >
+        <DialogHeader className="flex flex-col items-center gap-2">
+          <DialogTitle className="text-xl sm:text-[24px] font-bold">
+            Welcome Back!
+          </DialogTitle>
+          <DialogDescription className="text-center text-gray-600">
+            Please sign in to your account
+          </DialogDescription>
+        </DialogHeader>
 
           {errors.general && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm text-center">
@@ -186,38 +361,28 @@ export default function LoginDialogBox({
               </button>
             </div>
 
-            <Button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="w-full h-12 bg-blue-600 text-white hover:bg-blue-700 rounded-lg"
-            >
-              {loading ? "Signing In..." : "Sign In"}
-            </Button>
+        <div className="flex flex-col gap-4 mt-4">
+          <Button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full h-12 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+          >
+            {loading ? "Signing In..." : "Sign In"}
+          </Button>
+        </div>
+        
 
-            <div className="flex items-center gap-2 my-2">
-              <div className="flex-1 border-t border-gray-200" />
-              <span className="text-xs text-gray-400">OR</span>
-              <div className="flex-1 border-t border-gray-200" />
-            </div>
-
-            <Button variant="outline" onClick={() => handleOAuthLogin("google")} className="w-full h-12 flex items-center justify-center gap-2">
-              <GoogleIcon /> Continue with Google
-            </Button>
-            <Button variant="outline" onClick={() => handleOAuthLogin("microsoft")} className="w-full h-12 flex items-center justify-center gap-2">
-              <MicrosoftIcon /> Continue with Microsoft
-            </Button>
-            <Button variant="outline" onClick={() => handleOAuthLogin("apple")} className="w-full h-12 flex items-center justify-center gap-2">
-              <AppleIcon /> Continue with Apple
-            </Button>
+        {/* Google OAuth Section */}
+          <div className="flex items-center gap-3 text-xs text-gray-400">
+            <span className="h-px flex-1 bg-gray-200" />
+            <span>OR</span>
+            <span className="h-px flex-1 bg-gray-200" />
           </div>
-        </DialogContent>
-      </Dialog>
+          <div className="space-y-3">{renderedProviders}</div>
+        
 
-      {/* Forgot Password Modal */}
-      <ForgotPasswordDialogBox
-        open={forgotPasswordOpen}
-        onOpenChange={setForgotPasswordOpen}
-      />
-    </>
+
+      </DialogContent>
+    </Dialog>
   );
 }

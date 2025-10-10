@@ -15,15 +15,21 @@ const courseSchema = new mongoose.Schema(
       {
         day: { type: String, trim: true },
         count: { type: Number, default: 0 },
-      }
+      },
     ],
+    imageUrl: {
+      type: String, // file path / URL
+    },
+    brochureUrl: {
+      type: String, // file path / URL
+    },
     // Add leads generated rollups
     leadsGenerated: { type: Number, default: 0 },
     leadsRollups: [
       {
         day: { type: String, trim: true },
         count: { type: Number, default: 0 },
-      }
+      },
     ],
     courseName: {
       type: String,
@@ -53,18 +59,12 @@ const courseSchema = new mongoose.Schema(
       trim: true,
       maxlength: 100,
     },
-    image: {
-      type: String, // file path / URL
-    },
-    brochure: {
-      type: String, // file path / URL
-    },
 
     // Additional fields for Under Graduate / Post Graduate
     graduationType: { type: String },
     streamType: { type: String },
     selectBranch: { type: String },
-    eligibilityCriteria: { type: String},
+    eligibilityCriteria: { type: String },
     aboutBranch: { type: String },
     educationType: { type: String },
     classSize: { type: String },
@@ -75,7 +75,7 @@ const courseSchema = new mongoose.Schema(
 
     // Additional fields for Study Hall
     // --- ✅ UPDATED Study Hall Section ---
-    hallName: {type: String,trim: true},
+    hallName: { type: String, trim: true },
     seatingOption: { type: String },
     openingTime: { type: String },
     closingTime: { type: String },
@@ -105,7 +105,7 @@ const courseSchema = new mongoose.Schema(
       ref: "Branch",
       required: false,
       index: true,
-    }
+    },
   },
   { timestamps: true }
 );

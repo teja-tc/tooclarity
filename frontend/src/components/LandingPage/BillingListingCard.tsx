@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { Search, Calendar, MoreVertical, Edit, Eye, Trash2, Plus } from 'lucide-react';
 
 const ListedProgramsCard = () => {
-  const [activeTab, setActiveTab] = useState('Program Details');
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Sample programs data
   const programs = [
@@ -57,9 +55,6 @@ const ListedProgramsCard = () => {
     }
   ];
 
-  const filteredPrograms = programs.filter(program =>
-    program.courseName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <div 
@@ -82,8 +77,6 @@ const ListedProgramsCard = () => {
               <input
                 type="text"
                 placeholder="Search here"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent w-32"
               />
             </div>
@@ -102,7 +95,7 @@ const ListedProgramsCard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="p-4">
+      <div className="p-4 bg-white">
         {/* Programs Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-lg font-bold text-gray-900">Your Listed Programs</h1>
@@ -114,12 +107,7 @@ const ListedProgramsCard = () => {
             {['Program Details', 'Add Program'].map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  activeTab === tab
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors bg-white text-gray-900 shadow-sm"
               >
                 {tab}
               </button>
@@ -135,8 +123,6 @@ const ListedProgramsCard = () => {
             <input
               type="text"
               placeholder="Search your programs"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 pr-3 py-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent w-full"
             />
           </div>
@@ -157,7 +143,7 @@ const ListedProgramsCard = () => {
 
         {/* Table Body */}
         <div className="border-x border-b border-gray-200 rounded-b-lg bg-white max-h-32">
-          {filteredPrograms.map((program, index) => (
+          {programs.map((program) => (
             <div
               key={program.id}
               className="grid grid-cols-7 gap-2 px-3 py-2 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors text-xs"

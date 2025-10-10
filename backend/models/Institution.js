@@ -60,7 +60,10 @@ const institutionSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-
+    logoUrl:{
+        type:String,
+        default:""
+    },
     institutionAdmin: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "InstituteAdmin",
