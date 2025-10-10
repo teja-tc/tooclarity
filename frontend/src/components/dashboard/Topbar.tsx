@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { notificationsAPI } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
 import { cacheSet, CACHE_DURATION } from "@/lib/localDb";
 import { useProfile } from "@/lib/hooks/user-hooks";
 
@@ -32,6 +33,7 @@ type NotificationItem = {
   time: number; // epoch
   read: boolean;
   category?: "system" | "billing" | "user" | "security" | "other";
+  metadata?: any;
 };
 
 const STORAGE_KEY = "app_notifications_v1";
@@ -52,6 +54,9 @@ const Topbar: React.FC<TopbarProps> = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [institutionAdminId, setInstitutionAdminId] = useState<string | null>(null);
+  const [studentId, setStudentId] = useState<string | null>(null);
+  const [platformAdminId, setPlatformAdminId] = useState<string | null>(null);
+  const [roleLabel, setRoleLabel] = useState<string>('');
 
   const [allNotifications, setAllNotifications] = useState<NotificationItem[]>([]);
   const [unreadTop, setUnreadTop] = useState<NotificationItem[]>([]);
@@ -118,10 +123,27 @@ const Topbar: React.FC<TopbarProps> = ({
         const prof = userProfile;
         const role = prof?.role;
         const id = prof?.id || prof?._id;
-        if (role && role.toString().toUpperCase().includes('ADMIN') && id) {
+        const upper = (role || '').toString().toUpperCase();
+        setRoleLabel(upper || '');
+        if (upper === 'INSTITUTE_ADMIN' && id) {
           scopeParams.scope = 'admin';
           scopeParams.institutionAdminId = id;
           setInstitutionAdminId(id);
+          setPlatformAdminId(null);
+          setStudentId(null);
+        } else if (upper === 'ADMIN' && id) {
+          // Platform admin
+          scopeParams.scope = 'admin';
+          scopeParams.institutionAdminId = id;
+          setPlatformAdminId(id);
+          setInstitutionAdminId(null);
+          setStudentId(null);
+        } else if (upper === 'STUDENT' && id) {
+          scopeParams.scope = 'student';
+          scopeParams.studentId = id;
+          setStudentId(id);
+          setInstitutionAdminId(null);
+          setPlatformAdminId(null);
         }
       } catch (err) {
         console.error('Topbar: failed to read profile for notifications scope', err);
@@ -135,6 +157,7 @@ const Topbar: React.FC<TopbarProps> = ({
           time: n.createdAt ? new Date(n.createdAt).getTime() : Date.now(),
           read: !!n.read,
           category: n.category,
+          metadata: n.metadata,
         })) as NotificationItem[];
         const sorted = items.sort((a, b) => b.time - a.time);
         const unread = sorted.filter(n => !n.read);
@@ -167,9 +190,16 @@ const Topbar: React.FC<TopbarProps> = ({
         socket = await getSocket(origin);
         
         socket.on('connect', async () => {
-          // Join institution admin room for notifications
-          if (institutionAdminId) {
-            socket.emit('joinInstitutionAdmin', institutionAdminId);
+          // Join appropriate room based on role
+          const prof = userProfile;
+          const role = (prof?.role || '').toString().toUpperCase();
+          const id = prof?.id || prof?._id;
+          if (role === 'INSTITUTE_ADMIN' && id) {
+            socket.emit('joinInstitutionAdmin', id);
+          } else if (role === 'ADMIN' && id) {
+            socket.emit('joinAdmin', id);
+          } else if (role === 'STUDENT' && id) {
+            socket.emit('joinStudent', id);
           }
         });
 
@@ -182,7 +212,17 @@ const Topbar: React.FC<TopbarProps> = ({
             time: data.notification.createdAt ? new Date(data.notification.createdAt).getTime() : Date.now(),
             read: false,
             category: data.notification.category,
+            metadata: data.notification.metadata,
           };
+          // Toast popup per role/category
+          try {
+            const cat = (newNotification.category || 'other').toString().toLowerCase();
+            const message = `${newNotification.title}${newNotification.description ? ` — ${newNotification.description}` : ''}`;
+            if (cat === 'system') toast.info(message);
+            else if (cat === 'billing') toast.warning(message);
+            else if (cat === 'security') toast.error(message);
+            else toast.success(message);
+          } catch {}
           // Update local UI list
           setAllNotifications(prev => {
             const updated = [newNotification, ...prev].sort((a, b) => b.time - a.time);
@@ -224,6 +264,24 @@ const Topbar: React.FC<TopbarProps> = ({
           }
         });
 
+        // Listen for notification deletions
+        socket.on('notificationRemoved', async (data: { notificationId: string }) => {
+          setAllNotifications(prev => prev.filter(n => n.id !== data.notificationId));
+          setUnreadTop(prev => prev.filter(n => n.id !== data.notificationId));
+          setNotificationCount(prev => {
+            const wasUnread = allNotifications.some(n => n.id === data.notificationId && !n.read);
+            return wasUnread ? Math.max(0, prev - 1) : prev;
+          });
+          try {
+            const current = (queryClient.getQueryData(QUERY_KEY) as NotificationItem[] | undefined) || [];
+            const next = current.filter(n => n.id !== data.notificationId);
+            await cacheSet(CACHE_KEY, next, CACHE_DURATION.INSTITUTION);
+            queryClient.setQueryData(QUERY_KEY, next);
+          } catch (err) {
+            console.error('Topbar: cacheSet/queryCache update on socket removal failed', err);
+          }
+        });
+
       } catch (error) {
         console.error('Topbar: socket setup error', error);
       }
@@ -236,12 +294,13 @@ const Topbar: React.FC<TopbarProps> = ({
         if (socket) {
           socket.off('notificationCreated');
           socket.off('notificationUpdated');
+          socket.off('notificationRemoved');
         }
       } catch (err) {
         console.error('Topbar: socket cleanup error', err);
       }
     };
-  }, [institutionAdminId, queryClient, userProfile]);
+  }, [institutionAdminId, studentId, platformAdminId, queryClient, userProfile]);
 
   const openDropdown = () => {
     clearHideTimer();
@@ -441,6 +500,15 @@ const Topbar: React.FC<TopbarProps> = ({
                           key={notification.id}
                           className="p-2 sm:p-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
                           whileHover={{ backgroundColor: "rgba(0,0,0,0.05)" }}
+                          onClick={() => {
+                            try {
+                              const t = (notification.metadata?.type || '').toString().toUpperCase();
+                              if (t === 'CALLBACK_REQUEST') router.push('/dashboard/leads');
+                              else if (t === 'NEW_STUDENT') router.push('/dashboard');
+                              else if (t === 'WELCOME') router.push('/dashboard');
+                              else router.push('/notifications');
+                            } catch { router.push('/notifications'); }
+                          }}
                         >
                           <div className="flex items-start gap-2 sm:gap-3">
                             <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
@@ -516,8 +584,8 @@ const Topbar: React.FC<TopbarProps> = ({
               <FontAwesomeIcon icon={faUser} className="text-sm sm:text-xl" />
             </motion.div>
             <div className="leading-tight hidden sm:block">
-              <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{userName || "Raghavendar Reddy"}</div>
-              <div className="text-xs text-gray-500 dark:text-gray-300">Admin</div>
+              <div className="text-sm font-bold text-gray-900 dark:text-gray-100">{userName}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-300">{roleLabel||"User"}</div>
             </div>
           </motion.div>
         </div>

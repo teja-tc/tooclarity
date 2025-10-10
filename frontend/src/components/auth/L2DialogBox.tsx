@@ -21,7 +21,9 @@ import {
 } from "@/components/ui/card";
 import InputField from "@/components/ui/InputField";
 import { Upload, Plus, MoreVertical } from "lucide-react";
-import { courseAPI } from "@/lib/api";
+import React from "react";
+import AppSelect from "@/components/ui/AppSelect";
+import { courseAPI, programsAPI, branchAPI } from "@/lib/api";
 import { addBranchesToDB, getAllBranchesFromDB, updateBranchInDB, addCoursesGroupToDB, getCoursesGroupsByBranchName, updateCoursesGroupInDB } from "@/lib/localDb";
 //import CoachingCourseForm from "./L2DialogBoxParts/Course/CoachingCourseForm";
 
@@ -45,6 +47,11 @@ interface L2DialogBoxProps {
   onSuccess?: () => void;
   onPrevious?: () => void;
   initialSection?: "course" | "branch";
+  // New: render inline (non-dialog) for subscription page usage
+  renderMode?: "dialog" | "inline";
+  // New: subscription mode for Program creation flow on Subscription page
+  mode?: "default" | "subscriptionProgram";
+  institutionId?: string;
 }
 export interface Course {
   id: number;
@@ -102,6 +109,9 @@ export default function L2DialogBox({
   onPrevious,
   
   initialSection: initialSectionProp,
+  renderMode = "dialog",
+  mode = "default",
+  institutionId,
 }: L2DialogBoxProps) {
   const router = useRouter();
   const [isCoursrOrBranch, setIsCourseOrBranch] = useState<string | null>(null);
@@ -135,6 +145,25 @@ export default function L2DialogBox({
   const [selectedCourseId, setSelectedCourseId] = useState(1);
   const [showCourseAfterBranch, setShowCourseAfterBranch] = useState(false);
   const [branchOptions, setBranchOptions] = useState<string[]>([]);
+  const [remoteBranches, setRemoteBranches] = useState<Array<{ _id: string; branchName: string }>>([]);
+  const [selectedBranchIdForProgram, setSelectedBranchIdForProgram] = useState<string>("");
+  const [programBranchError, setProgramBranchError] = useState<string>("");
+
+  const uniqueRemoteBranches = React.useMemo(() => {
+    const seenNames = new Set<string>();
+    const seenIds = new Set<string>();
+    const result: Array<{ _id: string; branchName: string }> = [];
+    for (const b of remoteBranches) {
+      const id = String(b?._id || "");
+      const name = (b?.branchName || "Branch").trim();
+      const keyName = name.toLowerCase();
+      if (!id || seenIds.has(id) || seenNames.has(keyName)) continue;
+      seenIds.add(id);
+      seenNames.add(keyName);
+      result.push({ _id: id, branchName: name });
+    }
+    return result.sort((a,b)=> a.branchName.localeCompare(b.branchName));
+  }, [remoteBranches]);
   
  // ✅ 1. Add state to hold validation errors for each branch
 const [branchErrors, setBranchErrors] = useState<
@@ -148,6 +177,13 @@ const [branchErrors, setBranchErrors] = useState<
       try {
         const all = await getAllBranchesFromDB();
         setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
+        if (isSubscriptionProgram) {
+          try {
+            const res: any = await programsAPI.listBranchesForInstitutionAdmin(String(institutionId||''));
+            const branches = (res?.data?.branches || []) as Array<any>;
+            setRemoteBranches(branches.map((b:any)=> ({ _id: String(b._id), branchName: b.branchName || "Branch" })));
+          } catch (e) {}
+        }
       } catch (err) {
         console.error("Failed to load branches from IndexedDB", err);
       }
@@ -197,8 +233,8 @@ const [branchErrors, setBranchErrors] = useState<
     },
   ]);
 
-  // Handle controlled open state
-  const dialogOpen = open !== undefined ? open : isOpen;
+  // Handle controlled open state; in inline mode we treat it as always open
+  const dialogOpen = renderMode === "inline" ? true : (open !== undefined ? open : isOpen);
   const setDialogOpen = onOpenChange || setIsOpen;
 
   // Get current course
@@ -621,6 +657,52 @@ const getSchemaKey = (): keyof typeof L2Schemas => {
   setIsLoading(true);
 
   try {
+    // Subscription Program mode: create PROGRAMs via backend and exit
+    if (isSubscriptionProgram) {
+      if (!institutionId) {
+        throw new Error("institutionId required for subscription program mode");
+      }
+      if (!selectedBranchIdForProgram) {
+        setProgramBranchError("Please select a branch");
+        setIsLoading(false);
+        return;
+      }
+      const toCreate = courses.map((c) => {
+        const programName = (c.courseName || "").trim();
+        const programSlug = programName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+        return {
+          institution: String(institutionId),
+          branch: selectedBranchIdForProgram,
+          // Program-style fields
+          mode: c.mode || "Offline",
+          classSize: c.classSize || "",
+          location: c.location || "",
+          // Unified Course model expectations for type PROGRAM
+          type: 'PROGRAM',
+          courseName: programName,
+          aboutCourse: c.aboutCourse || "",
+          courseDuration: c.courseDuration || "",
+          priceOfCourse: c.priceOfCourse ? Number(c.priceOfCourse) : undefined,
+          // keep location for Course model too
+          // additional optional mirrors
+          graduationType: c.graduationType || undefined,
+          streamType: c.streamType || undefined,
+          selectBranch: c.selectBranch || undefined,
+        } as any;
+      }).filter((p) => p.courseName && p.courseName.length > 0);
+
+      for (const payload of toCreate) {
+        await programsAPI.create(payload);
+      }
+
+      onSuccess?.();
+      setIsLoading(false);
+      return;
+    }
+
     const allBranches = await getAllBranchesFromDB();
 
     const branchMap = new Map(
@@ -828,7 +910,7 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
 
   setIsLoading(true);
   try {
-    // --- YOUR EXISTING SAVE LOGIC CAN GO HERE ---
+    // Save branch to backend for subscriptions flow (and general use)
     const payload = {
       branchName: currentBranch.branchName,
       branchAddress: currentBranch.branchAddress,
@@ -836,17 +918,19 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
       locationUrl: currentBranch.locationUrl,
     };
 
-    if ((currentBranch as any).dbId) {
-      await updateBranchInDB({ id: (currentBranch as any).dbId, ...payload });
-    } else {
-      const [newId] = await addBranchesToDB([payload]);
-      setBranches((prev) =>
-        prev.map((b) => (b.id === selectedBranchId ? { ...b, dbId: newId } : b))
-      );
+    // Call backend API (falls back to localStorage institutionId if prop not provided)
+    const res = await branchAPI.createBranch(payload as any, institutionId);
+    if (!res?.success) {
+      throw new Error(res?.message || "Failed to save branch");
     }
 
-    const all = await getAllBranchesFromDB();
-    setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
+    // Update local chips/options from response
+    const saved = (res as any)?.data || [];
+    const names: string[] = Array.isArray(saved) ? saved.map((b: any) => b.branchName || b.name).filter(Boolean) : [];
+    setBranchOptions((prev) => {
+      const set = new Set([...(prev||[]), ...names]);
+      return Array.from(set);
+    });
     setShowCourseAfterBranch(true);
     // --- END OF YOUR SAVE LOGIC ---
   } catch (err) {
@@ -856,19 +940,11 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
   }
 };
 
-  return (
-    <>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+  const isSubscriptionProgram = mode === "subscriptionProgram";
 
-        <DialogContent
-          className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
-          showCloseButton={false}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-          onInteractOutside={(e) => e.preventDefault()}
-        >
-          <Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
-            <CardContent className="space-y-6">
+  const content = (
+    <Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
+      <CardContent className="space-y-6">
               {/* Render based on initialSection */}
               {initialSection === "course" ? (
                 <div className="space-y-6">
@@ -878,6 +954,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                         ? "Study Hall"
                         : isTutionCenter
                         ? "Tuition Hall"
+                        : isSubscriptionProgram
+                        ? "Program Details"
                         : "Course Details"}
                     </h3>
                     <p className="text-[#697282] text-sm">
@@ -885,8 +963,26 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                         ? "Enter the details of the study hall."
                         : isTutionCenter
                         ? "Enter the details of the tuition hall."
+                        : isSubscriptionProgram
+                        ? "Enter the programs your institution offers."
                         : "Enter the courses your institution offers."}
                     </p>
+                    {isSubscriptionProgram && (
+                      <div className="mt-2">
+                        <label className="block text-sm mb-1">Select Branch to add course</label>
+                        <AppSelect
+                          value={selectedBranchIdForProgram}
+                          onChange={(val)=> { setSelectedBranchIdForProgram(val); setProgramBranchError(""); }}
+                          options={uniqueRemoteBranches.map(b=> ({ label: b.branchName, value: b._id }))}
+                          placeholder="Select Branch"
+                          variant="white"
+                          size="md"
+                          rounded="lg"
+                          className="w-full"
+                        />
+                        {programBranchError && <p className="text-red-600 text-xs mt-1">{programBranchError}</p>}
+                      </div>
+                    )}
                   </div>
 
                   {/* Course items switching */}
@@ -910,6 +1006,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                                   ? `Hall ${course.id}`
                                   : isTutionCenter
                                   ? `Hall ${course.id}`
+                                  : isSubscriptionProgram
+                                  ? `Program ${course.id}`
                                   : `Course ${course.id}`)}
                             </span>
                             {courses.length > 1 && (
@@ -936,6 +1034,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                         ? "Add Hall"
                         : isTutionCenter
                         ? "Add Hall"
+                        : isSubscriptionProgram
+                        ? "Add Program"
                         : "Add Course"}
                     </Button>
                   </div>
@@ -961,6 +1061,7 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                         courses={courses}
                         selectedCourseId={selectedCourseId}
                         courseErrors={courseErrorsById[currentCourse.id] || {}}
+                        labelVariant={isSubscriptionProgram ? 'program' : 'course'}
                       />
                     ) : isTutionCenter ? (
                       <TuitionCenterForm
@@ -973,6 +1074,7 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
             selectedCourseId={selectedCourseId}
             // ✅ Pass errors to TuitionCenterForm
             courseErrors={courseErrorsById[currentCourse.id] || {}}
+            labelVariant={isSubscriptionProgram ? 'program' : 'course'}
         />
                     ) : isUnderPostGraduate ? (
                       <UnderPostGraduateForm
@@ -983,6 +1085,7 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
         selectedCourseId={selectedCourseId}
         // ✅ Add this prop to pass the errors down
         courseErrors={courseErrorsById[currentCourse.id] || {}}
+        labelVariant={isSubscriptionProgram ? 'program' : 'course'}
     />
                     ) : isBasicCourseForm ? (
                        <BasicCourseForm
@@ -993,7 +1096,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
     selectedCourseId={selectedCourseId}
     // ✅ This line passes the validation errors for the currently selected course
     // to the child component. The `|| {}` ensures it's always an object.
-    courseErrors={courseErrorsById[currentCourse.id] || {}}
+        courseErrors={courseErrorsById[currentCourse.id] || {}}
+        labelVariant={isSubscriptionProgram ? 'program' : 'course'}
   />
                     ) : (
                       <FallbackCourseForm
@@ -1002,6 +1106,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                         setCourses={setCourses}
                         courses={courses}
                         selectedCourseId={selectedCourseId}
+                        courseErrors={courseErrorsById[currentCourse.id] || {}}
+                        labelVariant={isSubscriptionProgram ? 'program' : 'course'}
                       />
                     )}
                     {!isStudyHall && !isTutionCenter && (
@@ -1017,8 +1123,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
               {currentCourse[f.type]
                 ? (currentCourse[f.type] as File).name
                 : f.type === "image"
-                ? "Upload Course Image (jpg / jpeg)"
-                : "Upload Brochure Course (pdf)"}
+                ? (isSubscriptionProgram ? "Upload Program Image (jpg / jpeg)" : "Upload Course Image (jpg / jpeg)")
+                : (isSubscriptionProgram ? "Upload Program Brochure (pdf)" : "Upload Brochure Course (pdf)")}
             </span>
             <input
               type="file"
@@ -1129,10 +1235,12 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                     <div className="space-y-6">
                       <div className="space-y-2">
                         <h3 className="text-xl md:text-2xl font-bold">
-                          {isStudyHall
+                        {isStudyHall
                             ? "Study Hall"
                             : isTutionCenter
                             ? "Tuition Hall"
+                            : isSubscriptionProgram
+                            ? "Program Details"
                             : "Course Details"}
                         </h3>
                         <p className="text-[#697282] text-sm">
@@ -1140,6 +1248,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                             ? "Enter the details of the study hall."
                             : isTutionCenter
                             ? "Enter the details of the tuition hall."
+                            : isSubscriptionProgram
+                            ? "Enter the programs your institution offers."
                             : "Enter the courses your institution offers."}
                         </p>
                       </div>
@@ -1165,6 +1275,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                                       ? `Hall ${course.id}`
                                       : isTutionCenter
                                       ? `Hall ${course.id}`
+                                      : isSubscriptionProgram
+                                      ? `Program ${course.id}`
                                       : `Course ${course.id}`)}
                                 </span>
                                 {courses.length > 1 && (
@@ -1191,6 +1303,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                             ? "Add Hall"
                             : isTutionCenter
                             ? "Add Hall"
+                            : isSubscriptionProgram
+                            ? "Add Program"
                             : "Add Course"}
                         </Button>
                       </div>
@@ -1233,6 +1347,7 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                             courses={courses}
                             selectedCourseId={selectedCourseId}
                             courseErrors={courseErrorsById[currentCourse.id] || {}}
+                            labelVariant={isSubscriptionProgram ? 'program' : 'course'}
                           />
                         ) : isTutionCenter ? (
                           <TuitionCenterForm
@@ -1245,6 +1360,7 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
             selectedCourseId={selectedCourseId}
             // ✅ Pass errors to TuitionCenterForm
             courseErrors={courseErrorsById[currentCourse.id] || {}}
+            labelVariant={isSubscriptionProgram ? 'program' : 'course'}
         />
                         ) : isUnderPostGraduate ? (
                           <UnderPostGraduateForm
@@ -1255,6 +1371,7 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
         selectedCourseId={selectedCourseId}
         // ✅ Add this prop to pass the errors down
         courseErrors={courseErrorsById[currentCourse.id] || {}}
+        labelVariant={isSubscriptionProgram ? 'program' : 'course'}
     />
                         ) : isBasicCourseForm ? (
                           <BasicCourseForm
@@ -1265,7 +1382,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
     selectedCourseId={selectedCourseId}
     // ✅ This line passes the validation errors for the currently selected course
     // to the child component. The `|| {}` ensures it's always an object.
-    courseErrors={courseErrorsById[currentCourse.id] || {}}
+        courseErrors={courseErrorsById[currentCourse.id] || {}}
+        labelVariant={isSubscriptionProgram ? 'program' : 'course'}
   />
                         ) : (
                           <FallbackCourseForm
@@ -1274,6 +1392,8 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                             setCourses={setCourses}
                             courses={courses}
                             selectedCourseId={selectedCourseId}
+                            courseErrors={courseErrorsById[currentCourse.id] || {}}
+                            labelVariant={isSubscriptionProgram ? 'program' : 'course'}
                           />
                         )}
                         {!isStudyHall && !isTutionCenter && (
@@ -1332,8 +1452,25 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                   )}
                 </div>
               )}
-            </CardContent>
-          </Card>
+      </CardContent>
+    </Card>
+  );
+
+  if (renderMode === "inline") {
+    return content;
+  }
+
+  return (
+    <>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+        <DialogContent
+          className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
+          showCloseButton={false}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          {content}
         </DialogContent>
       </Dialog>
     </>

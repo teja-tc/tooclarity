@@ -88,6 +88,7 @@
 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const Enquiries = require('./Enquiries');
 
 const instituteAdminSchema = new mongoose.Schema({
     googleId: {
@@ -169,7 +170,7 @@ const instituteAdminSchema = new mongoose.Schema({
             'SCHOOL',
             'INTERMEDIATE',
             'GRADUATION',
-            'COACHING',
+            'COACHING_CENTER',
             'STUDY_HALLS',
             'TUITION_CENTER',
             'STUDY_ABROAD',

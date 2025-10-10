@@ -21,6 +21,7 @@ interface StudyHallFormProps {
   hallName?: string; 
   selectedCourseId: number;
   courseErrors: Record<string, string>;
+  labelVariant?: 'course' | 'program';
 }
 
 const IconInput = ({ icon, children }: { icon: React.ReactNode, children: React.ReactNode }) => (
@@ -41,6 +42,7 @@ export default function StudyHallForm({
   courses,
   selectedCourseId,
   courseErrors = {},
+  labelVariant = 'course',
 }: StudyHallFormProps) {
 
   // ✅ 1. REMOVED the local handleFacilityChange function.
@@ -139,10 +141,10 @@ export default function StudyHallForm({
       
       {/* Add Image */}
       <div className="flex flex-col gap-3">
-        <label className="font-medium text-lg text-black">Add Image<span className="text-red-500 ml-1">*</span></label>
+        <label className="font-medium text-lg text-black">{labelVariant === 'program' ? 'Add Program Image' : 'Add Image'}<span className="text-red-500 ml-1">*</span></label>
         <label className={`w-full h-[81px] rounded-xl border border-dashed bg-white flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors ${courseErrors.image ? "border-red-500" : "border-[#DADADD]"}`}>
           <Upload size={24} className="text-gray-400 mb-2" />
-          <span className="text-sm text-[#697282]">{currentCourse.image ? (currentCourse.image as File).name : "Upload Course Image (jpg / jpeg)."}</span>
+          <span className="text-sm text-[#697282]">{currentCourse.image ? (currentCourse.image as File).name : (labelVariant === 'program' ? "Upload Program Image (jpg / jpeg)." : "Upload Course Image (jpg / jpeg).")}</span>
           <input type="file" accept="image/jpeg,image/jpg" className="hidden" onChange={(e) => handleFileChange(e, "image")} />
         </label>
         {courseErrors.image && <p className="text-sm text-red-600 mt-1">{courseErrors.image}</p>}

@@ -2,29 +2,9 @@ const mongoose = require("mongoose");
 
 const courseSchema = new mongoose.Schema(
   {
-    // Common Fields
-    courseViews: { type: Number, default: 0 },
-    viewsRollups: [
-      {
-        day: { type: String, trim: true },
-        count: { type: Number, default: 0 },
-      },
-    ],
-    comparisons: { type: Number, default: 0 },
-    comparisonRollups: [
-      {
-        day: { type: String, trim: true },
-        count: { type: Number, default: 0 },
-      }
-    ],
-    // Add leads generated rollups
-    leadsGenerated: { type: Number, default: 0 },
-    leadsRollups: [
-      {
-        day: { type: String, trim: true },
-        count: { type: Number, default: 0 },
-      }
-    ],
+    // Unified model type and hierarchy
+    type: { type: String, enum: ["PROGRAM","COURSE"], required: true, index: true },
+    parentProgram: { type: mongoose.Schema.Types.ObjectId, ref: "Course", index: true },
     courseName: {
       type: String,
       trim: true,
@@ -99,6 +79,8 @@ const courseSchema = new mongoose.Schema(
       required: true, // keep required since course must belong to an institution
       index: true,
     },
+
+    // Note: program reference removed; use parentProgram pointing to a Course with type='PROGRAM'
 
     branch: {
       type: mongoose.Schema.Types.ObjectId,
