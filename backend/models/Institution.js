@@ -26,6 +26,7 @@ const institutionSchema = new mongoose.Schema(
         "Tution Center's",
         "Study Abroad",
       ],
+      index: true,
     },
     establishmentDate: {
       type: String,
@@ -55,6 +56,7 @@ const institutionSchema = new mongoose.Schema(
     pincode: {
       type: String,
       trim: true,
+      index: true,
     },
     locationURL: {
       type: String,
@@ -109,6 +111,7 @@ const kindergartenSchema = new mongoose.Schema({
     trim: true,
     maxlength: [100, "Curriculum type cannot exceed 100 characters."],
     default: "",
+    index: true,
   },
   // operationalTimes: {
   //   opening: { type: String, required: true },
@@ -230,6 +233,7 @@ const intermediateCollegeSchema = new mongoose.Schema({
     required: true,
     enum: ["State Board", "CBSE", "ICSE", "IB", "IGCSE", "Cambridge", "Other"],
     default: "",
+    index: true,
   },
   operationalDays: {
     type: [String],
