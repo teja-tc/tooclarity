@@ -4,8 +4,17 @@ const authController = require('../controllers/auth.controller');
 const { validateRegistration, validateLogin } = require('../middleware/validators');
 const { otpLimiter } = require('../middleware/rateLimiter');
 // const { protect } = require('../middleware/globalAuth.middleware');
+// const { protect } = require('../middleware/globalAuth.middleware');
 
 const router = express.Router();
+
+// const passwordResetLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 10,
+//   message: 'Too many requests from this IP, please try again after 15 minutes',
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
 
 // const passwordResetLimiter = rateLimit({
 //   windowMs: 15 * 60 * 1000,
@@ -41,7 +50,12 @@ router.post(
     authController.verifyEmailOtp
 );
 
+
+router.post('/logout', authController.logout);
+
 router.post('/forgot-password', authController.forgotPassword);
 router.patch('/reset-password/:token', authController.resetPassword);
+
+
 
 module.exports = router;

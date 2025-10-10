@@ -5,6 +5,9 @@ const { promisify } = require("util");
 const AppError = require("../utils/appError");
 const crypto = require('crypto');
 
+const CookieUtil = require("../utils/cookie.util");
+const RedisUtil = require("../utils/redis.util");
+
 const { sendTokens } = require("../utils/token.utils");
 
 exports.register = async (req, res, next, options = {}) => {
@@ -21,13 +24,17 @@ exports.register = async (req, res, next, options = {}) => {
       profilePicture,
     } = req.body;
 
-    const existingUser = await InstituteAdmin.findOne({
-      $or: [{ email }],
-    });
+    const existingUser = await InstituteAdmin.findOne({ $or: [{ email }] });
+
     if (existingUser) {
+      if (options.returnTokens) {
+        const err = new Error("User already exists");
+        err.code = "USER_EXISTS";
+        throw err;
+      }
       return res.status(409).json({
         status: "fail",
-        message: "Email or contact number already in use.",
+        message: "Email already in use.",
       });
     }
 
@@ -45,13 +52,14 @@ exports.register = async (req, res, next, options = {}) => {
         isPaymentDone: false,
         isProfileCompleted: false,
         address: undefined,
-        ProfilePicutre: undefined,
+        profilePicture: profilePicture || "",
         googleId: googleId || undefined,
-        isEmailVerified: true,
+        isEmailVerified: !!googleId,
         isPhoneVerified: false,
       });
 
-      if (!googleId) {
+      // ⚠️ Only send OTP in normal email/password flow
+      if (!googleId && !options.returnTokens) {
         await otpService.sendVerificationToken(email);
         return res.status(201).json({
           status: "success",
@@ -66,15 +74,9 @@ exports.register = async (req, res, next, options = {}) => {
         contactNumber,
         designation,
         role: "ADMIN",
-        isPaymentDone: undefined,
-        isProfileCompleted: undefined,
-        address: undefined,
-        ProfilePicutre: undefined,
         googleId: googleId || undefined,
-        institution: undefined,
         isEmailVerified: false,
         isPhoneVerified: false,
-        linkedinUrl: undefined,
       });
     } else if (type === "student") {
       newUser = await InstituteAdmin.create({
@@ -82,19 +84,20 @@ exports.register = async (req, res, next, options = {}) => {
         email,
         password: password || undefined,
         contactNumber,
-        designation: undefined,
-        linkedinUrl: undefined,
         role: "STUDENT",
-        isPaymentDone: undefined,
         isProfileCompleted: false,
         address: "",
-        ProfilePicutre: profilePicture || "",
+        profilePicture: profilePicture || "",
         googleId: googleId || undefined,
-        institution: undefined,
-        isEmailVerified: false,
+        isEmailVerified: !!googleId,
         isPhoneVerified: false,
       });
     } else {
+      if (options.returnTokens) {
+        const err = new Error("Invalid user type");
+        err.code = "INVALID_USER_TYPE";
+        throw err;
+      }
       return res
         .status(400)
         .json({ status: "fail", message: "Invalid user type." });
@@ -108,10 +111,10 @@ exports.register = async (req, res, next, options = {}) => {
       options
     );
 
-    // ✅ If returnTokens is true, we are in Google OAuth flow, so just return tokenData
+    // ✅ If Google OAuth flow → return tokens only
     if (options.returnTokens) return tokenData;
 
-    // ✅ Otherwise normal email/password registration
+    // ✅ Otherwise → normal response
     return res.status(201).json({
       status: "success",
       message: "User registered successfully",
@@ -162,13 +165,17 @@ exports.verifyEmailOtp = async (req, res, next) => {
 exports.login = async (req, res, next, options = {}) => {
   try {
     const { email, password, googleId } = req.body;
-
     let user;
 
     if (googleId) {
       // ✅ Google OAuth login
       user = await InstituteAdmin.findOne({ email, googleId });
       if (!user) {
+        if (options.returnTokens) {
+          const err = new Error("No account found for this Google user.");
+          err.code = "USER_NOT_FOUND";
+          throw err;
+        }
         return res.status(404).json({
           status: "fail",
           message:
@@ -178,15 +185,30 @@ exports.login = async (req, res, next, options = {}) => {
     } else {
       // ✅ Normal email + password login
       user = await InstituteAdmin.findOne({ email }).select("+password");
-      if (!user || !(await user.comparePassword(password))) {
-        return res
-          .status(401)
-          .json({ status: "fail", message: "Incorrect email or password." });
+      const invalid = !user || !(await user.comparePassword(password));
+
+      if (invalid) {
+        if (options.returnTokens) {
+          const err = new Error("Incorrect email or password.");
+          err.code = "INVALID_CREDENTIALS";
+          throw err;
+        }
+        return res.status(401).json({
+          status: "fail",
+          message: "Incorrect email or password.",
+        });
       }
     }
 
     // ✅ Common checks for Institute Admins
     if (user.role === "INSTITUTE_ADMIN" && !user.isEmailVerified && !googleId) {
+      if (options.returnTokens) {
+        const err = new Error(
+          "Account not verified. Please verify your email."
+        );
+        err.code = "EMAIL_NOT_VERIFIED";
+        throw err;
+      }
       return res.status(403).json({
         status: "fail",
         message: "Account not verified. Please verify your Email first.",
@@ -197,6 +219,22 @@ exports.login = async (req, res, next, options = {}) => {
     return await sendTokens(user, res, "Login successful.", options);
   } catch (error) {
     next(error);
+  }
+};
+
+
+exports.logout = async (req, res, next) => {
+  const userId = req.userId;
+  try {
+    RedisUtil.deleteRefreshToken(userId);
+    CookieUtil.clearAllCookies(res);
+    return res.status(200).json({
+      status: "success",
+      message: "Logged out successfully.",
+    });
+  }
+  catch (err) {
+    console.log(err.message);
   }
 };
 
@@ -301,3 +339,4 @@ exports.resetPassword = async (req, res, next) => {
     next(error);
   }
 };
+

@@ -176,7 +176,7 @@ export default function SignUpDialog({
 
     const userType = "institution";
     const type = "register"
-    const state = JSON.stringify({ state: "institution", type: "register" });
+    const state = JSON.stringify({ state: "institution", type: "register", device: "web" });
 
     redirectToGoogleOAuth({ clientId, redirectUri, userType, state, type });
   };

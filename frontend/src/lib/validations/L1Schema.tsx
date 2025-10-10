@@ -107,4 +107,15 @@ export const L1Schema = Joi.object({ // <-- Opening brace
       "string.empty": "Location URL is required",
       "string.pattern.base": "Please enter a valid URL (must start with http:// or https://)",
     }),
-}); // <-- ✅ Correct closing brace for the whole object
+
+  logoUrl: Joi.string()
+    .uri()
+    .pattern(/\.(jpg|jpeg|png)$/i)
+    .required()
+    .messages({
+      "string.empty": "Logo is required",
+      "any.required": "Logo is required",
+      "string.uri": "Invalid logo URL format",
+      // "string.pattern.base": "Logo must be a valid image file (.jpg, .jpeg, .png)",
+    }),
+}).unknown(true); // <-- ✅ Correct closing brace for the whole object

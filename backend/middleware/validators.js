@@ -4,20 +4,20 @@ const logger = require('../config/logger');
 
 // --- UTILITY FUNCTION ---
 const handleValidationErrors = (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(422).json({ errors: errors.array() });
-    }
-    next();
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.array() });
+  }
+  next();
 };
 
 // --- AUTH VALIDATORS ---
 const strongPasswordOptions = {
-    minLength: 8,
-    minLowercase: 1,
-    minUppercase: 1,
-    minNumbers: 1,
-    minSymbols: 1,
+  minLength: 8,
+  minLowercase: 1,
+  minUppercase: 1,
+  minNumbers: 1,
+  minSymbols: 1,
 };
 
 exports.validateRegistration = [
@@ -29,17 +29,28 @@ exports.validateRegistration = [
         .matches(/^[0-9]{10}$/)
         .withMessage('A valid 10-digit contact number is required.'),
 
-    body('designation').notEmpty().withMessage('Designation is required').trim().escape(),
-    body('linkedinUrl').optional({ checkFalsy: true }).isURL().withMessage('Invalid LinkedIn URL').trim(),
-    handleValidationErrors,
+  body("designation")
+    .notEmpty()
+    .withMessage("Designation is required")
+    .trim()
+    .escape(),
+  body("linkedinUrl")
+    .optional({ checkFalsy: true })
+    .isURL()
+    .withMessage("Invalid LinkedIn URL")
+    .trim(),
+  body("logoUrl").isURL().withMessage("Logo URL must be a valid URL").trim(),
+  handleValidationErrors,
 ];
 
 exports.validateLogin = [
-    body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
-    body('password').notEmpty().withMessage('Password is required'),
-    handleValidationErrors,
+  body("email")
+    .isEmail()
+    .withMessage("A valid email is required")
+    .normalizeEmail(),
+  body("password").notEmpty().withMessage("Password is required"),
+  handleValidationErrors,
 ];
-
 
 // --- L1 INSTITUTION VALIDATOR ---
 exports.validateL1Creation = [
@@ -59,18 +70,25 @@ exports.validateL1Creation = [
     handleValidationErrors,
 ];
 
-
 // --- L2 INSTITUTION VALIDATOR---
 
 const ugPgUniversityL2Rules = [
-    body('ownershipType').isIn(['Government', 'Private', 'Public-Private Partnership']).withMessage('Invalid ownership type.'),
-    body('collegeCategory').isIn(['Engineering', 'Medical', 'Arts & Science', 'Management', 'Law']).withMessage('Invalid college category.'),
-    body('affiliationType').trim().notEmpty().withMessage('Affiliation type is required.').isLength({ max: 100 }).escape(),
-    body('placements.placementDrives').optional().isBoolean(),
-    body('placements.mockInterviews').optional().isBoolean(),
-    body('placements.resumeBuilding').optional().isBoolean(),
+  body("ownershipType")
+    .isIn(["Government", "Private", "Public-Private Partnership"])
+    .withMessage("Invalid ownership type."),
+  body("collegeCategory")
+    .isIn(["Engineering", "Medical", "Arts & Science", "Management", "Law"])
+    .withMessage("Invalid college category."),
+  body("affiliationType")
+    .trim()
+    .notEmpty()
+    .withMessage("Affiliation type is required.")
+    .isLength({ max: 100 })
+    .escape(),
+  body("placements.placementDrives").optional().isBoolean(),
+  body("placements.mockInterviews").optional().isBoolean(),
+  body("placements.resumeBuilding").optional().isBoolean(),
 ];
-
 
 const coachingCenterL2Rules = [
     body('placementDrives')
@@ -98,17 +116,24 @@ const coachingCenterL2Rules = [
         .isBoolean().withMessage('certification must be true or false'),
 ];
 
-
 exports.validateL2Update = async (req, res, next) => {
-    try {
-        console.log("in l2UpdateValidators")
-        const userId = req.userId;
-        // const institution = await Institution.findById(req.user.institution);
-        const institution = await Institution.findOne({ institutionAdmin: userId });
-        if (!institution) {
-            logger.warn({ userId: req.userId }, 'Attempted L2 update for a non-existent institution.');
-            return res.status(404).json({ status: 'fail', message: 'Institution not found for the logged-in user.' });
-        }
+  try {
+    console.log("in l2UpdateValidators");
+    const userId = req.userId;
+    // const institution = await Institution.findById(req.user.institution);
+    const institution = await Institution.findOne({ institutionAdmin: userId });
+    if (!institution) {
+      logger.warn(
+        { userId: req.userId },
+        "Attempted L2 update for a non-existent institution."
+      );
+      return res
+        .status(404)
+        .json({
+          status: "fail",
+          message: "Institution not found for the logged-in user.",
+        });
+    }
 
         let validationChain = [];
         console.log("for type of " + institution.instituteType)
@@ -122,10 +147,18 @@ exports.validateL2Update = async (req, res, next) => {
             case "Tution Center's": return next();
             case 'Study Halls': return next();
 
-            default:
-                logger.error({ userId: req.userId, instituteType: institution.instituteType }, 'Unsupported institution type for L2 update.');
-                return res.status(400).json({ status: 'fail', message: 'Unsupported institution type for L2 update.' });
-        }
+      default:
+        logger.error(
+          { userId: req.userId, instituteType: institution.instituteType },
+          "Unsupported institution type for L2 update."
+        );
+        return res
+          .status(400)
+          .json({
+            status: "fail",
+            message: "Unsupported institution type for L2 update.",
+          });
+    }
 
         // Run the selected validation chain
         await Promise.all(validationChain.map(validation => validation.run(req)));
@@ -138,56 +171,116 @@ exports.validateL2Update = async (req, res, next) => {
     }
 };
 
-
 // --- BRANCH VALIDATORS ---
 exports.validateBranchCreation = [
-    param('institutionId').isMongoId().withMessage('Invalid institution ID.'),
-    body('branchName').trim().notEmpty().withMessage('Branch name is required.').isLength({ max: 100 }),
-    body('contactInfo.countryCode').optional().trim(),
-    body('contactInfo.number').trim().notEmpty().matches(/^\d{10}$/).withMessage('A valid 10-digit contact number is required.'),
-    body('branchAddress').trim().notEmpty().withMessage('Branch address is required.').isLength({ max: 255 }),
-    body('locationUrl').optional({ checkFalsy: true }).isURL().withMessage('Must be a valid URL.'),
-    handleValidationErrors,
+  param("institutionId").isMongoId().withMessage("Invalid institution ID."),
+  body("branchName")
+    .trim()
+    .notEmpty()
+    .withMessage("Branch name is required.")
+    .isLength({ max: 100 }),
+  body("contactInfo.countryCode").optional().trim(),
+  body("contactInfo.number")
+    .trim()
+    .notEmpty()
+    .matches(/^\d{10}$/)
+    .withMessage("A valid 10-digit contact number is required."),
+  body("branchAddress")
+    .trim()
+    .notEmpty()
+    .withMessage("Branch address is required.")
+    .isLength({ max: 255 }),
+  body("locationUrl")
+    .optional({ checkFalsy: true })
+    .isURL()
+    .withMessage("Must be a valid URL."),
+  handleValidationErrors,
 ];
 
 exports.validateBranchUpdate = [
-    param('institutionId').isMongoId().withMessage('Invalid institution ID.'),
-    param('branchId').isMongoId().withMessage('Invalid branch ID.'),
-    body('branchName').optional().trim().notEmpty().withMessage('Branch name cannot be empty.').isLength({ max: 100 }),
-    body('contactInfo.number').optional().trim().notEmpty().matches(/^\d{10}$/).withMessage('A valid 10-digit contact number is required.'),
-    body('branchAddress').optional().trim().notEmpty().withMessage('Branch address cannot be empty.').isLength({ max: 255 }),
-    body('locationUrl').optional({ checkFalsy: true }).isURL().withMessage('Must be a valid URL.'),
-    handleValidationErrors,
+  param("institutionId").isMongoId().withMessage("Invalid institution ID."),
+  param("branchId").isMongoId().withMessage("Invalid branch ID."),
+  body("branchName")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Branch name cannot be empty.")
+    .isLength({ max: 100 }),
+  body("contactInfo.number")
+    .optional()
+    .trim()
+    .notEmpty()
+    .matches(/^\d{10}$/)
+    .withMessage("A valid 10-digit contact number is required."),
+  body("branchAddress")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Branch address cannot be empty.")
+    .isLength({ max: 255 }),
+  body("locationUrl")
+    .optional({ checkFalsy: true })
+    .isURL()
+    .withMessage("Must be a valid URL."),
+  handleValidationErrors,
 ];
-
 
 // --- COURSE VALIDATORS---
 exports.validateCourseCreation = [
-    param('institutionId').isMongoId().withMessage('Invalid institution ID.'),
-    body('courseName').trim().notEmpty().withMessage('Course name is required.').isLength({ max: 150 }),
-    body('aboutCourse').trim().notEmpty().withMessage('About course is required.').isLength({ max: 2000 }),
-    body('courseDuration').trim().notEmpty().withMessage('Course duration is required.').isLength({ max: 50 }),
-    body('mode').isIn(['Offline', 'Online', 'Hybrid']).withMessage('Invalid mode specified.'),
-    body('priceOfCourse').isNumeric().withMessage('Price must be a number.').custom(val => val >= 0).withMessage('Price cannot be negative.'),
-    body('location').trim().notEmpty().withMessage('Location is required.').isLength({ max: 100 }),
-    handleValidationErrors,
+  param("institutionId").isMongoId().withMessage("Invalid institution ID."),
+  body("courseName")
+    .trim()
+    .notEmpty()
+    .withMessage("Course name is required.")
+    .isLength({ max: 150 }),
+  body("aboutCourse")
+    .trim()
+    .notEmpty()
+    .withMessage("About course is required.")
+    .isLength({ max: 2000 }),
+  body("courseDuration")
+    .trim()
+    .notEmpty()
+    .withMessage("Course duration is required.")
+    .isLength({ max: 50 }),
+  body("mode")
+    .isIn(["Offline", "Online", "Hybrid"])
+    .withMessage("Invalid mode specified."),
+  body("priceOfCourse")
+    .isNumeric()
+    .withMessage("Price must be a number.")
+    .custom((val) => val >= 0)
+    .withMessage("Price cannot be negative."),
+  body("location")
+    .trim()
+    .notEmpty()
+    .withMessage("Location is required.")
+    .isLength({ max: 100 }),
+  body("imageUrl").trim().isURL().withMessage("Image URL must be a valid URL."),
+  body("brotureUrl")
+    .trim()
+    .isURL()
+    .withMessage("Broture URL must be a valid URL."),
+  handleValidationErrors,
 ];
 
 exports.validateCourseUpdate = [
-    param('institutionId').isMongoId().withMessage('Invalid institution ID.'),
-    param('courseId').isMongoId().withMessage('Invalid course ID.'),
-    body('courseName').optional().trim().notEmpty().withMessage('Course name cannot be empty').isLength({ max: 150 }),
-    body('aboutCourse').optional().trim().notEmpty().withMessage('About course cannot be empty').isLength({ max: 2000 }),
-    handleValidationErrors,
+  param("institutionId").isMongoId().withMessage("Invalid institution ID."),
+  param("courseId").isMongoId().withMessage("Invalid course ID."),
+  body("courseName")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("Course name cannot be empty")
+    .isLength({ max: 150 }),
+  body("aboutCourse")
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage("About course cannot be empty")
+    .isLength({ max: 2000 }),
+  handleValidationErrors,
 ];
-
-
-
-
-
-
-
-
 
 // // --- L1 INSTITUTION VALIDATOR ---
 // exports.validateL1Creation = [
@@ -280,7 +373,6 @@ exports.validateL1Creation = [
     handleValidationErrors, // Your existing error handler
 ];
 
-
 // --- L2 BRANCH & COURSE VALIDATORS (For File Upload) ---
 
 const l2BranchRules = [
@@ -292,43 +384,48 @@ const l2BranchRules = [
         .isLength({ min: 3, max: 100 })
         .withMessage('Branch name must be between 3 and 100 characters.'),
 
-    // These fields are now ONLY required IF a branchName is provided.
-    body('*.branchAddress')
-        .if(body('*.branchName').notEmpty()) // The condition
-        .trim()
-        .notEmpty().withMessage('Branch address is required when a branch name is provided.'),
+  // These fields are now ONLY required IF a branchName is provided.
+  body("*.branchAddress")
+    .if(body("*.branchName").notEmpty()) // The condition
+    .trim()
+    .notEmpty()
+    .withMessage("Branch address is required when a branch name is provided."),
 
-    body('*.contactInfo')
-        .if(body('*.branchName').notEmpty()) // The condition
-        .trim()
-        .notEmpty().withMessage('Contact info is required when a branch name is provided.')
-        .matches(/^[0-9]{10}$/).withMessage('A valid 10-digit contact number is required.'),
+  body("*.contactInfo")
+    .if(body("*.branchName").notEmpty()) // The condition
+    .trim()
+    .notEmpty()
+    .withMessage("Contact info is required when a branch name is provided.")
+    .matches(/^[0-9]{10}$/)
+    .withMessage("A valid 10-digit contact number is required."),
 
-    body('*.locationUrl')
-        .if(body('*.branchName').notEmpty()) // The condition
-        .trim()
-        .notEmpty().withMessage('Location URL is required when a branch name is provided.')
-        .isURL().withMessage('Must be a valid URL.'),
+  body("*.locationUrl")
+    .if(body("*.branchName").notEmpty()) // The condition
+    .trim()
+    .notEmpty()
+    .withMessage("Location URL is required when a branch name is provided.")
+    .isURL()
+    .withMessage("Must be a valid URL."),
 ];
-
 
 // ✅ --- L2 BASE COURSE VALIDATOR ---
 // These rules now correctly match your frontend baseCourseSchema
 const l2BaseCourseRules = [
-    body('courseName')
-        .trim()
-        .notEmpty().withMessage('Course name is required.'),
+  body("courseName").trim().notEmpty().withMessage("Course name is required."),
 
-    body('aboutCourse')
-        .trim()
-        .notEmpty().withMessage('About course is required.'),
+  body("aboutCourse")
+    .trim()
+    .notEmpty()
+    .withMessage("About course is required."),
 
-    body('courseDuration')
-        .trim()
-        .notEmpty().withMessage('Course duration is required.'),
+  body("courseDuration")
+    .trim()
+    .notEmpty()
+    .withMessage("Course duration is required."),
 
-    body('mode')
-        .isIn(['Offline', 'Online', 'Hybrid']).withMessage('A valid mode is required.'),
+  body("mode")
+    .isIn(["Offline", "Online", "Hybrid"])
+    .withMessage("A valid mode is required."),
 
     body('priceOfCourse')
         .trim()
@@ -344,10 +441,8 @@ const l2BaseCourseRules = [
     body('createdBranch').optional({ checkFalsy: true }).trim()
 ];
 
-
 const l2UgPgCourseRules = [
-    body('graduationType')
-        .notEmpty().withMessage('Graduation type is required.'),
+  body("graduationType").notEmpty().withMessage("Graduation type is required."),
 
     body('streamType')
         .notEmpty().withMessage('Stream type is required.'),
@@ -384,17 +479,14 @@ const l2UgPgCourseRules = [
     body('createdBranch').optional({ checkFalsy: true }).trim()
 ];
 
-
-
 const l2CoachingCourseRules = [
-    // --- Base Course Rules ---
-    body('courseName')
-        .trim()
-        .notEmpty().withMessage('Course name is required.'),
+  // --- Base Course Rules ---
+  body("courseName").trim().notEmpty().withMessage("Course name is required."),
 
-    body('courseDuration')
-        .trim()
-        .notEmpty().withMessage('Course duration is required.'),
+  body("courseDuration")
+    .trim()
+    .notEmpty()
+    .withMessage("Course duration is required."),
 
     body('priceOfCourse')
         .notEmpty().withMessage('Price is required.')
@@ -407,8 +499,7 @@ const l2CoachingCourseRules = [
     body('mode')
         .isIn(['Offline', 'Online', 'Hybrid']).withMessage('A valid mode is required.'),
 
-    body('createdBranch')
-        .optional({ checkFalsy: true }).trim(),
+  body("createdBranch").optional({ checkFalsy: true }).trim(),
 
     // --- Coaching-specific Rules ---
     body('categoriesType')
@@ -425,43 +516,54 @@ const l2CoachingCourseRules = [
         ])
         .withMessage('Please select a valid domain type.'),
 
-    body('classSize')
-        .notEmpty().withMessage('Class size is required.')
-        .isNumeric().withMessage('Class size must be a number.'),
+  body("classSize")
+    .notEmpty()
+    .withMessage("Class size is required.")
+    .isNumeric()
+    .withMessage("Class size must be a number."),
 ];
 
 const l2TuitionCourseRules = [
-    // Validates the 'tuitionType' dropdown
-    body('tuitionType')
-        .isIn(['Home Tuition', 'Center Tuition'])
-        .withMessage('A valid tuition type is required (Home Tuition or Center Tuition).'),
+  // Validates the 'tuitionType' dropdown
+  body("tuitionType")
+    .isIn(["Home Tuition", "Center Tuition"])
+    .withMessage(
+      "A valid tuition type is required (Home Tuition or Center Tuition)."
+    ),
 
-    // Validates 'instructorProfile' is not empty
-    body('instructorProfile')
-        .trim()
-        .notEmpty().withMessage('Instructor profile is required.'),
+  // Validates 'instructorProfile' is not empty
+  body("instructorProfile")
+    .trim()
+    .notEmpty()
+    .withMessage("Instructor profile is required."),
 
-    // Validates 'subject' format
-    body('subject')
-        .trim()
-        .notEmpty().withMessage('Subject is required.')
-        .matches(/^[A-Za-z\s,]+$/).withMessage('Subject can only contain letters, spaces, and commas.'),
+  // Validates 'subject' format
+  body("subject")
+    .trim()
+    .notEmpty()
+    .withMessage("Subject is required.")
+    .matches(/^[A-Za-z\s,]+$/)
+    .withMessage("Subject can only contain letters, spaces, and commas."),
 
-    // Validates 'totalSeats' is a non-negative number
-    body('totalSeats')
-        .notEmpty().withMessage('Total seats is required.')
-        .isInt({ min: 0 }).withMessage('Total seats must be a non-negative number.'),
+  // Validates 'totalSeats' is a non-negative number
+  body("totalSeats")
+    .notEmpty()
+    .withMessage("Total seats is required.")
+    .isInt({ min: 0 })
+    .withMessage("Total seats must be a non-negative number."),
 
-    // Validates 'availableSeats' and ensures it's not greater than 'totalSeats'
-    body('availableSeats')
-        .notEmpty().withMessage('Available seats is required.')
-        .isInt({ min: 0 }).withMessage('Available seats must be a non-negative number.')
-        .custom((value, { req }) => {
-            if (parseInt(value, 10) > parseInt(req.body.totalSeats, 10)) {
-                throw new Error('Available seats cannot exceed total seats.');
-            }
-            return true;
-        }),
+  // Validates 'availableSeats' and ensures it's not greater than 'totalSeats'
+  body("availableSeats")
+    .notEmpty()
+    .withMessage("Available seats is required.")
+    .isInt({ min: 0 })
+    .withMessage("Available seats must be a non-negative number.")
+    .custom((value, { req }) => {
+      if (parseInt(value, 10) > parseInt(req.body.totalSeats, 10)) {
+        throw new Error("Available seats cannot exceed total seats.");
+      }
+      return true;
+    }),
 
     // Validates 'operationalDays' has at least one day selected
     body('operationalDays')
@@ -471,8 +573,9 @@ const l2TuitionCourseRules = [
     body('openingTime')
         .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Opening time must be in a valid HH:MM format.'),
 
-    body('closingTime')
-        .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Closing time must be in a valid HH:MM format.'),
+  body("closingTime")
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage("Closing time must be in a valid HH:MM format."),
 
     // Validates 'pricePerSeat' is a non-negative number
     body('pricePerSeat')
@@ -510,16 +613,18 @@ const l2StudyHallRules = [
         .notEmpty().withMessage('Total seats is required.')
         .isInt({ min: 0 }).withMessage('Total seats must be a non-negative number.'),
 
-    // Validates available seats and ensures it's not greater than total seats
-    body('availableSeats')
-        .notEmpty().withMessage('Available seats is required.')
-        .isInt({ min: 0 }).withMessage('Available seats must be a non-negative number.')
-        .custom((value, { req }) => {
-            if (parseInt(value, 10) > parseInt(req.body.totalSeats, 10)) {
-                throw new Error('Available seats cannot exceed total seats.');
-            }
-            return true;
-        }),
+  // Validates available seats and ensures it's not greater than total seats
+  body("availableSeats")
+    .notEmpty()
+    .withMessage("Available seats is required.")
+    .isInt({ min: 0 })
+    .withMessage("Available seats must be a non-negative number.")
+    .custom((value, { req }) => {
+      if (parseInt(value, 10) > parseInt(req.body.totalSeats, 10)) {
+        throw new Error("Available seats cannot exceed total seats.");
+      }
+      return true;
+    }),
 
     // Validates 'pricePerSeat' is a non-negative number
     body('pricePerSeat')
@@ -537,51 +642,74 @@ const l2StudyHallRules = [
     body('hasPersonalLocker').isIn(['Yes', 'No']).withMessage('A selection for Personal Lockers is required.'),
 
 
-    // Allows 'createdBranch' to be optional
-    body('createdBranch').optional({ checkFalsy: true }).trim(),
+  // Allows 'createdBranch' to be optional
+  body("createdBranch").optional({ checkFalsy: true }).trim(),
 ];
 
 // --- L3 DETAILS VALIDATOR MIDDLEWARE ---
 exports.validateL3Details = async (req, res, next) => {
-    // This function remains the same as you provided
-    try {
-        const institution = await Institution.findOne({ institutionAdmin: req.userId });
-        if (!institution) {
-            return res.status(404).json({ message: 'Institution not found.' });
-        }
-        let validationChain = [];
-        switch (institution.instituteType) {
-            case 'Kindergarten/childcare center': validationChain = kindergartenL3Rules; break;
-            case "School's": validationChain = schoolL3Rules; break;
-            case 'Intermediate college(K12)': validationChain = intermediateCollegeL3Rules; break;
-            case 'Under Graduation/Post Graduation': validationChain = ugPgUniversityL3Rules; break;
-            case 'Coaching centers': validationChain = coachingCenterL3Rules; break;
-            case 'Study Abroad':
-            case "Tution Center's":
-            case 'Study Halls':
-                return next(); // Skip validation for these types as per your logic
-            default:
-                return res.status(400).json({ message: 'Unsupported institution type for L3 update.' });
-        }
-        await Promise.all(validationChain.map(validation => validation.run(req)));
-        handleValidationErrors(req, res, next);
-    } catch (error) {
-        next(error);
+  // This function remains the same as you provided
+  try {
+    const institution = await Institution.findOne({
+      institutionAdmin: req.userId,
+    });
+    if (!institution) {
+      return res.status(404).json({ message: "Institution not found." });
     }
+    let validationChain = [];
+    switch (institution.instituteType) {
+      case "Kindergarten/childcare center":
+        validationChain = kindergartenL3Rules;
+        break;
+      case "School's":
+        validationChain = schoolL3Rules;
+        break;
+      case "Intermediate college(K12)":
+        validationChain = intermediateCollegeL3Rules;
+        break;
+      case "Under Graduation/Post Graduation":
+        validationChain = ugPgUniversityL3Rules;
+        break;
+      case "Coaching centers":
+        validationChain = coachingCenterL3Rules;
+        break;
+      case "Study Abroad":
+      case "Tution Center's":
+      case "Study Halls":
+        return next(); // Skip validation for these types as per your logic
+      default:
+        return res
+          .status(400)
+          .json({ message: "Unsupported institution type for L3 update." });
+    }
+    await Promise.all(validationChain.map((validation) => validation.run(req)));
+    handleValidationErrors(req, res, next);
+  } catch (error) {
+    next(error);
+  }
 };
 const kindergartenL3Rules = [
-    // Validates the 'schoolType' dropdown selection
-    body('schoolType')
-        .isIn(['Public', 'Private (For-profit)', 'Private (Non-profit)', 'International', 'Home - based'])
-        .withMessage('Invalid school type selected.'),
+  // Validates the 'schoolType' dropdown selection
+  body("schoolType")
+    .isIn([
+      "Public",
+      "Private (For-profit)",
+      "Private (Non-profit)",
+      "International",
+      "Home - based",
+    ])
+    .withMessage("Invalid school type selected."),
 
-    // Validates 'curriculumType' text input
-    body('curriculumType')
-        .trim()
-        .notEmpty().withMessage('Curriculum type is required.')
-        .isLength({ min: 3, max: 100 }).withMessage('Curriculum type must be between 3 and 100 characters.')
-        .matches(/^[A-Za-z\s]+$/).withMessage('Curriculum type must only contain letters and spaces.')
-        .escape(),
+  // Validates 'curriculumType' text input
+  body("curriculumType")
+    .trim()
+    .notEmpty()
+    .withMessage("Curriculum type is required.")
+    .isLength({ min: 3, max: 100 })
+    .withMessage("Curriculum type must be between 3 and 100 characters.")
+    .matches(/^[A-Za-z\s]+$/)
+    .withMessage("Curriculum type must only contain letters and spaces.")
+    .escape(),
 
     // Validates time fields are not empty
     body('openingTime')
@@ -610,22 +738,21 @@ const kindergartenL3Rules = [
         .isBoolean().withMessage('A selection for Outdoor Play Area is required.'),
 ];
 
-
 const schoolL3Rules = [
-    // Validates the 'schoolType' dropdown selection
-    body('schoolType')
-        .isIn(['Co-ed', 'Boys Only', 'Girls Only'])
-        .withMessage('Invalid school type selected.'),
+  // Validates the 'schoolType' dropdown selection
+  body("schoolType")
+    .isIn(["Co-ed", "Boys Only", "Girls Only"])
+    .withMessage("Invalid school type selected."),
 
-    // Validates the 'schoolCategory' dropdown selection
-    body('schoolCategory')
-        .isIn(['Public', 'Private', 'Charter', 'International'])
-        .withMessage('Invalid school category selected.'),
+  // Validates the 'schoolCategory' dropdown selection
+  body("schoolCategory")
+    .isIn(["Public", "Private", "Charter", "International"])
+    .withMessage("Invalid school category selected."),
 
-    // Validates the 'curriculumType' dropdown selection
-    body('curriculumType')
-        .isIn(['State Board', 'CBSE', 'ICSE', 'IB', 'IGCSE'])
-        .withMessage('Invalid curriculum type selected.'),
+  // Validates the 'curriculumType' dropdown selection
+  body("curriculumType")
+    .isIn(["State Board", "CBSE", "ICSE", "IB", "IGCSE"])
+    .withMessage("Invalid curriculum type selected."),
 
     // Validates the array of operational days
     body('operationalDays')
@@ -634,12 +761,14 @@ const schoolL3Rules = [
     body('operationalDays.*')
         .isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun']),
 
-    // Validates 'otherActivities' text area
-    body('otherActivities')
-        .trim()
-        .notEmpty().withMessage('Other activities is required.')
-        .isLength({ max: 200 }).withMessage('Other activities must not exceed 200 characters.')
-        .escape(),
+  // Validates 'otherActivities' text area
+  body("otherActivities")
+    .trim()
+    .notEmpty()
+    .withMessage("Other activities is required.")
+    .isLength({ max: 200 })
+    .withMessage("Other activities must not exceed 200 characters.")
+    .escape(),
 
     // Validates the Yes/No fields, expecting booleans after normalization
     body('hostelFacility')
@@ -652,22 +781,27 @@ const schoolL3Rules = [
         .isBoolean().withMessage('A selection for Bus Service is required.'),
 ];
 
-
 const intermediateCollegeL3Rules = [
-    // Validates the 'collegeType' dropdown selection
-    body('collegeType')
-        .isIn(['Junior College', 'Senior Secondary', 'Higher Secondary', 'Intermediate', 'Pre-University'])
-        .withMessage('Invalid college type selected.'),
+  // Validates the 'collegeType' dropdown selection
+  body("collegeType")
+    .isIn([
+      "Junior College",
+      "Senior Secondary",
+      "Higher Secondary",
+      "Intermediate",
+      "Pre-University",
+    ])
+    .withMessage("Invalid college type selected."),
 
-    // Validates the 'collegeCategory' dropdown selection
-    body('collegeCategory')
-        .isIn(['Government', 'Private', 'Semi-Government', 'Aided', 'Unaided'])
-        .withMessage('Invalid college category selected.'),
+  // Validates the 'collegeCategory' dropdown selection
+  body("collegeCategory")
+    .isIn(["Government", "Private", "Semi-Government", "Aided", "Unaided"])
+    .withMessage("Invalid college category selected."),
 
-    // Validates the 'curriculumType' dropdown selection
-    body('curriculumType')
-        .isIn(['State Board', 'CBSE', 'ICSE', 'IB', 'Cambridge', 'Other'])
-        .withMessage('Invalid curriculum type selected.'),
+  // Validates the 'curriculumType' dropdown selection
+  body("curriculumType")
+    .isIn(["State Board", "CBSE", "ICSE", "IB", "Cambridge", "Other"])
+    .withMessage("Invalid curriculum type selected."),
 
     // Validates the array of operational days
     body('operationalDays')
@@ -676,12 +810,14 @@ const intermediateCollegeL3Rules = [
     body('operationalDays.*')
         .isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun']),
 
-    // Validates 'otherActivities' text area
-    body('otherActivities')
-        .trim()
-        .notEmpty().withMessage('Other activities is required.')
-        .isLength({ max: 200 }).withMessage('Other activities must not exceed 200 characters.')
-        .escape(),
+  // Validates 'otherActivities' text area
+  body("otherActivities")
+    .trim()
+    .notEmpty()
+    .withMessage("Other activities is required.")
+    .isLength({ max: 200 })
+    .withMessage("Other activities must not exceed 200 characters.")
+    .escape(),
 
     // Validates the Yes/No fields, which are converted to booleans on the backend
     body('hostelFacility')
@@ -694,68 +830,107 @@ const intermediateCollegeL3Rules = [
         .isBoolean().withMessage('A selection for Bus Service is required.'),
 ];
 
-
-
 const ugPgUniversityL3Rules = [
-    // Validates dropdowns
-    // ✅ Updated to match the new frontend options
-    body('ownershipType')
-        .isIn(['Government', 'Private', 'Semi-Government', 'Aided', 'Unaided'])
-        .withMessage('Invalid ownership type selected.'),
+  // Validates dropdowns
+  // ✅ Updated to match the new frontend options
+  body("ownershipType")
+    .isIn(["Government", "Private", "Semi-Government", "Aided", "Unaided"])
+    .withMessage("Invalid ownership type selected."),
 
-    // ✅ Updated to match the new frontend options
-    body('collegeCategory')
-        .isIn(['Engineering', 'Medical', 'Arts & Science', 'Commerce', 'Management', 'Law', 'Other'])
-        .withMessage('Invalid college category selected.'),
+  // ✅ Updated to match the new frontend options
+  body("collegeCategory")
+    .isIn([
+      "Engineering",
+      "Medical",
+      "Arts & Science",
+      "Commerce",
+      "Management",
+      "Law",
+      "Other",
+    ])
+    .withMessage("Invalid college category selected."),
 
-    // ✅ Updated from a text validation to a specific dropdown validation
-    body('affiliationType')
-        .isIn(['University', 'Autonomous', 'Affiliated', 'Deemed University', 'Other'])
-        .withMessage('Invalid affiliation type selected.'),
-    // Validates the Yes/No fields, which are converted to booleans on the backend
-    body('placementDrives').isBoolean().withMessage('A selection for Placement Drives is required.'),
-    body('mockInterviews').isBoolean().withMessage('A selection for Mock Interviews is required.'),
-    body('resumeBuilding').isBoolean().withMessage('A selection for Resume Building is required.'),
-    body('linkedinOptimization').isBoolean().withMessage('A selection for LinkedIn Optimization is required.'),
-    body('exclusiveJobPortal').isBoolean().withMessage('A selection for Exclusive Job Portal is required.'),
-    body('library').isBoolean().withMessage('A selection for Library is required.'),
-    body('hostelFacility').isBoolean().withMessage('A selection for Hostel Facility is required.'),
-    body('entranceExam').isBoolean().withMessage('A selection for Entrance Exam is required.'),
-    body('managementQuota').isBoolean().withMessage('A selection for Management Quota is required.'),
-    body('playground').isBoolean().withMessage('A selection for Playground is required.'),
-    body('busService').isBoolean().withMessage('A selection for Bus Service is required.'),
+  // ✅ Updated from a text validation to a specific dropdown validation
+  body("affiliationType")
+    .isIn([
+      "University",
+      "Autonomous",
+      "Affiliated",
+      "Deemed University",
+      "Other",
+    ])
+    .withMessage("Invalid affiliation type selected."),
+  // Validates the Yes/No fields, which are converted to booleans on the backend
+  body("placementDrives")
+    .isBoolean()
+    .withMessage("A selection for Placement Drives is required."),
+  body("mockInterviews")
+    .isBoolean()
+    .withMessage("A selection for Mock Interviews is required."),
+  body("resumeBuilding")
+    .isBoolean()
+    .withMessage("A selection for Resume Building is required."),
+  body("linkedinOptimization")
+    .isBoolean()
+    .withMessage("A selection for LinkedIn Optimization is required."),
+  body("exclusiveJobPortal")
+    .isBoolean()
+    .withMessage("A selection for Exclusive Job Portal is required."),
+  body("library")
+    .isBoolean()
+    .withMessage("A selection for Library is required."),
+  body("hostelFacility")
+    .isBoolean()
+    .withMessage("A selection for Hostel Facility is required."),
+  body("entranceExam")
+    .isBoolean()
+    .withMessage("A selection for Entrance Exam is required."),
+  body("managementQuota")
+    .isBoolean()
+    .withMessage("A selection for Management Quota is required."),
+  body("playground")
+    .isBoolean()
+    .withMessage("A selection for Playground is required."),
+  body("busService")
+    .isBoolean()
+    .withMessage("A selection for Bus Service is required."),
 ];
 
-
 const coachingCenterL3Rules = [
-    body('placementDrives')
-        .isBoolean().withMessage('A selection for Placement Drives is required.'),
+  body("placementDrives")
+    .isBoolean()
+    .withMessage("A selection for Placement Drives is required."),
 
-    body('mockInterviews')
-        .isBoolean().withMessage('A selection for Mock Interviews is required.'),
+  body("mockInterviews")
+    .isBoolean()
+    .withMessage("A selection for Mock Interviews is required."),
 
-    body('resumeBuilding')
-        .isBoolean().withMessage('A selection for Resume Building is required.'),
+  body("resumeBuilding")
+    .isBoolean()
+    .withMessage("A selection for Resume Building is required."),
 
-    body('linkedinOptimization')
-        .isBoolean().withMessage('A selection for LinkedIn Optimization is required.'),
+  body("linkedinOptimization")
+    .isBoolean()
+    .withMessage("A selection for LinkedIn Optimization is required."),
 
-    body('exclusiveJobPortal')
-        .isBoolean().withMessage('A selection for Exclusive Job Portal is required.'),
+  body("exclusiveJobPortal")
+    .isBoolean()
+    .withMessage("A selection for Exclusive Job Portal is required."),
 
-    body('certification')
-        .isBoolean().withMessage('A selection for Certification is required.'),
+  body("certification")
+    .isBoolean()
+    .withMessage("A selection for Certification is required."),
 ];
 
 // ✅ --- MASTER FILE UPLOAD VALIDATOR ---
 
 exports.validateUploadedFile = async (req, res, next) => {
-    console.log("\n--- 🚀 [START] Entered validateUploadedFile Middleware ---");
+  console.log("\n--- 🚀 [START] Entered validateUploadedFile Middleware ---");
 
-    if (!req.file) {
-        console.error("❌ ERROR: No file found on the request.");
-        return res.status(400).json({ message: "No file was uploaded." });
-    }
+  if (!req.file) {
+    console.error("❌ ERROR: No file found on the request.");
+    return res.status(400).json({ message: "No file was uploaded." });
+  }
 
     try {
         const fileContent = req.file.buffer.toString('utf8');
@@ -779,16 +954,18 @@ exports.validateUploadedFile = async (req, res, next) => {
         }
         console.log("✅ PASSED: L1 Validation.");
 
-        // --- STEP 2: Run L2 Branch Validation ---
-        console.log("\n🕵️‍♂️ [Step 2] Running L2 Branch Validation...");
-        req.body = courses;
-        await Promise.all(l2BranchRules.map(v => v.run(req)));
-        errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            console.error("❌ FAILED: L2 Branch Validation.", errors.array());
-            return res.status(422).json({ context: 'L2 Branch Data Error', errors: errors.array() });
-        }
-        console.log("✅ PASSED: L2 Branch Validation.");
+    // --- STEP 2: Run L2 Branch Validation ---
+    console.log("\n🕵️‍♂️ [Step 2] Running L2 Branch Validation...");
+    req.body = courses;
+    await Promise.all(l2BranchRules.map((v) => v.run(req)));
+    errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.error("❌ FAILED: L2 Branch Validation.", errors.array());
+      return res
+        .status(422)
+        .json({ context: "L2 Branch Data Error", errors: errors.array() });
+    }
+    console.log("✅ PASSED: L2 Branch Validation.");
 
         // --- STEP 3: Run L2 Course Validation (Conditionally) ---
         console.log(`\n🕵️‍♂️ [Step 3] Running L2 Course Validation for type: "${institution.instituteType}"...`);
@@ -810,20 +987,30 @@ exports.validateUploadedFile = async (req, res, next) => {
                 courseValidationChain = [];
         }
 
-        if (courseValidationChain.length > 0) {
-            for (const branch of courses) {
-                for (const course of branch.courses || []) {
-                    req.body = course;
-                    await Promise.all(courseValidationChain.map(v => v.run(req)));
-                    errors = validationResult(req);
-                    if (!errors.isEmpty()) {
-                        console.error(`❌ FAILED: L2 Course Validation for course "${course.courseName}".`, errors.array());
-                        return res.status(422).json({ context: 'L2 Course Data Error', branch: branch.branchName, course: course.courseName, errors: errors.array() });
-                    }
-                }
-            }
+    if (courseValidationChain.length > 0) {
+      for (const branch of courses) {
+        for (const course of branch.courses || []) {
+          req.body = course;
+          await Promise.all(courseValidationChain.map((v) => v.run(req)));
+          errors = validationResult(req);
+          if (!errors.isEmpty()) {
+            console.error(
+              `❌ FAILED: L2 Course Validation for course "${course.courseName}".`,
+              errors.array()
+            );
+            return res
+              .status(422)
+              .json({
+                context: "L2 Course Data Error",
+                branch: branch.branchName,
+                course: course.courseName,
+                errors: errors.array(),
+              });
+          }
         }
-        console.log("✅ PASSED: L2 Course Validation.");
+      }
+    }
+    console.log("✅ PASSED: L2 Course Validation.");
 
         // --- STEP 4: Run L3 Validation (Conditionally) ---
         console.log(`\n🕵️‍♂️ [Step 4] Running L3 Details Validation for type: "${institution.instituteType}"...`);

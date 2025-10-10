@@ -21,8 +21,14 @@ import {
 } from "@/components/ui/card";
 import InputField from "@/components/ui/InputField";
 import { Upload, Plus, MoreVertical } from "lucide-react";
-import { courseAPI } from "@/lib/api";
-import { addBranchesToDB, getAllBranchesFromDB, updateBranchInDB, addCoursesGroupToDB, getCoursesGroupsByBranchName, updateCoursesGroupInDB } from "@/lib/localDb";
+import {
+  addBranchesToDB,
+  getAllBranchesFromDB,
+  updateBranchInDB,
+  addCoursesGroupToDB,
+  getCoursesGroupsByBranchName,
+  updateCoursesGroupInDB,
+} from "@/lib/localDb";
 //import CoachingCourseForm from "./L2DialogBoxParts/Course/CoachingCourseForm";
 
 // ✅ New imports for split forms
@@ -34,9 +40,13 @@ import BasicCourseForm from "./L2DialogBoxParts/Course/BasicCourseForm";
 import FallbackCourseForm from "./L2DialogBoxParts/Course/FallbackCourseForm";
 import BranchForm from "./L2DialogBoxParts/Branch/BranchForm";
 import { error } from "console";
-import { exportAndUploadInstitutionAndCourses, exportInstitutionAndCoursesToFile } from "@/lib/utility"
-import { L2Schemas } from "@/lib/validations/L2Schema"
+import {
+  exportAndUploadInstitutionAndCourses,
+  exportInstitutionAndCoursesToFile,
+} from "@/lib/utility";
+import { L2Schemas } from "@/lib/validations/L2Schema";
 import { createdBranchRule } from "@/lib/validations/ValidationRules";
+import { uploadToS3 } from "@/lib/awsUpload";
 
 interface L2DialogBoxProps {
   trigger?: React.ReactNode;
@@ -55,6 +65,10 @@ export interface Course {
   priceOfCourse: string;
   location: string;
   image: File | null;
+  imageUrl: string;
+  imagePreviewUrl: string;
+  brochureUrl: string;
+  brochurePreviewUrl: string;
   brochure: File | null;
   graduationType: string;
   streamType: string;
@@ -67,7 +81,7 @@ export interface Course {
   seatingOption: string;
   openingTime: string;
   closingTime: string;
-  hallName?: string; 
+  hallName?: string;
   operationalDays: string[];
   totalSeats: string;
   availableSeats: string;
@@ -82,7 +96,6 @@ export interface Course {
   subject: string;
   createdBranch: string;
 }
-
 
 // Branch shape used locally in this component; dbId tracks IndexedDB id
 interface Branch {
@@ -100,7 +113,7 @@ export default function L2DialogBox({
   onOpenChange,
   onSuccess,
   onPrevious,
-  
+
   initialSection: initialSectionProp,
 }: L2DialogBoxProps) {
   const router = useRouter();
@@ -135,11 +148,11 @@ export default function L2DialogBox({
   const [selectedCourseId, setSelectedCourseId] = useState(1);
   const [showCourseAfterBranch, setShowCourseAfterBranch] = useState(false);
   const [branchOptions, setBranchOptions] = useState<string[]>([]);
-  
- // ✅ 1. Add state to hold validation errors for each branch
-const [branchErrors, setBranchErrors] = useState<
-  Record<number, Record<string, string>>
->({});
+
+  // ✅ 1. Add state to hold validation errors for each branch
+  const [branchErrors, setBranchErrors] = useState<
+    Record<number, Record<string, string>>
+  >({});
 
   useEffect(() => {
     if (!dialogOpen) return;
@@ -166,7 +179,11 @@ const [branchErrors, setBranchErrors] = useState<
       eligibilityCriteria: "", // Add this line
       location: "",
       image: null as File | null,
+      imageUrl: "",
+      imagePreviewUrl: "",
+      brochureUrl: "",
       brochure: null as File | null,
+      brochurePreviewUrl: "",
       // Additional fields for Under Graduate/Post graduate
       graduationType: "",
       streamType: "",
@@ -235,117 +252,176 @@ const [branchErrors, setBranchErrors] = useState<
   };
 
   const uploadFields: UploadField[] = [
-    { label: "Add Image", type: "image", accept: "image/jpeg,image/jpg" },
+    { label: "Add Image", type: "image", accept: "image/*" },
     { label: "Add Brochure", type: "brochure", accept: "application/pdf" },
   ];
 
   // Handlers
-// L2DialogBox.tsx
+  // L2DialogBox.tsx
 
-const handleCourseChange = (
-  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-) => {
-  const { name, value } = e.target;
+  const handleCourseChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
 
-  const courseToUpdate = courses.find((c) => c.id === selectedCourseId);
-  if (!courseToUpdate) return;
-  
-  const updatedCourse = { ...courseToUpdate, [name]: value };
+    const courseToUpdate = courses.find((c) => c.id === selectedCourseId);
+    if (!courseToUpdate) return;
 
-  setCourses(
-    courses.map((course) =>
-      course.id === selectedCourseId ? updatedCourse : course
-    )
-  );
+    const updatedCourse = { ...courseToUpdate, [name]: value };
 
-  const schema = L2Schemas[getSchemaKey()];
-  if (!schema) return;
+    setCourses(
+      courses.map((course) =>
+        course.id === selectedCourseId ? updatedCourse : course
+      )
+    );
 
-  const { error } = schema.validate(updatedCourse, {
-    abortEarly: false,
-    allowUnknown: true,
-  });
+    const schema = L2Schemas[getSchemaKey()];
+    if (!schema) return;
 
-  const fieldError = error?.details.find((detail) => detail.path[0] === name);
+    const { error } = schema.validate(updatedCourse, {
+      abortEarly: false,
+      allowUnknown: true,
+    });
 
-  // ✅ CORRECTED ERROR HANDLING TO FIX TYPESCRIPT ERROR
-  setCourseErrorsById((prevErrors) => {
-    // Get a copy of the errors for the current course
-    const updatedErrorsForCourse = { ...(prevErrors[selectedCourseId] || {}) };
+    const fieldError = error?.details.find((detail) => detail.path[0] === name);
 
-    if (fieldError) {
-      // If there's a new error, add or update it
-      updatedErrorsForCourse[name] = fieldError.message;
-    } else {
-      // If the field is now valid, remove the error key from the object
-      delete updatedErrorsForCourse[name];
-    }
+    // ✅ CORRECTED ERROR HANDLING TO FIX TYPESCRIPT ERROR
+    setCourseErrorsById((prevErrors) => {
+      // Get a copy of the errors for the current course
+      const updatedErrorsForCourse = {
+        ...(prevErrors[selectedCourseId] || {}),
+      };
 
-    // Return the updated state
-    return {
-      ...prevErrors,
-      [selectedCourseId]: updatedErrorsForCourse,
-    };
-  });
-};
- 
+      if (fieldError) {
+        // If there's a new error, add or update it
+        updatedErrorsForCourse[name] = fieldError.message;
+      } else {
+        // If the field is now valid, remove the error key from the object
+        delete updatedErrorsForCourse[name];
+      }
+
+      // Return the updated state
+      return {
+        ...prevErrors,
+        [selectedCourseId]: updatedErrorsForCourse,
+      };
+    });
+  };
+
   const handleFileChange = (
     e: ChangeEvent<HTMLInputElement>,
     type: "image" | "brochure"
   ) => {
     const files = e.target.files;
-    if (files && files[0]) {
-      setCourses(
-        courses.map((course) =>
-          course.id === selectedCourseId
-            ? { ...course, [type]: files[0] }
-            : course
-        )
-      );
+    if (!files || !files[0]) return;
+
+    const selectedFile = files[0];
+    const courseId = selectedCourseId;
+
+    // Allowed file types
+    const allowedImageTypes = ["image/png", "image/jpg", "image/jpeg"];
+    const allowedBrochureTypes = ["application/pdf"];
+
+    let errorMessage = "";
+
+    // 🔍 File type validation
+    if (type === "image" && !allowedImageTypes.includes(selectedFile.type)) {
+      errorMessage = "Only PNG, JPG, or JPEG images are allowed.";
+    } else if (
+      type === "brochure" &&
+      !allowedBrochureTypes.includes(selectedFile.type)
+    ) {
+      errorMessage = "Only PDF files are allowed.";
     }
+
+    // 📏 File size validation (max 4 MB)
+    const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 MB
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      errorMessage = "File size must be 4 MB or less.";
+    }
+
+    // ❌ If validation failed → show error inline & stop further execution
+    if (errorMessage) {
+      setCourseErrorsById((prev) => ({
+        ...prev,
+        [courseId]: {
+          ...(prev[courseId] || {}),
+          [`${type}Url`]: errorMessage,
+        },
+      }));
+      return;
+    }
+
+    // ✅ If valid → clear previous error for this file type
+    setCourseErrorsById((prev) => {
+      const updated = { ...(prev[courseId] || {}) };
+      delete updated[`${type}Url`];
+      return { ...prev, [courseId]: updated };
+    });
+
+    // ✅ Create a local preview URL
+    const previewUrl = URL.createObjectURL(selectedFile);
+
+    // ✅ Update selected course state
+    setCourses((prevCourses) =>
+      prevCourses.map((course) =>
+        course.id === courseId
+          ? {
+              ...course,
+              [`${type}`]: selectedFile,
+              [`${type}PreviewUrl`]: previewUrl,
+            }
+          : course
+      )
+    );
   };
+
   // L2DialogBox.tsx
 
-const handleOperationalDayChange = (day: string) => {
-  // Find the current course to get its existing days
-  const courseToUpdate = courses.find((c) => c.id === selectedCourseId);
-  if (!courseToUpdate) return;
+  const handleOperationalDayChange = (day: string) => {
+    // Find the current course to get its existing days
+    const courseToUpdate = courses.find((c) => c.id === selectedCourseId);
+    if (!courseToUpdate) return;
 
-  // Calculate the new array of operational days
-  const newOperationalDays = courseToUpdate.operationalDays.includes(day)
-    ? courseToUpdate.operationalDays.filter((d) => d !== day)
-    : [...courseToUpdate.operationalDays, day];
+    // Calculate the new array of operational days
+    const newOperationalDays = courseToUpdate.operationalDays.includes(day)
+      ? courseToUpdate.operationalDays.filter((d) => d !== day)
+      : [...courseToUpdate.operationalDays, day];
 
-  // 1. Update the state for the UI
-  setCourses(
-    courses.map((course) =>
-      course.id === selectedCourseId
-        ? { ...course, operationalDays: newOperationalDays }
-        : course
-    )
-  );
+    // 1. Update the state for the UI
+    setCourses(
+      courses.map((course) =>
+        course.id === selectedCourseId
+          ? { ...course, operationalDays: newOperationalDays }
+          : course
+      )
+    );
 
-  // 2. Get the correct Joi schema (works for both Study Hall and Tuition Center)
-  const schema = L2Schemas[getSchemaKey()];
-  let validationError = "";
+    // 2. Get the correct Joi schema (works for both Study Hall and Tuition Center)
+    const schema = L2Schemas[getSchemaKey()];
+    let validationError = "";
 
-  // 3. Validate just the operationalDays field with the new value
-  if (schema && schema.extract('operationalDays')) {
-    const { error } = schema.extract('operationalDays').validate(newOperationalDays);
-    if (error) {
-      validationError = error.details[0].message;
+    // 3. Validate just the operationalDays field with the new value
+    if (schema && schema.extract("operationalDays")) {
+      const { error } = schema
+        .extract("operationalDays")
+        .validate(newOperationalDays);
+      if (error) {
+        validationError = error.details[0].message;
+      }
     }
-  }
 
-  // 4. Update the error state for this specific field
-  setCourseErrorsById((prevErrors) => ({
-    ...prevErrors,
-    [selectedCourseId]: {
-      ...(prevErrors[selectedCourseId] || {}),
-      operationalDays: validationError, // If validation passed, this will be empty
-    },
-  }));
-};
+    // 4. Update the error state for this specific field
+    setCourseErrorsById((prevErrors) => ({
+      ...prevErrors,
+      [selectedCourseId]: {
+        ...(prevErrors[selectedCourseId] || {}),
+        operationalDays: validationError, // If validation passed, this will be empty
+      },
+    }));
+  };
   // const handleOperationalDayChange = (day: string) => {
   //   setCourses(
   //     courses.map((course) =>
@@ -372,6 +448,10 @@ const handleOperationalDayChange = (day: string) => {
       priceOfCourse: "",
       location: "",
       image: null as File | null,
+      imagePreviewUrl: "",
+      imageUrl: "",
+      brochureUrl: "",
+      brochurePreviewUrl: "",
       brochure: null as File | null,
       // Additional fields for Under Graduate/Post graduate
       graduationType: "",
@@ -383,7 +463,7 @@ const handleOperationalDayChange = (day: string) => {
       // Additional fields for Coaching centers
       categoriesType: "",
       domainType: "",
-       eligibilityCriteria: "", 
+      eligibilityCriteria: "",
       // Additional fields for Study Hall
       seatingOption: "",
       openingTime: "",
@@ -418,7 +498,8 @@ const handleOperationalDayChange = (day: string) => {
 
   const addNewBranch = () => {
     setBranches((prev) => {
-      const newId = prev.length > 0 ? Math.max(...prev.map((b) => b.id)) + 1 : 1;
+      const newId =
+        prev.length > 0 ? Math.max(...prev.map((b) => b.id)) + 1 : 1;
       const newBranch: Branch = {
         id: newId,
         branchName: "",
@@ -445,7 +526,9 @@ const handleOperationalDayChange = (day: string) => {
   };
 
   // const [selectedCourseId, setSelectedCourseId] = useState(1);
-const [courseErrorsById, setCourseErrorsById] = useState<Record<number, Record<string, string>>>({}); // ✅ ADD THIS LINE
+  const [courseErrorsById, setCourseErrorsById] = useState<
+    Record<number, Record<string, string>>
+  >({}); // ✅ ADD THIS LINE
   const validateCourses = () => {
     const requiredFields = [
       "courseName",
@@ -523,338 +606,389 @@ const [courseErrorsById, setCourseErrorsById] = useState<Record<number, Record<s
 
   // Inside L2DialogBox.tsx
 
-const getSchemaKey = (): keyof typeof L2Schemas => {
-  if (isCoachingCenter) {
-    return "coaching";
-  }
-  if (isStudyHall) {
-    return "studyHall";
-  }
-  if (isTutionCenter) {
-    return "tuition";
-  }
-  if (isUnderPostGraduate) {
-    return "ugpg";
-  }
-  // Default for Kindergarten, School, etc.
-  return "basic";
-};
+  const getSchemaKey = (): keyof typeof L2Schemas => {
+    if (isCoachingCenter) {
+      return "coaching";
+    }
+    if (isStudyHall) {
+      return "studyHall";
+    }
+    if (isTutionCenter) {
+      return "tuition";
+    }
+    if (isUnderPostGraduate) {
+      return "ugpg";
+    }
+    // Default for Kindergarten, School, etc.
+    return "basic";
+  };
+
   const handleCourseSubmit = async (e: FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  // This block runs first to ensure a branch is selected for every course.
- // ✅ --- 1. CONDITIONAL Branch Check ---
-  // This now only runs if the user came from the "Add Branch" screen.
-  if (showCourseAfterBranch) {
-    const initialErrors: Record<number, Record<string, string>> = {};
-    let hasMissingBranch = false;
+    e.preventDefault();
+    setIsLoading(true);
 
-    for (const course of courses) {
-      if (!course.createdBranch) {
-        hasMissingBranch = true;
-        initialErrors[course.id] = { 
-          ...initialErrors[course.id], 
-          createdBranch: "Please select a branch for this course." 
-        };
-      }
-    }
+    try {
+      console.log("🚀 Starting course submission...");
 
-    if (hasMissingBranch) {
-      setCourseErrorsById(initialErrors);
-      console.warn("Submission stopped: Branch selection is required.");
-      return;
-    }
-  }
-  
-  // ✅ --- 2. CONDITIONAL Joi Validation ---
-  // --- Joi Validation Step with Debugging ---
-  // This line temporarily makes the branch optional if the user did not come from the "Add Branch" screen.
-  const allCourseErrors: Record<number, Record<string, string>> = {};
-  let hasErrors = false;
+      const uploadedCourses = await Promise.all(
+        courses.map(async (course) => {
+          const updated = { ...course };
 
-  let schema = L2Schemas[getSchemaKey()]; 
-  if (!showCourseAfterBranch) {
-    schema = schema.fork('createdBranch', (field) => field.optional().allow(''));
-    
-  }
+          // --- 🖼️ Image Upload ---
+          if (course.image instanceof File) {
+            const isNewLocalFile =
+              !course.imageUrl || course.imageUrl.startsWith("blob:");
+            if (isNewLocalFile) {
+              console.log(`🪣 Uploading new image for: ${course.courseName}`);
+              try {
+                const uploadImage = await uploadToS3(course.image);
+                if (uploadImage.success && uploadImage.fileUrl) {
+                  updated.imageUrl = uploadImage.fileUrl;
+                  updated.imagePreviewUrl = URL.createObjectURL(course.image);
+                  console.log(`✅ Image uploaded for: ${course.courseName}`);
+                }
+              } catch (err) {
+                console.error(
+                  `❌ Failed to upload image for ${course.courseName}:`,
+                  err
+                );
+              }
+            } else {
+              console.log(
+                `⚡ Skipping image upload (already uploaded): ${course.courseName}`
+              );
+            }
+          }
 
-  // ✅ DEBUG: Log which schema is being used
-  console.log(`🕵️ Using Schema for Validation: "${getSchemaKey()}"`);
-  console.log(`Is Branch Required? ${showCourseAfterBranch}`);
+          // --- 📘 Brochure Upload ---
+          if (course.brochure instanceof File) {
+            const isNewLocalFile =
+              !course.brochureUrl || course.brochureUrl.startsWith("blob:");
+            if (isNewLocalFile) {
+              console.log(
+                `🪣 Uploading new brochure for: ${course.courseName}`
+              );
+              try {
+                const uploadBrochure = await uploadToS3(course.brochure);
+                if (uploadBrochure.success && uploadBrochure.fileUrl) {
+                  updated.brochureUrl = uploadBrochure.fileUrl;
+                  updated.brochurePreviewUrl = URL.createObjectURL(
+                    course.brochure
+                  );
+                  console.log(`✅ Brochure uploaded for: ${course.courseName}`);
+                }
+              } catch (err) {
+                console.error(
+                  `❌ Failed to upload brochure for ${course.courseName}:`,
+                  err
+                );
+              }
+            } else {
+              console.log(
+                `⚡ Skipping brochure upload (already uploaded): ${course.courseName}`
+              );
+            }
+          }
 
-  for (const course of courses) {
-    // ✅ DEBUG: Log the exact object being validated
-    console.log(`📝 Validating Course ID: ${course.id}`, course);
-
-    const { error } = schema.validate(course, { 
-      abortEarly: false, 
-      allowUnknown: true
-    });
-
-    if (error) {
-      hasErrors = true;
-      
-      // ✅ DEBUG: Log the detailed error object from Joi if validation fails
-      console.error(`❌ Validation FAILED for Course ID: ${course.id}`, error.details);
-      
-      allCourseErrors[course.id] = error.details.reduce((acc, detail) => {
-        const key = detail.path[0] as string;
-        acc[key] = detail.message;
-        return acc;
-      }, {} as Record<string, string>);
-    } else {
-      // ✅ DEBUG: Log a success message if a course object is valid
-      console.log(`✅ Validation PASSED for Course ID: ${course.id}`);
-    }
-  }
-
-  setCourseErrorsById(allCourseErrors);
-  
-  if (hasErrors) {
-    console.warn("Submission stopped due to validation errors.");
-    return;
-  }
-
-  // ✅ --- End of Validation Step ---
-
-
-  // The rest of your logic remains exactly the same.
-  setIsLoading(true);
-
-  try {
-    const allBranches = await getAllBranchesFromDB();
-
-    const branchMap = new Map(
-      allBranches.map((b) => [
-        b.branchName.trim().toLowerCase(),
-        { ...b, courses: [] as typeof courses },
-      ])
-    );
-
-    const sanitizeBranch = (branch: any) => {
-      const { createdAt, id, ...rest } = branch;
-      return rest;
-    };
-
-     // ✅ THIS IS THE SPECIFIC PART TO REPLACE
-      // const sanitizeCourse = (course: Course) => {
-      //   const sanitized: Partial<Course> = { ...course };
-
-      //   sanitized.hasWifi = sanitized.hasWifi ?? false;
-      //   sanitized.hasChargingPoints = sanitized.hasChargingPoints ?? false;
-      //   sanitized.hasAC = sanitized.hasAC ?? false;
-      //   sanitized.hasPersonalLocker = sanitized.hasPersonalLocker ?? false;
-
-      //   for (const key in sanitized) {
-      //     const value = sanitized[key as keyof Course];
-      //     if (
-      //       value === null ||
-      //       value === "" ||
-      //       (Array.isArray(value) && value.length === 0)
-      //     ) {
-      //       delete sanitized[key as keyof Course];
-      //     }
-      //   }
-      //   return sanitized;
-      // };
-    const sanitizeCourse = (course: any) => {
-      return Object.fromEntries(
-        Object.entries(course).filter(
-          ([_, value]) =>
-            value !== null &&
-            value !== "" &&
-            !(Array.isArray(value) && value.length === 0) &&
-            value !== false
-        )
+          return updated;
+        })
       );
-    };
 
-    const unassignedCourses: any[] = [];
-    courses.forEach((c) => {
-      const key = (c.createdBranch || "").trim().toLowerCase();
-      if (!key || !branchMap.has(key)) {
-        unassignedCourses.push(sanitizeCourse(c));
-      } else {
-        branchMap
-          .get(key)!
-          .courses.push(sanitizeCourse(c) as (typeof courses)[number]);
-      }
-    });
+      setCourses(uploadedCourses);
+      console.log("🪣 All uploads completed successfully.");
 
-    const sanitizedPayload = [
-      ...Array.from(branchMap.values())
-        .filter((b) => b.courses.length > 0)
-        .map(sanitizeBranch),
-    ];
+      // --- 2️⃣ Check missing branch selection ---
+      if (showCourseAfterBranch) {
+        const initialErrors: Record<number, Record<string, string>> = {};
+        let hasMissingBranch = false;
 
-    if (unassignedCourses.length > 0) {
-      sanitizedPayload.push({
-        courses: unassignedCourses,
-      } as any);
-    }
-
-    if (!sanitizedPayload.length) {
-      alert("No valid courses found. Please select a branch or fill valid details.");
-      setIsLoading(false);
-      return;
-    }
-
-    console.log("Deduplicated payload to save:", sanitizedPayload);
-
-    for (const entry of sanitizedPayload) {
-      if (!entry.branchName) {
-        const existingUnassigned = await getCoursesGroupsByBranchName("");
-        if (existingUnassigned.length) {
-          const group = existingUnassigned[0];
-          const existing = group.courses || [];
-          const incoming = entry.courses || [];
-          const keyOf = (c: any) => `${(c.courseName||"").trim().toLowerCase()}|${(c.subject||"").trim().toLowerCase()}|${(c.mode||"").trim().toLowerCase()}`;
-          const existingSet = new Set(existing.map(keyOf));
-          const uniqueIncoming = incoming.filter((c: any) => !existingSet.has(keyOf(c)));
-          const merged = { ...group, courses: [...existing, ...uniqueIncoming] };
-          await updateCoursesGroupInDB(merged);
-        } else {
-          await addCoursesGroupToDB({ branchName: "", courses: entry.courses || [] });
+        for (const course of uploadedCourses) {
+          if (!course.createdBranch) {
+            hasMissingBranch = true;
+            initialErrors[course.id] = {
+              createdBranch: "Please select a branch for this course.",
+            };
+          }
         }
-      } else {
-        const existingGroups = await getCoursesGroupsByBranchName(entry.branchName);
+
+        if (hasMissingBranch) {
+          setCourseErrorsById(initialErrors);
+          console.warn("⛔ Submission stopped: Missing branch selection.");
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // --- 3️⃣ Joi Validation ---
+      const allCourseErrors: Record<number, Record<string, string>> = {};
+      let hasErrors = false;
+
+      let schema = L2Schemas[getSchemaKey()];
+      if (!showCourseAfterBranch) {
+        schema = schema.fork("createdBranch", (field) =>
+          field.optional().allow("")
+        );
+      }
+
+      for (const course of uploadedCourses) {
+        console.group(
+          `🔍 Validating course: ${course.courseName} (ID: ${course.id})`
+        );
+        console.log("📦 Course data before validation:", course);
+
+        const { error } = schema.validate(course, {
+          abortEarly: false,
+          allowUnknown: true,
+        });
+
+        if (error) {
+          hasErrors = true;
+          const fieldErrors = error.details.reduce((acc, detail) => {
+            const key = detail.path[0] as string;
+            acc[key] = detail.message;
+            return acc;
+          }, {} as Record<string, string>);
+
+          allCourseErrors[course.id] = fieldErrors;
+          console.warn("❌ Validation errors:", fieldErrors);
+        } else {
+          console.log("✅ Course passed validation!");
+        }
+
+        console.groupEnd();
+      }
+
+      setCourseErrorsById(allCourseErrors);
+
+      if (hasErrors) {
+        console.error("🚫 Validation failed for one or more courses.");
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("✅ All courses validated successfully.");
+
+      // --- 4️⃣ Prepare and Save in IndexedDB ---
+      const allBranches = await getAllBranchesFromDB();
+      const branchMap = new Map(
+        allBranches.map((b) => [
+          b.branchName.trim().toLowerCase(),
+          { ...b, courses: [] as typeof uploadedCourses },
+        ])
+      );
+
+      const sanitizeBranch = (branch: any) => {
+        const { createdAt, id, ...rest } = branch;
+        return rest;
+      };
+
+      const sanitizeCourse = (course: any) =>
+        Object.fromEntries(
+          Object.entries(course).filter(
+            ([_, value]) =>
+              value !== null &&
+              value !== "" &&
+              !(Array.isArray(value) && value.length === 0) &&
+              value !== false
+          )
+        );
+
+      const unassignedCourses: any[] = [];
+      uploadedCourses.forEach((c) => {
+        const key = (c.createdBranch || "").trim().toLowerCase();
+        if (!key || !branchMap.has(key)) {
+          unassignedCourses.push(sanitizeCourse(c));
+        } else {
+          branchMap
+            .get(key)!
+            .courses.push(
+              sanitizeCourse(c) as (typeof uploadedCourses)[number]
+            );
+        }
+      });
+
+      const sanitizedPayload = [
+        ...Array.from(branchMap.values())
+          .filter((b) => b.courses.length > 0)
+          .map(sanitizeBranch),
+      ];
+
+      if (unassignedCourses.length > 0) {
+        sanitizedPayload.push({ courses: unassignedCourses } as any);
+      }
+
+      if (!sanitizedPayload.length) {
+        alert(
+          "No valid courses found. Please select a branch or fill valid details."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      console.log("🧾 Final Payload Ready:", sanitizedPayload);
+
+      // --- 5️⃣ Save Courses in DB ---
+      for (const entry of sanitizedPayload) {
+        const isUnassigned = !entry.branchName;
+        const existingGroups = await getCoursesGroupsByBranchName(
+          entry.branchName || ""
+        );
+
         if (existingGroups.length) {
           const group = existingGroups[0];
           const existing = group.courses || [];
           const incoming = entry.courses || [];
-          const keyOf = (c: any) => `${(c.courseName||"").trim().toLowerCase()}|${(c.subject||"").trim().toLowerCase()}|${(c.mode||"").trim().toLowerCase()}`;
+
+          const keyOf = (c: any) =>
+            `${(c.courseName || "").trim().toLowerCase()}|${(c.subject || "")
+              .trim()
+              .toLowerCase()}|${(c.mode || "").trim().toLowerCase()}`;
+
           const existingSet = new Set(existing.map(keyOf));
-          const uniqueIncoming = incoming.filter((c: any) => !existingSet.has(keyOf(c)));
-          const merged = { ...group, branchName: entry.branchName, branchAddress: (entry as any).branchAddress, contactInfo: (entry as any).contactInfo, locationUrl: (entry as any).locationUrl, courses: [...existing, ...uniqueIncoming] };
+          const uniqueIncoming = incoming.filter(
+            (c: any) => !existingSet.has(keyOf(c))
+          );
+          const merged = {
+            ...group,
+            branchName: entry.branchName || "",
+            courses: [...existing, ...uniqueIncoming],
+          };
           await updateCoursesGroupInDB(merged);
         } else {
-          await addCoursesGroupToDB({ branchName: entry.branchName, branchAddress: (entry as any).branchAddress, contactInfo: (entry as any).contactInfo, locationUrl: (entry as any).locationUrl, courses: entry.courses || [] });
+          await addCoursesGroupToDB({
+            branchName: entry.branchName || "",
+            courses: entry.courses || [],
+          });
         }
       }
-    }
 
-    setSelectedCourseId(1);
-    if(shouldSkipL3){
-      const response = await exportAndUploadInstitutionAndCourses()
-      if(response.success){
-        router.push("/payment");
-      } else {
-        alert("Failed to upload data")
+      console.log("💾 All courses saved successfully.");
+
+      setSelectedCourseId(1);
+
+      // --- 6️⃣ Export if required ---
+      if (shouldSkipL3) {
+        const response = await exportAndUploadInstitutionAndCourses();
+        if (response.success) {
+          router.push("/payment");
+        } else {
+          alert("Failed to upload data");
+        }
       }
+
+      onSuccess?.();
+    } catch (error) {
+      console.error("❌ Error saving courses:", error);
+      alert("Failed to save course details. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-    onSuccess?.()
-  } catch (error) {
-    console.error("Error saving courses:", error);
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Failed to save course details. Please try again.";
-    alert(errorMessage);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
+  // / Helper function to validate a single field using your Joi schema
+  const validateField = (name: string, value: string) => {
+    // Check if the field exists in the branch schema to avoid errors
+    const keyExists = L2Schemas.branch.$_terms.keys?.some(
+      (k: any) => k.key === name
+    );
+    if (!keyExists) return "";
 
-// / Helper function to validate a single field using your Joi schema
-const validateField = (name: string, value: string) => {
-  // Check if the field exists in the branch schema to avoid errors
-  const keyExists = L2Schemas.branch.$_terms.keys?.some(
-    (k: any) => k.key === name
-  );
-  if (!keyExists) return "";
+    const { error } = L2Schemas.branch.extract(name).validate(value);
+    return error ? error.details[0].message : "";
+  };
 
-  const { error } = L2Schemas.branch.extract(name).validate(value);
-  return error ? error.details[0].message : "";
-};
+  // ✅ 2. Update handleBranchChange to validate as the user types
+  const handleBranchChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
+    const { name, value } = e.target;
 
-// ✅ 2. Update handleBranchChange to validate as the user types
-const handleBranchChange = (
-  e: React.ChangeEvent<HTMLInputElement |HTMLSelectElement | HTMLTextAreaElement>
-) => {
-  const { name, value } = e.target;
+    // First, update the branch state
+    setBranches((prev) =>
+      prev.map((branch) =>
+        branch.id === selectedBranchId ? { ...branch, [name]: value } : branch
+      )
+    );
 
-  // First, update the branch state
-  setBranches((prev) =>
-    prev.map((branch) =>
-      branch.id === selectedBranchId ? { ...branch, [name]: value } : branch
-    )
-  );
-
-  // Then, validate the changed field and update the error state
-  const error = validateField(name, value);
-  setBranchErrors((prev) => ({
-    ...prev,
-    [selectedBranchId]: {
-      ...(prev[selectedBranchId] || {}),
-      [name]: error,
-    },
-  }));
-};
-
-// ✅ 3. Replace your old handleBranchSubmit with this Joi-powered version
-const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-
-  const currentBranch = branches.find((b) => b.id === selectedBranchId);
-  if (!currentBranch) return;
-
-  // Validate the entire form using the Joi schema
-  const { error } = L2Schemas.branch.validate(currentBranch, {
-    abortEarly: false,
-    allowUnknown: true, // Important to ignore fields like 'id' or 'dbId'
-  });
-
-  // If validation fails...
-  if (error) {
-    const newErrors: Record<string, string> = {};
-    // Collect all error messages
-    error.details.forEach((err) => {
-      const field = err.path[0] as string;
-      newErrors[field] = err.message;
-    });
-    // Update the state to display all errors at once
+    // Then, validate the changed field and update the error state
+    const error = validateField(name, value);
     setBranchErrors((prev) => ({
       ...prev,
-      [selectedBranchId]: newErrors,
+      [selectedBranchId]: {
+        ...(prev[selectedBranchId] || {}),
+        [name]: error,
+      },
     }));
-    return; // Stop the submission
-  }
+  };
 
-  // If validation passes, clear any previous errors for this branch
-  setBranchErrors((prev) => ({
-    ...prev,
-    [selectedBranchId]: {},
-  }));
+  // ✅ 3. Replace your old handleBranchSubmit with this Joi-powered version
+  const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
 
-  setIsLoading(true);
-  try {
-    // --- YOUR EXISTING SAVE LOGIC CAN GO HERE ---
-    const payload = {
-      branchName: currentBranch.branchName,
-      branchAddress: currentBranch.branchAddress,
-      contactInfo: currentBranch.contactInfo,
-      locationUrl: currentBranch.locationUrl,
-    };
+    const currentBranch = branches.find((b) => b.id === selectedBranchId);
+    if (!currentBranch) return;
 
-    if ((currentBranch as any).dbId) {
-      await updateBranchInDB({ id: (currentBranch as any).dbId, ...payload });
-    } else {
-      const [newId] = await addBranchesToDB([payload]);
-      setBranches((prev) =>
-        prev.map((b) => (b.id === selectedBranchId ? { ...b, dbId: newId } : b))
-      );
+    // Validate the entire form using the Joi schema
+    const { error } = L2Schemas.branch.validate(currentBranch, {
+      abortEarly: false,
+      allowUnknown: true, // Important to ignore fields like 'id' or 'dbId'
+    });
+
+    // If validation fails...
+    if (error) {
+      const newErrors: Record<string, string> = {};
+      // Collect all error messages
+      error.details.forEach((err) => {
+        const field = err.path[0] as string;
+        newErrors[field] = err.message;
+      });
+      // Update the state to display all errors at once
+      setBranchErrors((prev) => ({
+        ...prev,
+        [selectedBranchId]: newErrors,
+      }));
+      return; // Stop the submission
     }
 
-    const all = await getAllBranchesFromDB();
-    setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
-    setShowCourseAfterBranch(true);
-    // --- END OF YOUR SAVE LOGIC ---
-  } catch (err) {
-    console.error("Error saving branch:", err);
-  } finally {
-    setIsLoading(false);
-  }
-};
+    // If validation passes, clear any previous errors for this branch
+    setBranchErrors((prev) => ({
+      ...prev,
+      [selectedBranchId]: {},
+    }));
+
+    setIsLoading(true);
+    try {
+      // --- YOUR EXISTING SAVE LOGIC CAN GO HERE ---
+      const payload = {
+        branchName: currentBranch.branchName,
+        branchAddress: currentBranch.branchAddress,
+        contactInfo: currentBranch.contactInfo,
+        locationUrl: currentBranch.locationUrl,
+      };
+
+      if ((currentBranch as any).dbId) {
+        await updateBranchInDB({ id: (currentBranch as any).dbId, ...payload });
+      } else {
+        const [newId] = await addBranchesToDB([payload]);
+        setBranches((prev) =>
+          prev.map((b) =>
+            b.id === selectedBranchId ? { ...b, dbId: newId } : b
+          )
+        );
+      }
+
+      const all = await getAllBranchesFromDB();
+      setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
+      setShowCourseAfterBranch(true);
+      // --- END OF YOUR SAVE LOGIC ---
+    } catch (err) {
+      console.error("Error saving branch:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <>
@@ -942,15 +1076,15 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
 
                   <form onSubmit={handleCourseSubmit} className="space-y-6">
                     {isCoachingCenter ? (
-                       <CoachingCourseForm
-    currentCourse={currentCourse}
-    handleCourseChange={handleCourseChange}
-    setCourses={setCourses}
-    courses={courses}
-    selectedCourseId={selectedCourseId}
-    // ✅ Add this line to pass down the errors
-    courseErrors={courseErrorsById[currentCourse.id] || {}}
-  />
+                      <CoachingCourseForm
+                        currentCourse={currentCourse}
+                        handleCourseChange={handleCourseChange}
+                        setCourses={setCourses}
+                        courses={courses}
+                        selectedCourseId={selectedCourseId}
+                        // ✅ Add this line to pass down the errors
+                        courseErrors={courseErrorsById[currentCourse.id] || {}}
+                      />
                     ) : isStudyHall ? (
                       <StudyHallForm
                         currentCourse={currentCourse}
@@ -964,37 +1098,37 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                       />
                     ) : isTutionCenter ? (
                       <TuitionCenterForm
-            currentCourse={currentCourse}
-            handleCourseChange={handleCourseChange}
-            handleOperationalDayChange={handleOperationalDayChange}
-            handleFileChange={handleFileChange}
-            setCourses={setCourses}
-            courses={courses}
-            selectedCourseId={selectedCourseId}
-            // ✅ Pass errors to TuitionCenterForm
-            courseErrors={courseErrorsById[currentCourse.id] || {}}
-        />
+                        currentCourse={currentCourse}
+                        handleCourseChange={handleCourseChange}
+                        handleOperationalDayChange={handleOperationalDayChange}
+                        handleFileChange={handleFileChange}
+                        setCourses={setCourses}
+                        courses={courses}
+                        selectedCourseId={selectedCourseId}
+                        // ✅ Pass errors to TuitionCenterForm
+                        courseErrors={courseErrorsById[currentCourse.id] || {}}
+                      />
                     ) : isUnderPostGraduate ? (
                       <UnderPostGraduateForm
-        currentCourse={currentCourse}
-        handleCourseChange={handleCourseChange}
-        setCourses={setCourses}
-        courses={courses}
-        selectedCourseId={selectedCourseId}
-        // ✅ Add this prop to pass the errors down
-        courseErrors={courseErrorsById[currentCourse.id] || {}}
-    />
+                        currentCourse={currentCourse}
+                        handleCourseChange={handleCourseChange}
+                        setCourses={setCourses}
+                        courses={courses}
+                        selectedCourseId={selectedCourseId}
+                        // ✅ Add this prop to pass the errors down
+                        courseErrors={courseErrorsById[currentCourse.id] || {}}
+                      />
                     ) : isBasicCourseForm ? (
-                       <BasicCourseForm
-    currentCourse={currentCourse}
-    handleCourseChange={handleCourseChange}
-    setCourses={setCourses}
-    courses={courses}
-    selectedCourseId={selectedCourseId}
-    // ✅ This line passes the validation errors for the currently selected course
-    // to the child component. The `|| {}` ensures it's always an object.
-    courseErrors={courseErrorsById[currentCourse.id] || {}}
-  />
+                      <BasicCourseForm
+                        currentCourse={currentCourse}
+                        handleCourseChange={handleCourseChange}
+                        setCourses={setCourses}
+                        courses={courses}
+                        selectedCourseId={selectedCourseId}
+                        // ✅ This line passes the validation errors for the currently selected course
+                        // to the child component. The `|| {}` ensures it's always an object.
+                        courseErrors={courseErrorsById[currentCourse.id] || {}}
+                      />
                     ) : (
                       <FallbackCourseForm
                         currentCourse={currentCourse}
@@ -1005,34 +1139,88 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                       />
                     )}
                     {!isStudyHall && !isTutionCenter && (
-    <div className="grid md:grid-cols-2 gap-6">
-      {uploadFields.map((f) => (
-        <div key={f.type} className="flex flex-col gap-2">
-          <label className="font-medium text-[16px]">
-            {f.label}
-          </label>
-          <label className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors">
-            <Upload size={24} className="text-gray-400 mb-2" />
-            <span className="text-sm text-gray-500">
-              {currentCourse[f.type]
-                ? (currentCourse[f.type] as File).name
-                : f.type === "image"
-                ? "Upload Course Image (jpg / jpeg)"
-                : "Upload Brochure Course (pdf)"}
-            </span>
-            <input
-              type="file"
-              accept={f.accept}
-              className="hidden"
-              onChange={(e) => handleFileChange(e, f.type)}
-            />
-          </label>
-        </div>
-      ))}
-    </div>
-  )}
+                      <div className="grid md:grid-cols-2 gap-6">
+                        {uploadFields.map((f) => (
+                          <div key={f.type} className="flex flex-col gap-2">
+                            <label className="font-medium text-[16px]">
+                              {f.label} <span className="text-red-500">*</span>
+                            </label>
 
-                  
+                            <label className="relative w-full h-[180px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors overflow-hidden">
+                              {/* ✅ Determine which URL to show first */}
+                              {(() => {
+                                const previewUrl = currentCourse[
+                                  `${f.type}PreviewUrl`
+                                ] as string;
+                                const uploadedUrl = currentCourse[
+                                  `${f.type}Url`
+                                ] as string;
+
+                                if (previewUrl) {
+                                  if (f.type === "image") {
+                                    // 🖼️ Show image (preview first, then uploaded)
+                                    return (
+                                      <img
+                                        src={previewUrl}
+                                        alt={`${f.label} Preview`}
+                                        // className="object-cover w-full h-full rounded-[12px]"
+                                        className="w-[100px] h-[100px] object-cover rounded-md"
+                                      />
+                                    );
+                                  } else {
+                                    // 📄 Show brochure (PDF) preview
+                                    return (
+                                      <div className="flex flex-col items-center justify-center gap-2 p-4 w-full h-full">
+                                        <span className="text-sm text-gray-500 truncate">
+                                          {(currentCourse[f.type] as File).name}
+                                        </span>
+                                      </div>
+                                    );
+                                  }
+                                }
+
+                                // 🆕 Default placeholder
+                                return (
+                                  <>
+                                    <Upload
+                                      size={24}
+                                      className="text-gray-400 mb-2"
+                                    />
+                                    <span className="text-sm text-gray-500">
+                                      {f.type === "image"
+                                        ? "Upload Course Image (jpg / jpeg / png)"
+                                        : "Upload Course Brochure (pdf)"}
+                                    </span>
+                                  </>
+                                );
+                              })()}
+
+                              {/* Hidden file input */}
+                              <input
+                                type="file"
+                                accept={f.accept}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                onChange={(e) => handleFileChange(e, f.type)}
+                              />
+                            </label>
+
+                            {/* Show validation error if required */}
+                            {courseErrorsById[currentCourse.id]?.[
+                              `${f.type}Url`
+                            ] && (
+                              <p className="text-red-500 text-sm mt-1">
+                                {
+                                  courseErrorsById[currentCourse.id][
+                                    `${f.type}Url`
+                                  ]
+                                }
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="flex justify-center gap-10">
                       <button
                         type="button"
@@ -1112,17 +1300,16 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                   </div>
 
                   <div className="b p-4 rounded-md">
-                 
-<BranchForm
-  branches={branches}
-  selectedBranchId={selectedBranchId}
-  handleBranchChange={handleBranchChange}
-  handleBranchSubmit={handleBranchSubmit}
-  handlePreviousClick={onPrevious}
-  isLoading={isLoading}
-  errors={branchErrors[selectedBranchId] || {}} // Pass the errors for the selected branch
-  // Pass other necessary props like setBranches, setSelectedBranchId etc.
-/>
+                    <BranchForm
+                      branches={branches}
+                      selectedBranchId={selectedBranchId}
+                      handleBranchChange={handleBranchChange}
+                      handleBranchSubmit={handleBranchSubmit}
+                      handlePreviousClick={onPrevious}
+                      isLoading={isLoading}
+                      errors={branchErrors[selectedBranchId] || {}} // Pass the errors for the selected branch
+                      // Pass other necessary props like setBranches, setSelectedBranchId etc.
+                    />
                   </div>
 
                   {showCourseAfterBranch && (
@@ -1196,31 +1383,35 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                       </div>
 
                       <form onSubmit={handleCourseSubmit} className="space-y-6">
-                       <InputField
-    label="Branch"
-    name="createdBranch"
-    value={currentCourse.createdBranch}
-    onChange={handleCourseChange}
-    isSelect={true}
-    options={
-      branchOptions.length
-        ? branchOptions
-        : ["No branches saved yet"]
-    }
-    placeholder="Select branch"
-    // ✅ ADD THIS PROP TO DISPLAY THE ERROR
-    error={courseErrorsById[currentCourse.id]?.createdBranch}
-  />
+                        <InputField
+                          label="Branch"
+                          name="createdBranch"
+                          value={currentCourse.createdBranch}
+                          onChange={handleCourseChange}
+                          isSelect={true}
+                          options={
+                            branchOptions.length
+                              ? branchOptions
+                              : ["No branches saved yet"]
+                          }
+                          placeholder="Select branch"
+                          // ✅ ADD THIS PROP TO DISPLAY THE ERROR
+                          error={
+                            courseErrorsById[currentCourse.id]?.createdBranch
+                          }
+                        />
                         {isCoachingCenter ? (
-                           <CoachingCourseForm
-    currentCourse={currentCourse}
-    handleCourseChange={handleCourseChange}
-    setCourses={setCourses}
-    courses={courses}
-    selectedCourseId={selectedCourseId}
-    // ✅ Add this line to pass down the errors
-    courseErrors={courseErrorsById[currentCourse.id] || {}}
-  />
+                          <CoachingCourseForm
+                            currentCourse={currentCourse}
+                            handleCourseChange={handleCourseChange}
+                            setCourses={setCourses}
+                            courses={courses}
+                            selectedCourseId={selectedCourseId}
+                            // ✅ Add this line to pass down the errors
+                            courseErrors={
+                              courseErrorsById[currentCourse.id] || {}
+                            }
+                          />
                         ) : isStudyHall ? (
                           <StudyHallForm
                             currentCourse={currentCourse}
@@ -1232,41 +1423,51 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                             setCourses={setCourses}
                             courses={courses}
                             selectedCourseId={selectedCourseId}
-                            courseErrors={courseErrorsById[currentCourse.id] || {}}
+                            courseErrors={
+                              courseErrorsById[currentCourse.id] || {}
+                            }
                           />
                         ) : isTutionCenter ? (
                           <TuitionCenterForm
-            currentCourse={currentCourse}
-            handleCourseChange={handleCourseChange}
-            handleOperationalDayChange={handleOperationalDayChange}
-            handleFileChange={handleFileChange}
-            setCourses={setCourses}
-            courses={courses}
-            selectedCourseId={selectedCourseId}
-            // ✅ Pass errors to TuitionCenterForm
-            courseErrors={courseErrorsById[currentCourse.id] || {}}
-        />
+                            currentCourse={currentCourse}
+                            handleCourseChange={handleCourseChange}
+                            handleOperationalDayChange={
+                              handleOperationalDayChange
+                            }
+                            handleFileChange={handleFileChange}
+                            setCourses={setCourses}
+                            courses={courses}
+                            selectedCourseId={selectedCourseId}
+                            // ✅ Pass errors to TuitionCenterForm
+                            courseErrors={
+                              courseErrorsById[currentCourse.id] || {}
+                            }
+                          />
                         ) : isUnderPostGraduate ? (
                           <UnderPostGraduateForm
-        currentCourse={currentCourse}
-        handleCourseChange={handleCourseChange}
-        setCourses={setCourses}
-        courses={courses}
-        selectedCourseId={selectedCourseId}
-        // ✅ Add this prop to pass the errors down
-        courseErrors={courseErrorsById[currentCourse.id] || {}}
-    />
+                            currentCourse={currentCourse}
+                            handleCourseChange={handleCourseChange}
+                            setCourses={setCourses}
+                            courses={courses}
+                            selectedCourseId={selectedCourseId}
+                            // ✅ Add this prop to pass the errors down
+                            courseErrors={
+                              courseErrorsById[currentCourse.id] || {}
+                            }
+                          />
                         ) : isBasicCourseForm ? (
                           <BasicCourseForm
-    currentCourse={currentCourse}
-    handleCourseChange={handleCourseChange}
-    setCourses={setCourses}
-    courses={courses}
-    selectedCourseId={selectedCourseId}
-    // ✅ This line passes the validation errors for the currently selected course
-    // to the child component. The `|| {}` ensures it's always an object.
-    courseErrors={courseErrorsById[currentCourse.id] || {}}
-  />
+                            currentCourse={currentCourse}
+                            handleCourseChange={handleCourseChange}
+                            setCourses={setCourses}
+                            courses={courses}
+                            selectedCourseId={selectedCourseId}
+                            // ✅ This line passes the validation errors for the currently selected course
+                            // to the child component. The `|| {}` ensures it's always an object.
+                            courseErrors={
+                              courseErrorsById[currentCourse.id] || {}
+                            }
+                          />
                         ) : (
                           <FallbackCourseForm
                             currentCourse={currentCourse}
@@ -1277,33 +1478,93 @@ const handleBranchSubmit = async (e: FormEvent<HTMLFormElement>) => {
                           />
                         )}
                         {!isStudyHall && !isTutionCenter && (
-    <div className="grid md:grid-cols-2 gap-6">
-      {uploadFields.map((f) => (
-        <div key={f.type} className="flex flex-col gap-2">
-          <label className="font-medium text-[16px]">
-            {f.label}
-          </label>
-          <label className="w-full h-[120px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors">
-            <Upload size={24} className="text-gray-400 mb-2" />
-            <span className="text-sm text-gray-500">
-              {currentCourse[f.type]
-                ? (currentCourse[f.type] as File).name
-                : f.type === "image"
-                ? "Upload Course Image (jpg / jpeg)"
-                : "Upload Brochure Course (pdf)"}
-            </span>
-            <input
-              type="file"
-              accept={f.accept}
-              className="hidden"
-              onChange={(e) => handleFileChange(e, f.type)}
-            />
-          </label>
-        </div>
-      ))}
-    </div>
-  )}
-                        
+                          <div className="grid md:grid-cols-2 gap-6">
+                            {uploadFields.map((f) => (
+                              <div key={f.type} className="flex flex-col gap-2">
+                                <label className="font-medium text-[16px]">
+                                  {f.label}{" "}
+                                  <span className="text-red-500">*</span>
+                                </label>
+
+                                <label className="relative w-full h-[180px] rounded-[12px] border-2 border-dashed border-[#DADADD] bg-[#F8F9FA] flex flex-col items-center justify-center cursor-pointer hover:bg-[#F0F1F2] transition-colors overflow-hidden">
+                                  {/* ✅ Determine which URL to show first */}
+                                  {(() => {
+                                    const previewUrl = currentCourse[
+                                      `${f.type}PreviewUrl`
+                                    ] as string;
+                                    const uploadedUrl = currentCourse[
+                                      `${f.type}Url`
+                                    ] as string;
+
+                                    if (previewUrl || uploadedUrl) {
+                                      if (f.type === "image") {
+                                        // 🖼️ Show image (preview first, then uploaded)
+                                        return (
+                                          <img
+                                            src={previewUrl || uploadedUrl}
+                                            alt={`${f.label} Preview`}
+                                            className="object-cover w-full h-full rounded-[12px]"
+                                          />
+                                        );
+                                      } else {
+                                        // 📄 Show brochure (PDF) preview
+                                        return (
+                                          <div className="flex flex-col items-center justify-center gap-2 p-4 w-full h-full">
+                                            <span className="text-sm text-gray-500 truncate">
+                                              {
+                                                (currentCourse[f.type] as File)
+                                                  .name
+                                              }
+                                            </span>
+                                          </div>
+                                        );
+                                      }
+                                    }
+
+                                    // 🆕 Default placeholder
+                                    return (
+                                      <>
+                                        <Upload
+                                          size={24}
+                                          className="text-gray-400 mb-2"
+                                        />
+                                        <span className="text-sm text-gray-500">
+                                          {f.type === "image"
+                                            ? "Upload Course Image (jpg / jpeg / png)"
+                                            : "Upload Course Brochure (pdf)"}
+                                        </span>
+                                      </>
+                                    );
+                                  })()}
+
+                                  {/* Hidden file input */}
+                                  <input
+                                    type="file"
+                                    accept={f.accept}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={(e) =>
+                                      handleFileChange(e, f.type)
+                                    }
+                                  />
+                                </label>
+
+                                {/* Show validation error if required */}
+                                {courseErrorsById[currentCourse.id]?.[
+                                  `${f.type}Url`
+                                ] && (
+                                  <p className="text-red-500 text-sm mt-1">
+                                    {
+                                      courseErrorsById[currentCourse.id][
+                                        `${f.type}Url`
+                                      ]
+                                    }
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         <div className="flex justify-center gap-10">
                           <button
                             type="button"
