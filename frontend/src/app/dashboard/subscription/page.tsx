@@ -10,10 +10,13 @@ import { withAuth } from "@/lib/auth-context";
 import { Input } from "@/components/ui/input";
 import AppSelect from "@/components/ui/AppSelect";
 import L2DialogBox from "@/components/auth/L2DialogBox";
+import { getProgramStatus, formatDate } from "@/lib/utility";
+import { useRouter } from "next/navigation";
 
 function ProgramsPage() {
   const { data: institution } = useInstitution();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'details'|'add'>('details');
   const [search, setSearch] = useState("");
   const [branchFilter, setBranchFilter] = useState<string>("");
@@ -55,6 +58,11 @@ function ProgramsPage() {
   const onL2Success = () => {
     queryClient.invalidateQueries({ queryKey: ['programs-page-list-institution-admin'] });
     setActiveTab('details');
+  };
+
+  // Navigation function for edit button
+  const handleEditProgram = (programId: string) => {
+    router.push(`/dashboard/settings?editProgram=${programId}`);
   };
 
   const branchOptions = useMemo(() => {
@@ -152,16 +160,36 @@ function ProgramsPage() {
                         <span className="opacity-60">◎</span> {p.branchName || p.branch?.branchName || 'Public'}
                       </div>
                     </td>
-                    <td className="py-4 pr-4"><span className="inline-flex items-center text-xs bg-green-100 text-green-700 rounded-full px-2 py-1">● Live</span></td>
-                    <td className="py-4 pr-4 text-sm">{p.startDate ? new Date(p.startDate).toLocaleDateString('en-GB') : '—'}</td>
-                    <td className="py-4 pr-4 text-sm">{p.endDate ? new Date(p.endDate).toLocaleDateString('en-GB') : '—'}</td>
+                    <td className="py-4 pr-4">
+                      {(() => {
+                        const status = getProgramStatus(p.startDate || '', p.endDate || '');
+                        const statusColors = {
+                          active: 'bg-green-100 text-green-700',
+                          upcoming: 'bg-blue-100 text-blue-700',
+                          expired: 'bg-red-100 text-red-700',
+                          invalid: 'bg-gray-100 text-gray-700'
+                        };
+                        // Map status to match analytics page
+                        const displayStatus = status.status === 'active' ? 'Live' : 
+                                            status.status === 'upcoming' ? 'Paused' : 
+                                            status.status === 'expired' ? 'Expired' : 
+                                            'Draft';
+                        return (
+                          <span className={`inline-flex items-center text-xs rounded-full px-2 py-1 ${statusColors[status.status as keyof typeof statusColors]}`}>
+                            ● {displayStatus}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="py-4 pr-4 text-sm">{formatDate(p.startDate || '')}</td>
+                    <td className="py-4 pr-4 text-sm">{formatDate(p.endDate || '')}</td>
                     <td className="py-4 pr-4 text-sm">{typeof p.leadsGenerated==='number' ? p.leadsGenerated : 0}</td>
                     <td className="py-4 pr-4 text-sm">
                       <div className="flex items-center gap-3 text-gray-500">
                         <button title="Delete" onClick={async()=>{ try{ await programsAPI.remove(String(p._id), String(institution?._id)); queryClient.invalidateQueries({ queryKey: ['programs-page-list-institution-admin', institution?._id] }); }catch(e){} }} className="h-10 w-10 rounded-full border border-gray-200 dark:border-gray-800 flex items-center justify-center">
                           <img src="/Trash.png" alt="Delete" className="h-5 w-5 object-contain" />
                         </button>
-                        <button title="Edit" onClick={async()=>{ try{ await programsAPI.update(String(p._id), { institution: String(institution?._id), courseName: p.programName }); queryClient.invalidateQueries({ queryKey: ['programs-page-list-institution-admin', institution?._id] }); }catch(e){} }} className="h-10 w-10 rounded-full border border-gray-200 dark:border-gray-800 flex items-center justify-center">
+                        <button title="Edit" onClick={() => handleEditProgram(String(p._id))} className="h-10 w-10 rounded-full border border-gray-200 dark:border-gray-800 flex items-center justify-center">
                           <img src="/Edit.png" alt="Edit" className="h-5 w-5 object-contain" />
                         </button>
                       </div>

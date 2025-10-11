@@ -150,6 +150,27 @@ export default function UnderPostGraduateForm({
       />
 
       <InputField
+        label={isProgram ? "Program Start Date" : "Course Start Date"}
+        name="startDate"
+        value={currentCourse.startDate}
+        onChange={handleCourseChange}
+        type="date"
+        error={courseErrors.startDate}
+        required
+      />
+
+      {/* Row 5 */}
+      <InputField
+        label={isProgram ? "Program End Date" : "Course End Date"}
+        name="endDate"
+        value={currentCourse.endDate}
+        onChange={handleCourseChange}
+        type="date"
+        error={courseErrors.endDate}
+        required
+      />
+
+      <InputField
         label={isProgram ? "Price of Program" : "Price of Course"}
         name="priceOfCourse"
         value={currentCourse.priceOfCourse}
@@ -160,7 +181,7 @@ export default function UnderPostGraduateForm({
         error={courseErrors.priceOfCourse}
       />
       
-      {/* Row 5 */}
+      {/* Row 6 */}
       <InputField
         label="Class size"
         name="classSize"

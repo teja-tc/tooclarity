@@ -97,6 +97,27 @@ export default function FallbackCourseForm({
         required
         error={courseErrors.location}
       />
+
+      {/* Date Fields */}
+      <InputField
+        label={isProgram ? "Program Start Date" : "Course Start Date"}
+        name="startDate"
+        value={currentCourse.startDate}
+        onChange={handleCourseChange}
+        type="date"
+        error={courseErrors.startDate}
+        required
+      />
+
+      <InputField
+        label={isProgram ? "Program End Date" : "Course End Date"}
+        name="endDate"
+        value={currentCourse.endDate}
+        onChange={handleCourseChange}
+        type="date"
+        error={courseErrors.endDate}
+        required
+      />
     </div>
   );
 }

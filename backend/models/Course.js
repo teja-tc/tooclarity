@@ -20,6 +20,12 @@ const courseSchema = new mongoose.Schema(
       trim: true,
       maxlength: 50,
     },
+    startDate: {
+      type: Date,
+    },
+    endDate: {
+      type: Date,
+    },
     mode: {
       type: String,
       enum: ["Offline", "Online", "Hybrid"],
@@ -33,10 +39,10 @@ const courseSchema = new mongoose.Schema(
       trim: true,
       maxlength: 100,
     },
-    image: {
+    imageUrl: {
       type: String, // file path / URL
     },
-    brochure: {
+    brochureUrl: {
       type: String, // file path / URL
     },
 
@@ -44,7 +50,7 @@ const courseSchema = new mongoose.Schema(
     graduationType: { type: String },
     streamType: { type: String },
     selectBranch: { type: String },
-    eligibilityCriteria: { type: String},
+    eligibilityCriteria: { type: String },
     aboutBranch: { type: String },
     educationType: { type: String },
     classSize: { type: String },
@@ -55,7 +61,7 @@ const courseSchema = new mongoose.Schema(
 
     // Additional fields for Study Hall
     // --- ✅ UPDATED Study Hall Section ---
-    hallName: {type: String,trim: true},
+    hallName: { type: String, trim: true },
     seatingOption: { type: String },
     openingTime: { type: String },
     closingTime: { type: String },
@@ -87,7 +93,7 @@ const courseSchema = new mongoose.Schema(
       ref: "Branch",
       required: false,
       index: true,
-    }
+    },
   },
   { timestamps: true }
 );

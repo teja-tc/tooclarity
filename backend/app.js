@@ -10,6 +10,7 @@ const authRoutes = require("./routes/auth.routes");
 const institutionRoutes = require("./routes/institution.routes");
 const branchRoutes = require("./routes/branch.routes");
 const courseRoutes = require("./routes/course.routes");
+const subscriptionRoutes = require("./routes/subscription.routes");
 const enquiriesRoutes = require("./routes/enquiries.routes");
 const profileRoutes = require("./routes/profile.routes");
 const notificationRoutes = require("./routes/notification.routes");
@@ -25,6 +26,7 @@ const authorizeRoles = require("./middleware/role.middleware");
 const dashboardRoutes = require("./routes/dashboard.routes");
 
 const googleRoutes = require('./routes/google.routes');
+const s3Routes = require("./routes/s3.routes")
 
 // import global auth middleware
 const globalAuthMiddleware = require("./middleware/globalAuth.middleware");
@@ -37,11 +39,26 @@ app.use(helmet());
 const pinoMiddleware = pinoHttp({ logger: logger });
 app.use(pinoMiddleware);
 
+const allowedOrigins = [
+  process.env.CLIENT_ORIGIN_WEB,
+  process.env.MOBILE_CLIENT_ORIGIN,
+]
+
 const corsOptions = {
-  origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
-  credentials: true,
+  origin: function(origin, callback){
+    if(!origin){ return callback(null, true)};
+    if(allowedOrigins.includes(origin)){
+      callback(null, true);
+    }
+    else{
+      console.warn(`Origin ${origin} not allowed by CORS`);
+      callback(new Error("CORS policy voilation"))
+    }
+  },
+  credentials:true,
   optionsSuccessStatus: 200,
-};
+}
+
 app.use(cors(corsOptions));
 app.use(cookieParser());
 
@@ -85,6 +102,8 @@ app.use("/api/v1/enquiries", requireInstituteAdmin, enquiriesRoutes);
 
 app.use("/api/v1/institutions", requireInstituteAdmin, institutionRoutes);
 
+app.use("/api/s3", s3Routes);
+
 app.use(
   "/api/v1/institutions/:institutionId/branches",
   requireInstituteAdmin,
@@ -94,6 +113,13 @@ app.use(
   "/api/v1/institutions/:institutionId/courses",
   requireInstituteAdmin,
   courseRoutes
+);
+
+// Unified subscription scope under institution
+app.use(
+  "/api/v1/institutions/:institutionId/subscriptions",
+  requireInstituteAdmin,
+  subscriptionRoutes
 );
 
 app.use("/api/v1/notifications", notificationRoutes);

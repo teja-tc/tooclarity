@@ -118,6 +118,26 @@ export default function CoachingCourseForm({
       />
 
       <InputField
+        label={labelVariant === 'program' ? "Program Start Date" : "Course Start Date"}
+        name="startDate"
+        value={currentCourse.startDate}
+        onChange={handleCourseChange}
+        type="date"
+        error={courseErrors.startDate}
+        required
+      />
+
+      <InputField
+        label={labelVariant === 'program' ? "Program End Date" : "Course End Date"}
+        name="endDate"
+        value={currentCourse.endDate}
+        onChange={handleCourseChange}
+        type="date"
+        error={courseErrors.endDate}
+        required
+      />
+
+      <InputField
         label={labelVariant === 'program' ? 'Price of Program' : 'Price of Course'}
         name="priceOfCourse"
         value={currentCourse.priceOfCourse}

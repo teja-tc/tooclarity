@@ -159,6 +159,29 @@ export default function TuitionCenterForm({
         {courseErrors.operationalDays && <p className="text-sm text-red-600 mt-1">{courseErrors.operationalDays}</p>}
       </div>
 
+      {/* Date Fields */}
+      <div className="grid grid-cols-2 gap-6">
+        <InputField
+          label={labelVariant === 'program' ? "Program Start Date" : "Course Start Date"}
+          name="startDate"
+          value={currentCourse.startDate}
+          onChange={handleCourseChange}
+          type="date"
+          error={courseErrors.startDate}
+          required
+        />
+
+        <InputField
+          label={labelVariant === 'program' ? "Program End Date" : "Course End Date"}
+          name="endDate"
+          value={currentCourse.endDate}
+          onChange={handleCourseChange}
+          type="date"
+          error={courseErrors.endDate}
+          required
+        />
+      </div>
+
       {/* Operational Times */}
       <div className="flex flex-col gap-2">
         <label className="font-medium text-[16px]">Operational Time's<span className="text-red-500 ml-1">*</span></label>
@@ -238,6 +261,7 @@ export default function TuitionCenterForm({
         </label>
         {courseErrors.image && <p className="text-sm text-red-600 mt-1">{courseErrors.image}</p>}
       </div>
+
     </div>
   );
 }

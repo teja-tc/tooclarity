@@ -42,7 +42,7 @@ const AnalyticsDashboardCard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="p-4 overflow-hidden">
+      <div className="p-4 bg-white overflow-hidden">
         {/* Analytics Header */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-lg font-bold text-gray-900">Analytics</h1>

@@ -108,6 +108,29 @@ export default function StudyHallForm({
         {courseErrors.operationalDays && <p className="text-sm text-red-600 mt-1">{courseErrors.operationalDays}</p>}
       </div>
 
+      {/* Date Fields */}
+      <div className="grid grid-cols-2 gap-6">
+        <InputField
+          label="Hall Start Date"
+          name="startDate"
+          value={currentCourse.startDate}
+          onChange={handleCourseChange}
+          type="date"
+          error={courseErrors.startDate}
+          required
+        />
+
+        <InputField
+          label="Hall End Date"
+          name="endDate"
+          value={currentCourse.endDate}
+          onChange={handleCourseChange}
+          type="date"
+          error={courseErrors.endDate}
+          required
+        />
+      </div>
+
       {/* Total Seats */}
       <div className="flex flex-col gap-3">
         <label className="font-medium text-lg text-black">Total Seats<span className="text-red-500 ml-1">*</span></label>
@@ -192,6 +215,7 @@ export default function StudyHallForm({
           {courseErrors[f.name] && <p className="text-sm text-red-600 mt-1">{courseErrors[f.name]}</p>}
         </div>
       ))}
+
     </div>
   );
 }

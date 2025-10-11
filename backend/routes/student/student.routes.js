@@ -61,6 +61,6 @@ router.put(
   ],
   handleValidationErrors,
   updateAcademicProfile
-);
+); 
 
 module.exports = router;

@@ -61,6 +61,26 @@ export default function BasicCourseForm({
         required
       />
 
+      <InputField
+        label={isProgram ? "Program Start Date" : "Course Start Date"}
+        name="startDate"
+        value={currentCourse.startDate}
+        onChange={handleCourseChange}
+        type="date"
+        error={courseErrors.startDate}
+        required
+      />
+
+      <InputField
+        label={isProgram ? "Program End Date" : "Course End Date"}
+        name="endDate"
+        value={currentCourse.endDate}
+        onChange={handleCourseChange}
+        type="date"
+        error={courseErrors.endDate}
+        required
+      />
+
       <div className="flex flex-col gap-2">
         <label className="font-medium text-[16px]">Mode</label>
         <SlidingIndicator

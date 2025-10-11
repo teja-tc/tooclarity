@@ -87,7 +87,7 @@ const DummyDashboard = () => {
           </div>
 
           {/* Scrollable content area */}
-          <div className="flex-1 overflow-y-auto space-y-6">
+          <div className="flex-1 overflow-hidden space-y-6">
             {/* ===== Recent Inquiries Table ===== */}
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div className="p-4 border-b border-gray-200">

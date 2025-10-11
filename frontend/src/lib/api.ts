@@ -188,7 +188,14 @@ export async function apiRequest<T>(
       ...options,
     });
 
-    const data = await response.json();
+    // Safely parse JSON; if non-JSON (e.g., HTML from 404), fallback to text
+    const raw = await response.text();
+    let data: any;
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch {
+      data = { message: raw };
+    }
 
     if (!response.ok) {
       throw new Error(data.message || "Something went wrong");
@@ -948,9 +955,9 @@ export const programsAPI = {
     return res;
   },
   subscriptionHistory: async (institutionId: string): Promise<ApiResponse> => {
-    // If a dedicated payment history endpoint exists, use it; otherwise return empty list to avoid breakage
+    // Use unified institutions scope with single controller/routes; fallback safe
     try {
-      return await apiRequest(`/v1/payment/subscriptions/history?institutionId=${encodeURIComponent(institutionId)}`, { method: 'GET' });
+      return await apiRequest(`/v1/institutions/${encodeURIComponent(institutionId)}/subscriptions/history`, { method: 'GET' });
     } catch (_) {
       return { success: true, data: { items: [] } } as any;
     }

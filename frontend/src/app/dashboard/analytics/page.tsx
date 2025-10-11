@@ -14,6 +14,8 @@ import StatCard from "@/components/dashboard/StatCard";
 import TimeRangeToggle, { TimeRangeValue } from "@/components/ui/TimeRangeToggle";
 import { useInstitution, useProgramViews, useProgramsList, useRecentEnquiriesAll } from "@/lib/hooks/dashboard-hooks";
 import { useQueryClient } from "@tanstack/react-query";
+import { getProgramStatus } from "@/lib/utility";
+import { useRouter } from "next/navigation";
 
 function AnalyticsPage() {
 	const [analyticsRange, setAnalyticsRange] = useState<"Weekly"|"Monthly"|"Yearly">("Weekly");
@@ -30,6 +32,7 @@ function AnalyticsPage() {
 	const [institutionId, setInstitutionId] = useState<string | null>(null);
 	const [institutionAdminId, setInstitutionAdminId] = useState<string | null>(null);
 	const queryClient = useQueryClient();
+	const router = useRouter();
 
 	// Program views KPI via backend summary (range-based)
 	const programViewsRange = analyticsRange.toLowerCase() as 'weekly'|'monthly'|'yearly';
@@ -147,8 +150,22 @@ function AnalyticsPage() {
 				const name = pg.programName;
 				const views = viewsMap.get(name) || 0;
 				const lead = leadCounts.get(name) || { leads: 0, lastTs: null };
-				let status: 'Live'|'Paused'|'Draft' = 'Draft';
-				if (lead.leads > 0) status = (lead.lastTs || 0) >= (NOW - WINDOW_MS) ? 'Live' : 'Paused';
+				
+				// Use new program status logic based on startDate and endDate
+				const programStatus = getProgramStatus(pg.startDate || '', pg.endDate || '');
+				let status: 'Live'|'Paused'|'Draft'|'Expired' = 'Draft';
+				
+				if (programStatus.status === 'active') {
+					status = 'Live';
+				} else if (programStatus.status === 'upcoming') {
+					status = 'Paused';
+				} else if (programStatus.status === 'expired') {
+					status = 'Expired';
+				} else {
+					// Fallback to old logic for programs without dates
+					if (lead.leads > 0) status = (lead.lastTs || 0) >= (NOW - WINDOW_MS) ? 'Live' : 'Paused';
+				}
+				
 				return {
 					sno: (idx + 1).toString().padStart(2, '0'),
 					name,
@@ -267,6 +284,11 @@ function AnalyticsPage() {
 
 	const rangeText = analyticsRange.toLowerCase();
 
+	// Navigation function for analytics action button
+	const handleAnalyticsAction = () => {
+		router.push('/dashboard/subscription');
+	};
+
 	return (
 		<div className="grid grid-cols-1 gap-6 mb-6 p-2 mt-5 rounded-2xl">
 			<Card className="m-5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
@@ -324,7 +346,7 @@ function AnalyticsPage() {
 						<Loading size="md" text="Loading program performance..." />
 					</div>
 				) : null}
-				<AnalyticsTable rows={coursePerformance} titleOverride="Program Performance" nameHeaderOverride="Program name" onAddCourse={() => {}} />
+				<AnalyticsTable rows={coursePerformance} titleOverride="Program Performance" nameHeaderOverride="Program name" onAddCourse={handleAnalyticsAction} />
 			</div>
 
 			{/* View & Lead Trends with inner loading */}

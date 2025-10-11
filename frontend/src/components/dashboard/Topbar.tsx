@@ -18,6 +18,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { cacheSet, CACHE_DURATION } from "@/lib/localDb";
 import { useProfile } from "@/lib/hooks/user-hooks";
+import { useSearch } from "@/lib/search-context";
 
 interface TopbarProps {
   userName?: string;
@@ -48,7 +49,7 @@ const Topbar: React.FC<TopbarProps> = ({
 }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState("");
+  const { searchQuery, setSearchQuery, searchInPage, clearSearch, isSearchActive } = useSearch();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -347,6 +348,11 @@ const Topbar: React.FC<TopbarProps> = ({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    if (searchQuery.trim()) {
+      searchInPage(searchQuery);
+    } else {
+      clearSearch();
+    }
     if (onSearch) {
       onSearch(searchQuery);
     }
@@ -355,7 +361,7 @@ const Topbar: React.FC<TopbarProps> = ({
   const toggleSearch = () => {
     setIsSearchOpen(!isSearchOpen);
     if (isSearchOpen) {
-      setSearchQuery("");
+      clearSearch();
     }
   };
 
@@ -410,7 +416,7 @@ const Topbar: React.FC<TopbarProps> = ({
               <button 
                 type="button" 
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
-                onClick={() => setSearchQuery("")}
+                onClick={clearSearch}
               >
                 <FontAwesomeIcon icon={faTimes} />
               </button>
@@ -614,7 +620,7 @@ const Topbar: React.FC<TopbarProps> = ({
                 <button 
                   type="button" 
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
-                  onClick={() => setSearchQuery("")}
+                  onClick={clearSearch}
                 >
                   <FontAwesomeIcon icon={faTimes} />
                 </button>

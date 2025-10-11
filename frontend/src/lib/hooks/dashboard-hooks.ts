@@ -152,7 +152,15 @@ export function useProgramsList() {
     enabled: !!institution?._id,
     queryFn: async () => {
       const res = await programsAPI.list(String(institution?._id)) as any;
-      return (res?.data?.programs || []) as Array<{ _id: string; programName: string }>;
+      return (res?.data?.programs || []) as Array<{ 
+        _id: string; 
+        programName: string; 
+        startDate?: string; 
+        endDate?: string;
+        courseName?: string;
+        branch?: any;
+        branchName?: string;
+      }>;
     },
     staleTime: 60 * 1000,
     refetchOnWindowFocus: false,

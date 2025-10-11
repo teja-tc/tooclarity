@@ -2,3 +2,6 @@
 node_modules
 seed
 /tests
+.env.development
+.env.production
+scripts
