@@ -1,8 +1,8 @@
 "use client";
 
-import { useState,useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff ,Loader2, type LucideIcon } from "lucide-react";
+import { Eye, EyeOff, Loader2, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import {
@@ -23,7 +23,6 @@ import {
   GoogleCredentialResponse,
   redirectToGoogleOAuth,
 } from "@/lib/google-auth";
-import ForgotPasswordDialogBox from "./ForgotPasswordDialogBox";
 
 type LoginCaller = "admin" | "institution";
 
@@ -50,7 +49,6 @@ const oauthProviders: OAuthProvider[] = [
 //     icon: Apple,
 //   },
 ];
-
 interface LoginDialogBoxProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -109,6 +107,15 @@ export default function LoginDialogBox({
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState(false);
+
+  // Forgot Password State
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordError, setForgotPasswordError] = useState("");
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [timer, setTimer] = useState(20);
+  const [canResend, setCanResend] = useState(false);
 
   // Google OAuth State
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
@@ -212,7 +219,72 @@ export default function LoginDialogBox({
     });
   };
 
-  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  // Forgot Password Timer Effect
+  useEffect(() => {
+    if (emailSent && timer > 0) {
+      const interval = setInterval(() => setTimer((t) => t - 1), 1000);
+      return () => clearInterval(interval);
+    } else if (timer === 0) {
+      setCanResend(true);
+    }
+  }, [emailSent, timer]);
+
+  const validateEmail = (email: string) => {
+    const trimmed = email.trim();
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(trimmed);
+  };
+
+  const handleForgotPassword = async () => {
+    setForgotPasswordError("");
+
+    if (!forgotPasswordEmail.trim()) {
+      setForgotPasswordError("Email address is required.");
+      return;
+    }
+
+    if (!validateEmail(forgotPasswordEmail)) {
+      setForgotPasswordError("Please enter a valid email address.");
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+
+    try {
+      const response = await authAPI.forgotPassword(forgotPasswordEmail);
+
+      if (response.success) {
+        setEmailSent(true);
+        setTimer(20);
+        setCanResend(false);
+      } else {
+        setForgotPasswordError(response.message || "Failed to send reset email. Please try again.");
+      }
+    } catch (error) {
+      setForgotPasswordError("Network error. Please try again.");
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
+  const handleResendForgotPassword = async () => {
+    setForgotPasswordLoading(true);
+
+    try {
+      const response = await authAPI.forgotPassword(forgotPasswordEmail);
+
+      if (response.success) {
+        setTimer(20);
+        setCanResend(false);
+      } else {
+        setForgotPasswordError(response.message || "Failed to resend email. Please try again.");
+      }
+    } catch (error) {
+      setForgotPasswordError("Network error. Please try again.");
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
 
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
@@ -298,18 +370,19 @@ export default function LoginDialogBox({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg flex flex-col justify-between scrollbar-hide"
-      overlayClassName="bg-black/50"
-      >
-        <DialogHeader className="flex flex-col items-center gap-2">
-          <DialogTitle className="text-xl sm:text-[24px] font-bold">
-            Welcome Back!
-          </DialogTitle>
-          <DialogDescription className="text-center text-gray-600">
-            Please sign in to your account
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg flex flex-col justify-between scrollbar-hide"
+        overlayClassName="bg-black/50"
+        >
+          <DialogHeader className="flex flex-col items-center gap-2">
+            <DialogTitle className="text-xl sm:text-[24px] font-bold">
+              Welcome Back!
+            </DialogTitle>
+            <DialogDescription className="text-center text-gray-600">
+              Please sign in to your account
+            </DialogDescription>
+          </DialogHeader>
 
           {errors.general && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm text-center">
@@ -318,71 +391,139 @@ export default function LoginDialogBox({
           )}
 
           <div className="grid gap-4">
-            <InputField
-              label="Email Address"
-              name="email"
-              type="email"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-              error={errors.email}
-            />
+            {!showForgotPassword ? (
+              <>
+                <InputField
+                  label="Email Address"
+                  name="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                  error={errors.email}
+                />
 
-            <InputField
-              label="Password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter your password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-              error={errors.password}
-              icon={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
-              }
-            />
+                <InputField
+                  label="Password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                  error={errors.password}
+                  icon={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  }
+                />
 
-            <div className="text-right">
-              <button
-                onClick={() => {
-                  onOpenChange(false);
-                  setForgotPasswordOpen(true);
-                }}
-                className="text-sm text-blue-600 hover:underline"
-              >
-                Forgot password?
-              </button>
-            </div>
+                <div className="text-right">
+                  <button
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-center mb-4">
+                  <button
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setEmailSent(false);
+                      setForgotPasswordEmail("");
+                      setForgotPasswordError("");
+                    }}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    ← Back to login
+                  </button>
+                </div>
 
-        <div className="flex flex-col gap-4 mt-4">
-          <Button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full h-12 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-          >
-            {loading ? "Signing In..." : "Sign In"}
-          </Button>
-        </div>
-        
+                <InputField
+                  label="Email Address"
+                  name="forgotEmail"
+                  type="email"
+                  placeholder="Enter your registered email"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  required
+                  error={forgotPasswordError}
+                />
 
-        {/* Google OAuth Section */}
-          <div className="flex items-center gap-3 text-xs text-gray-400">
-            <span className="h-px flex-1 bg-gray-200" />
-            <span>OR</span>
-            <span className="h-px flex-1 bg-gray-200" />
+                {forgotPasswordError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm text-center">
+                    {forgotPasswordError}
+                  </div>
+                )}
+
+                {!emailSent ? (
+                  <Button
+                    onClick={handleForgotPassword}
+                    disabled={forgotPasswordLoading}
+                    className="w-full h-12 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                  >
+                    {forgotPasswordLoading ? "Sending..." : "Send Reset Link"}
+                  </Button>
+                ) : (
+                  <div className="text-center">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-green-600 text-sm mb-4">
+                      Password reset link sent! Please check your email.
+                    </div>
+
+                    <div className="text-sm text-gray-600 mb-4">
+                      Didn't receive the email? Please wait and check your spam folder.
+                    </div>
+
+                    <Button
+                      onClick={handleResendForgotPassword}
+                      disabled={forgotPasswordLoading || !canResend}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      {forgotPasswordLoading ? "Sending..." : canResend ? "Resend Email" : `Resend in ${timer}s`}
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-          <div className="space-y-3">{renderedProviders}</div>
-        
 
+          {!showForgotPassword && (
+            <div className="flex flex-col gap-4 mt-4">
+              <Button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="w-full h-12 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+              >
+                {loading ? "Signing In..." : "Sign In"}
+              </Button>
+            </div>
+          )}
 
-      </DialogContent>
-    </Dialog>
+          {/* Google OAuth Section - Only show for login */}
+          {!showForgotPassword && (
+            <>
+              <div className="flex items-center gap-3 text-xs text-gray-400">
+                <span className="h-px flex-1 bg-gray-200" />
+                <span>OR</span>
+                <span className="h-px flex-1 bg-gray-200" />
+              </div>
+              <div className="space-y-3">{renderedProviders}</div>
+            </>
+          )}
+
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
