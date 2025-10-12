@@ -860,7 +860,11 @@ export default function L2DialogBox({
         } else {
           await addCoursesGroupToDB({
             branchName: entry.branchName || "",
+            branchAddress: entry.branchAddress || "",
+            contactInfo: entry.contactInfo || "",
+            locationUrl: entry.locationUrl || "",
             courses: entry.courses || [],
+
           });
         }
       }
