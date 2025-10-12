@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const { promisify } = require("util");
 const AppError = require("../utils/appError");
 const crypto = require('crypto');
+const mongoose = require("mongoose");
 
 const CookieUtil = require("../utils/cookie.util");
 const RedisUtil = require("../utils/redis.util");
@@ -11,6 +12,9 @@ const RedisUtil = require("../utils/redis.util");
 const { sendTokens } = require("../utils/token.utils");
 
 exports.register = async (req, res, next, options = {}) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const {
       name,
@@ -18,13 +22,13 @@ exports.register = async (req, res, next, options = {}) => {
       password,
       contactNumber,
       designation,
-      linkedinUrl,
+      linkedin,
       type,
       googleId,
       profilePicture,
     } = req.body;
 
-    const existingUser = await InstituteAdmin.findOne({ $or: [{ email }] });
+    const existingUser = await InstituteAdmin.findOne({ email }).session(session);
 
     if (existingUser) {
       if (options.returnTokens) {
@@ -32,6 +36,8 @@ exports.register = async (req, res, next, options = {}) => {
         err.code = "USER_EXISTS";
         throw err;
       }
+      await session.abortTransaction();
+      session.endSession();
       return res.status(409).json({
         status: "fail",
         message: "Email already in use.",
@@ -41,43 +47,66 @@ exports.register = async (req, res, next, options = {}) => {
     let newUser;
 
     if (type === "institution") {
-      newUser = await InstituteAdmin.create({
-        name,
-        email,
-        password: password || undefined,
-        contactNumber: contactNumber || "",
-        designation: designation || "",
-        linkedinUrl: linkedinUrl || "",
-        role: "INSTITUTE_ADMIN",
-        isPaymentDone: false,
-        isProfileCompleted: false,
-        address: undefined,
-        profilePicture: profilePicture || "",
-        googleId: googleId || undefined,
-        isEmailVerified: !!googleId,
-        isPhoneVerified: false,
-      });
+      newUser = await InstituteAdmin.create(
+        [
+          {
+            name,
+            email,
+            password: password || undefined,
+            contactNumber: contactNumber || "",
+            designation: designation || "",
+            linkedinUrl: linkedin || "",
+            role: "INSTITUTE_ADMIN",
+            isPaymentDone: false,
+            isProfileCompleted: false,
+            address: undefined,
+            profilePicture: profilePicture || "",
+            googleId: googleId || undefined,
+            isEmailVerified: !!googleId,
+            isPhoneVerified: false,
+          },
+        ],
+        { session }
+      );
 
-      // ⚠️ Only send OTP in normal email/password flow
+      // Send OTP in normal email/password flow
       if (!googleId && !options.returnTokens) {
-        await otpService.sendVerificationToken(email);
+        try {
+          await otpService.sendVerificationToken(email);
+        } catch (err) {
+          // OTP failed → rollback
+          await session.abortTransaction();
+          session.endSession();
+          return res.status(500).json({
+            status: "fail",
+            message: "Failed to send OTP. User not registered.",
+          });
+        }
+
+        await session.commitTransaction();
+        session.endSession();
         return res.status(201).json({
           status: "success",
           message: "OTP sent to email. Please verify to complete registration.",
         });
       }
     } else if (type === "admin") {
-      newUser = await InstituteAdmin.create({
-        name,
-        email,
-        password,
-        contactNumber,
-        designation,
-        role: "ADMIN",
-        googleId: googleId || undefined,
-        isEmailVerified: false,
-        isPhoneVerified: false,
-      });
+      newUser = await InstituteAdmin.create(
+        [
+          {
+            name,
+            email,
+            password,
+            contactNumber,
+            designation,
+            role: "ADMIN",
+            googleId: googleId || undefined,
+            isEmailVerified: false,
+            isPhoneVerified: false,
+          },
+        ],
+        { session }
+      );
     } else if (type === "student") {
       newUser = await InstituteAdmin.create({
         name,
@@ -99,14 +128,20 @@ exports.register = async (req, res, next, options = {}) => {
         err.code = "INVALID_USER_TYPE";
         throw err;
       }
+      await session.abortTransaction();
+      session.endSession();
       return res
         .status(400)
         .json({ status: "fail", message: "Invalid user type." });
     }
 
-    // ✅ Issue tokens
+    // Commit transaction (user created successfully)
+    await session.commitTransaction();
+    session.endSession();
+
+    // Issue tokens (outside of transaction)
     const tokenData = await sendTokens(
-      newUser,
+      newUser[0],
       res,
       `${type.toUpperCase()} REGISTERED SUCCESSFULLY`,
       options
@@ -143,12 +178,13 @@ exports.register = async (req, res, next, options = {}) => {
     // ✅ If Google OAuth flow → return tokens only
     if (options.returnTokens) return tokenData;
 
-    // ✅ Otherwise → normal response
     return res.status(201).json({
       status: "success",
       message: "User registered successfully",
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     next(error);
   }
 };
