@@ -75,14 +75,3 @@ export const studentDashboardAPI = {
     });
   },
 };
-
-// ===== Student Authentication API =====
-export const studentAuthAPI = {
-  // Student login
-  login: async (loginData: StudentLoginData): Promise<StudentApiResponse> => {
-    return studentApiRequest("/v1/student/auth/login", {
-      method: "POST",
-      body: JSON.stringify(loginData),
-    });
-  },
-};
