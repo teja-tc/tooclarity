@@ -1,3 +1,5 @@
+import { API_BASE_URL }  from "@/lib/api"
+
 export interface PresignedUrlResponse {
   uploadUrl: string;
 }
@@ -16,7 +18,7 @@ export interface UploadResult {
  */
 export async function getPresignedUrl(filename: string, filetype: string): Promise<string> {
   try {
-    const res = await fetch("http://localhost:3001/api/s3/upload-url", {
+    const res = await fetch(`${API_BASE_URL}/s3/upload-url`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
