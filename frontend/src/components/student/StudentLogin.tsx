@@ -22,6 +22,7 @@ import {
   redirectToGoogleOAuth,
 } from "@/lib/google-auth";
 
+
 type OAuthProvider = {
   id: string;
   label: string;
@@ -159,7 +160,7 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onSuccess }) => {
     setError(null);
 
     try {
-      const response = await studentAuthAPI.login(formData);
+      const response = await authAPI.login(formData);
       
       if (!response.success) {
         setError(response.message || "Login failed");

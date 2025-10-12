@@ -5,11 +5,31 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import SignUpDialog from "../auth/SignUpDialog";
 import LoginDialog from "../auth/LoginDialogBox";
+import OtpDialogBox from "../auth/OtpDialogBox";
 
 const Header: React.FC = () => {
   const [isSignUpOpen, setIsSignUpOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isOtpOpen, setIsOtpOpen] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
   const router = useRouter();
+
+  const handleSignUpSuccess = (email: string) => {
+    // Close signup dialog
+    setIsSignUpOpen(false);
+
+    // Store email for OTP verification
+    setOtpEmail(email);
+
+    // Small delay to ensure clean modal transition
+    setTimeout(() => setIsOtpOpen(true), 150);
+  };
+
+  const handleOtpVerified = () => {
+    setIsOtpOpen(false);
+    // Optional: show toast, navigate, or refresh user here
+    console.log("✅ OTP verified successfully");
+  };
 
   return (
     <header
@@ -44,9 +64,10 @@ const Header: React.FC = () => {
       </div>
 
       {/* Render dialogs at the top level */}
-      {isSignUpOpen && <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} />}
+      {isSignUpOpen && <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} onSuccess={handleSignUpSuccess} />}
       
       {isLoginOpen && <LoginDialog open={isLoginOpen} onOpenChange={setIsLoginOpen} />}
+      {isOtpOpen && ( <OtpDialogBox open={isOtpOpen} setOpen={setIsOtpOpen} email={otpEmail} onVerificationSuccess={handleOtpVerified}/>)}
     </header>
   );
 };

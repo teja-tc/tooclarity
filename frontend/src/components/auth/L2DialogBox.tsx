@@ -851,6 +851,9 @@ export default function L2DialogBox({
           const merged = {
             ...group,
             branchName: entry.branchName || "",
+            branchAddress: entry.branchAddress || "",
+            contactInfo: entry.contactInfo || "",
+            locationUrl: entry.locationUrl || "",            
             courses: [...existing, ...uniqueIncoming],
           };
           await updateCoursesGroupInDB(merged);

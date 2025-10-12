@@ -46,7 +46,6 @@ exports.validateRegistration = [
     .isURL()
     .withMessage("Invalid LinkedIn URL")
     .trim(),
-  body("logoUrl").isURL().withMessage("Logo URL must be a valid URL").trim(),
   handleValidationErrors,
 ];
 
@@ -233,9 +232,9 @@ exports.validateBranchCreation = [
     .withMessage("Branch address is required.")
     .isLength({ max: 255 }),
   body("locationUrl")
-    .optional({ checkFalsy: true })
-    .isURL()
-    .withMessage("Must be a valid URL."),
+    .optional({ checkFalsy: true }),
+    // .isURL()
+    // .withMessage("Must be a valid URL."),
   handleValidationErrors,
 ];
 
@@ -261,9 +260,9 @@ exports.validateBranchUpdate = [
     .withMessage("Branch address cannot be empty.")
     .isLength({ max: 255 }),
   body("locationUrl")
-    .optional({ checkFalsy: true })
-    .isURL()
-    .withMessage("Must be a valid URL."),
+    .optional({ checkFalsy: true }),
+    // .isURL()
+    // .withMessage("Must be a valid URL."),
   handleValidationErrors,
 ];
 
@@ -435,9 +434,9 @@ exports.validateL1Creation = [
   // --- Location URL ---
   body("locationURL")
     .notEmpty()
-    .withMessage("Location URL is required")
-    .isURL()
-    .withMessage("Please enter a valid URL"),
+    .withMessage("Location URL is required"),
+    // .isURL()
+    // .withMessage("Please enter a valid URL"),
 
   body("logoUrl").trim().isURL().withMessage("Logo URL must be a valid URL."),
 
@@ -475,8 +474,8 @@ const l2BranchRules = [
     .trim()
     .notEmpty()
     .withMessage("Location URL is required when a branch name is provided.")
-    .isURL()
-    .withMessage("Must be a valid URL."),
+    // .isURL()
+    // .withMessage("Must be a valid URL."),
 ];
 
 // ✅ --- L2 BASE COURSE VALIDATOR ---

@@ -2,6 +2,7 @@
 import { ArrowRight } from "lucide-react";
 import SignUpDialog from "@/components/auth/SignUpDialog";
 import LoginDialogBox from "@/components/auth/LoginDialogBox";
+import OtpDialogBox  from "@/components/auth/OtpDialogBox";
 import StaticDashboardCard from "@/components/LandingPage/DashboardCard";
 import StaticLeadsManagementCard from "@/components/LandingPage/LeadManagementCard";
 import AnalyticsDashboardCard from "@/components/LandingPage/DataInsightsCard";
@@ -22,6 +23,8 @@ const HomePage = () => {
   const router = useRouter();
   const [isSignUpOpen, setIsSignUpOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isOtpOpen, setIsOtpOpen] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
 
   const leftBoxes = [
     { id: 1, component: <StaticDashboardCard /> },
@@ -52,6 +55,23 @@ const [scale, setScale] = useState(1);
     handleResize();
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const handleSignUpSuccess = (email: string) => {
+    // Close signup dialog
+    setIsSignUpOpen(false);
+
+    // Store email for OTP verification
+    setOtpEmail(email);
+
+    // Small delay to ensure clean modal transition
+    setTimeout(() => setIsOtpOpen(true), 150);
+  };
+
+  const handleOtpVerified = () => {
+    setIsOtpOpen(false);
+    // Optional: show toast, navigate, or refresh user here
+    console.log("✅ OTP verified successfully");
+  };
 
 
   return (
@@ -413,8 +433,9 @@ const [scale, setScale] = useState(1);
         </div>
       </section>
       {/* Render dialogs at the top level (not inside button!) */}
-      {isSignUpOpen && <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} />}
+      {isSignUpOpen && <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} onSuccess={handleSignUpSuccess} />}
       {isLoginOpen && <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen} />}
+      {isOtpOpen && ( <OtpDialogBox open={isOtpOpen} setOpen={setIsOtpOpen} email={otpEmail} onVerificationSuccess={handleOtpVerified}/>)}
 
     </div>
   );
