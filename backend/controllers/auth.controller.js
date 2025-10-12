@@ -108,24 +108,20 @@ exports.register = async (req, res, next, options = {}) => {
         { session }
       );
     } else if (type === "student") {
-      newUser = await InstituteAdmin.create(
-        [
-          {
-            name,
-            email,
-            password: password || undefined,
-            contactNumber,
-            role: "STUDENT",
-            isProfileCompleted: false,
-            address: "",
-            profilePicture: profilePicture || "",
-            googleId: googleId || undefined,
-            isEmailVerified: !!googleId,
-            isPhoneVerified: false,
-          },
-        ],
-        { session }
-      );
+      newUser = await InstituteAdmin.create({
+        name,
+        email,
+        password: password || undefined,
+        designation: undefined,
+        contactNumber,
+        role: "STUDENT",
+        isProfileCompleted: false,
+        address: "",
+        profilePicture: profilePicture || "",
+        googleId: googleId || undefined,
+        isEmailVerified: !!googleId,
+        isPhoneVerified: false,
+      });
     } else {
       if (options.returnTokens) {
         const err = new Error("Invalid user type");
@@ -298,7 +294,7 @@ exports.forgotPassword = async (req, res, next) => {
       await user.save({ validateBeforeSave: false });
 
       // 2. Create the full reset URL
-      const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+      const resetURL = `${process.env.CLIENT_ORIGIN_WEB}/reset-password/${resetToken}`;
 
       // 3. Send the email with the link
       try {

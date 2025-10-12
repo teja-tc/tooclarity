@@ -13,7 +13,6 @@ import {
 import { useRouter } from "next/navigation";
 
 import { authAPI } from "@/lib/api";
-import { studentAuthAPI } from "@/lib/students-api";
 import { useAuth } from "@/lib/auth-context";
 import {
   initializeGoogleIdentity,

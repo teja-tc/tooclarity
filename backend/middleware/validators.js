@@ -1,6 +1,6 @@
-const { body, param, validationResult } = require("express-validator");
-const { Institution } = require("../models/Institution");
-const logger = require("../config/logger");
+const { body, param, query, validationResult, matchedData } = require('express-validator');
+const { Institution } = require('../models/Institution');
+const logger = require('../config/logger');
 
 // --- UTILITY FUNCTION ---
 const handleValidationErrors = (req, res, next) => {
@@ -21,22 +21,16 @@ const strongPasswordOptions = {
 };
 
 exports.validateRegistration = [
-  body("email")
-    .isEmail()
-    .withMessage("A valid email is required")
-    .normalizeEmail(),
-  body("name").notEmpty().withMessage("Name is required").trim().escape(),
-  body("password")
-    .isStrongPassword(strongPasswordOptions)
-    .withMessage(
-      "Password must be at least 8 characters long and contain an uppercase letter, a lowercase letter, a number, and a symbol."
-    ),
+  body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
+  body('name').notEmpty().withMessage('Name is required').trim().escape(),
+  body('password').isStrongPassword(strongPasswordOptions).withMessage('Password must be at least 8 characters long and contain an uppercase letter, a lowercase letter, a number, and a symbol.'),
   // body('contactNumber').isMobilePhone('any', { strictMode: true }).withMessage('A valid 10-digit contact number is required.'),
-  body("contactNumber")
+  body('contactNumber')
     .matches(/^[0-9]{10}$/)
-    .withMessage("A valid 10-digit contact number is required."),
+    .withMessage('A valid 10-digit contact number is required.'),
 
   body("designation")
+    .optional()
     .notEmpty()
     .withMessage("Designation is required")
     .trim()
@@ -60,30 +54,19 @@ exports.validateLogin = [
 
 // --- L1 INSTITUTION VALIDATOR ---
 exports.validateL1Creation = [
-  body("instituteName")
-    .notEmpty()
-    .withMessage("Institution name is required")
-    .trim()
-    .isLength({ max: 150 })
-    .escape(),
-  body("instituteType")
-    .isIn([
-      "Kindergarten/childcare center",
-      "School's",
-      "Intermediate college(K12)",
-      "Under Graduation/Post Graduation",
-      "Coaching centers",
-      "Tuition Center's", // Corrected spelling
-      "Study Halls",
-      "Study Abroad",
-    ])
-    .withMessage("A valid institute type is required."),
+  body('instituteName').notEmpty().withMessage('Institution name is required').trim().isLength({ max: 150 }).escape(),
+  body('instituteType').isIn([
+    'Kindergarten/childcare center',
+    "School's",
+    'Intermediate college(K12)',
+    'Under Graduation/Post Graduation',
+    'Coaching centers',
+    "Tuition Center's", // Corrected spelling
+    'Study Halls',
+    'Study Abroad'
+  ]).withMessage('A valid institute type is required.'),
   // body('establishmentDate').optional({ checkFalsy: true }).isISO8601().toDate().withMessage('Establishment date must be a valid date.'),
-  body("approvedBy")
-    .optional({ checkFalsy: true })
-    .trim()
-    .isLength({ max: 100 })
-    .escape(),
+  body('approvedBy').optional({ checkFalsy: true }).trim().isLength({ max: 100 }).escape(),
   handleValidationErrors,
 ];
 
@@ -108,41 +91,29 @@ const ugPgUniversityL2Rules = [
 ];
 
 const coachingCenterL2Rules = [
-  body("placementDrives")
-    .notEmpty()
-    .withMessage("placementDrives is required")
-    .isBoolean()
-    .withMessage("placementDrives must be true or false"),
+  body('placementDrives')
+    .notEmpty().withMessage('placementDrives is required')
+    .isBoolean().withMessage('placementDrives must be true or false'),
 
-  body("mockInterviews")
-    .notEmpty()
-    .withMessage("mockInterviews is required")
-    .isBoolean()
-    .withMessage("mockInterviews must be true or false"),
+  body('mockInterviews')
+    .notEmpty().withMessage('mockInterviews is required')
+    .isBoolean().withMessage('mockInterviews must be true or false'),
 
-  body("resumeBuilding")
-    .notEmpty()
-    .withMessage("resumeBuilding is required")
-    .isBoolean()
-    .withMessage("resumeBuilding must be true or false"),
+  body('resumeBuilding')
+    .notEmpty().withMessage('resumeBuilding is required')
+    .isBoolean().withMessage('resumeBuilding must be true or false'),
 
-  body("linkedinOptimization")
-    .notEmpty()
-    .withMessage("linkedinOptimization is required")
-    .isBoolean()
-    .withMessage("linkedinOptimization must be true or false"),
+  body('linkedinOptimization')
+    .notEmpty().withMessage('linkedinOptimization is required')
+    .isBoolean().withMessage('linkedinOptimization must be true or false'),
 
-  body("exclusiveJobPortal")
-    .notEmpty()
-    .withMessage("exclusiveJobPortal is required")
-    .isBoolean()
-    .withMessage("exclusiveJobPortal must be true or false"),
+  body('exclusiveJobPortal')
+    .notEmpty().withMessage('exclusiveJobPortal is required')
+    .isBoolean().withMessage('exclusiveJobPortal must be true or false'),
 
-  body("certification")
-    .notEmpty()
-    .withMessage("certification is required")
-    .isBoolean()
-    .withMessage("certification must be true or false"),
+  body('certification')
+    .notEmpty().withMessage('certification is required')
+    .isBoolean().withMessage('certification must be true or false'),
 ];
 
 exports.validateL2Update = async (req, res, next) => {
@@ -165,29 +136,16 @@ exports.validateL2Update = async (req, res, next) => {
     }
 
     let validationChain = [];
-    console.log("for type of " + institution.instituteType);
+    console.log("for type of " + institution.instituteType)
     switch (institution.instituteType) {
-      case "Kindergarten/childcare center":
-        validationChain = kindergartenL2Rules;
-        break;
-      case "School's":
-        validationChain = schoolRules;
-        break;
-      case "Intermediate college(K12)":
-        validationChain = intermediateCollegeL2Rules;
-        break;
-      case "Under Graduation/Post Graduation":
-        validationChain = ugPgUniversityL2Rules;
-        break;
-      case "Study Abroad":
-        return next();
-      case "Coaching centers":
-        validationChain = coachingCenterL2Rules;
-        break;
-      case "Tution Center's":
-        return next();
-      case "Study Halls":
-        return next();
+      case 'Kindergarten/childcare center': validationChain = kindergartenL2Rules; break;
+      case "School's": validationChain = schoolRules; break;
+      case 'Intermediate college(K12)': validationChain = intermediateCollegeL2Rules; break;
+      case 'Under Graduation/Post Graduation': validationChain = ugPgUniversityL2Rules; break;
+      case 'Study Abroad': return next();
+      case 'Coaching centers': validationChain = coachingCenterL2Rules; break;
+      case "Tution Center's": return next();
+      case 'Study Halls': return next();
 
       default:
         logger.error(
@@ -203,10 +161,11 @@ exports.validateL2Update = async (req, res, next) => {
     }
 
     // Run the selected validation chain
-    await Promise.all(validationChain.map((validation) => validation.run(req)));
+    await Promise.all(validationChain.map(validation => validation.run(req)));
 
     // Handle the results
     handleValidationErrors(req, res, next);
+
   } catch (error) {
     next(error);
   }
@@ -336,100 +295,75 @@ exports.validateCourseUpdate = [
 // --- L1 INSTITUTION VALIDATOR ---
 exports.validateL1Creation = [
   // --- Institute Type ---
-  body("instituteType")
+  body('instituteType')
     .isIn([
-      "Kindergarten/childcare center",
-      "School's",
-      "Intermediate college(K12)",
-      "Under Graduation/Post Graduation",
-      "Coaching centers",
-      "Tution Center's",
-      "Study Halls",
-      "Study Abroad",
+      'Kindergarten/childcare center', "School's", 'Intermediate college(K12)',
+      'Under Graduation/Post Graduation', 'Coaching centers', "Tution Center's",
+      'Study Halls', 'Study Abroad'
     ])
-    .withMessage("A valid institute type is required."),
+    .withMessage('A valid institute type is required.'),
 
   // --- Institute Name ---
-  body("instituteName")
-    .notEmpty()
-    .withMessage("Institute Name is required")
+  body('instituteName')
+    .notEmpty().withMessage('Institute Name is required')
     .trim()
     .isLength({ min: 3, max: 100 })
-    .withMessage("Institute Name must be between 3 and 100 characters")
+    .withMessage('Institute Name must be between 3 and 100 characters')
     .matches(/^[A-Za-z][A-Za-z\s.&'-]*$/)
-    .withMessage(
-      "Institute Name must start with a letter and can only contain letters, numbers, spaces, . & ' -"
-    )
+    .withMessage("Institute Name must start with a letter and can only contain letters, numbers, spaces, . & ' -")
     .escape(),
 
   // --- Conditional Validation for Approved By ---
-  body("approvedBy")
-    .if(body("instituteType").not().equals("Study Halls")) // Only validate if type is NOT 'Study Halls'
-    .notEmpty()
-    .withMessage("Approved By is required")
+  body('approvedBy')
+    .if(body('instituteType').not().equals('Study Halls')) // Only validate if type is NOT 'Study Halls'
+    .notEmpty().withMessage('Approved By is required')
     .trim()
     .isLength({ min: 2, max: 100 })
-    .withMessage("Approved By must be between 2 and 100 characters")
+    .withMessage('Approved By must be between 2 and 100 characters')
     .matches(/^[A-Za-z][A-Za-z\s.&'-]*$/)
-    .withMessage(
-      "Approved By must start with a letter and can only contain letters, spaces, . & ' -"
-    )
+    .withMessage("Approved By must start with a letter and can only contain letters, spaces, . & ' -")
     .escape(),
 
   // --- Conditional Validation for Establishment Date ---
-  body("establishmentDate")
-    .if(body("instituteType").not().equals("Study Halls")) // Only validate if type is NOT 'Study Halls'
-    .notEmpty()
-    .withMessage("Establishment Date is required")
-    .isISO8601()
-    .withMessage("Must be a valid date")
+  body('establishmentDate')
+    .if(body('instituteType').not().equals('Study Halls')) // Only validate if type is NOT 'Study Halls'
+    .notEmpty().withMessage('Establishment Date is required')
+    .isISO8601().withMessage('Must be a valid date')
     .custom((value) => {
       const enteredDate = new Date(value);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (enteredDate > today) {
-        throw new Error("Establishment Date cannot be in the future");
+        throw new Error('Establishment Date cannot be in the future');
       }
       return true; // Indicates validation passed
     }),
 
   // --- Contact Info (Required) ---
-  body("contactInfo")
-    .notEmpty()
-    .withMessage("Contact info is required")
-    .isLength({ min: 10, max: 10 })
-    .withMessage("Contact number must be exactly 10 digits")
-    .isNumeric()
-    .withMessage("Contact number must only contain digits"),
+  body('contactInfo')
+    .notEmpty().withMessage('Contact info is required')
+    .isLength({ min: 10, max: 10 }).withMessage('Contact number must be exactly 10 digits')
+    .isNumeric().withMessage('Contact number must only contain digits'),
 
   // --- Additional Contact Info (Optional) ---
-  body("additionalContactInfo")
+  body('additionalContactInfo')
     .optional({ checkFalsy: true }) // Makes the field optional
-    .isLength({ min: 10, max: 10 })
-    .withMessage("Additional contact must be 10 digits if provided")
-    .isNumeric()
-    .withMessage("Additional contact must only contain digits"),
+    .isLength({ min: 10, max: 10 }).withMessage('Additional contact must be 10 digits if provided')
+    .isNumeric().withMessage('Additional contact must only contain digits'),
 
   // --- Address Details ---
-  body("headquartersAddress")
-    .notEmpty()
-    .withMessage("Headquarters Address is required"),
+  body('headquartersAddress')
+    .notEmpty().withMessage('Headquarters Address is required'),
 
-  body("state")
-    .notEmpty()
-    .withMessage("State is required")
-    .isLength({ min: 2, max: 50 })
-    .withMessage("State must be between 2 and 50 characters")
-    .matches(/^[A-Za-z][A-Za-z\s]*$/)
-    .withMessage("State name should only include alphabets and spaces"),
+  body('state')
+    .notEmpty().withMessage('State is required')
+    .isLength({ min: 2, max: 50 }).withMessage('State must be between 2 and 50 characters')
+    .matches(/^[A-Za-z][A-Za-z\s]*$/).withMessage('State name should only include alphabets and spaces'),
 
-  body("pincode")
-    .notEmpty()
-    .withMessage("Pincode is required")
-    .isLength({ min: 6, max: 6 })
-    .withMessage("Pincode must be exactly 6 digits")
-    .isNumeric()
-    .withMessage("Pincode must only contain digits"),
+  body('pincode')
+    .notEmpty().withMessage('Pincode is required')
+    .isLength({ min: 6, max: 6 }).withMessage('Pincode must be exactly 6 digits')
+    .isNumeric().withMessage('Pincode must only contain digits'),
 
   // --- Location URL ---
   body("locationURL")
@@ -448,11 +382,11 @@ exports.validateL1Creation = [
 const l2BranchRules = [
   // Allow branchName to be an empty string (for the unassigned courses object),
   // but validate its length if it does exist.
-  body("*.branchName")
+  body('*.branchName')
     .optional({ checkFalsy: true })
     .trim()
     .isLength({ min: 3, max: 100 })
-    .withMessage("Branch name must be between 3 and 100 characters."),
+    .withMessage('Branch name must be between 3 and 100 characters.'),
 
   // These fields are now ONLY required IF a branchName is provided.
   body("*.branchAddress")
@@ -497,68 +431,56 @@ const l2BaseCourseRules = [
     .isIn(["Offline", "Online", "Hybrid"])
     .withMessage("A valid mode is required."),
 
-  body("priceOfCourse")
+  body('priceOfCourse')
     .trim()
-    .notEmpty()
-    .withMessage("Price is required.")
-    .isNumeric()
-    .withMessage("Price must be a number."),
-  body("location")
+    .notEmpty().withMessage('Price is required.')
+    .isNumeric().withMessage('Price must be a number.'),
+  body('location')
     .trim()
-    .notEmpty()
-    .withMessage("Location URL is required.")
-    .matches(/^https?:\/\/.+/)
-    .withMessage("Location URL must start with http:// or https://"),
+    .notEmpty().withMessage('Location URL is required.')
+    .matches(/^https?:\/\/.+/).withMessage('Location URL must start with http:// or https://'),
+
 
   // This field is handled by the branch assignment logic, so it can be optional here.
-  body("createdBranch").optional({ checkFalsy: true }).trim(),
+  body('createdBranch').optional({ checkFalsy: true }).trim()
 ];
 
 const l2UgPgCourseRules = [
   body("graduationType").notEmpty().withMessage("Graduation type is required."),
 
-  body("streamType").notEmpty().withMessage("Stream type is required."),
+  body('streamType')
+    .notEmpty().withMessage('Stream type is required.'),
 
-  body("selectBranch")
-    .notEmpty()
-    .withMessage("A branch must be selected for the course."),
+  body('selectBranch')
+    .notEmpty().withMessage('A branch must be selected for the course.'),
 
-  body("aboutBranch")
+  body('aboutBranch')
     .trim()
-    .isLength({ min: 10, max: 500 })
-    .withMessage("About branch must be between 10 and 500 characters."),
+    .isLength({ min: 10, max: 500 }).withMessage('About branch must be between 10 and 500 characters.'),
 
-  body("educationType")
-    .isIn(["Full time", "part time", "Distance"])
-    .withMessage("A valid education type is required."),
+  body('educationType')
+    .isIn(['Full time', 'part time', 'Distance']).withMessage('A valid education type is required.'),
 
-  body("mode")
-    .isIn(["Offline", "Online", "Hybrid"])
-    .withMessage("A valid mode is required."),
+  body('mode')
+    .isIn(['Offline', 'Online', 'Hybrid']).withMessage('A valid mode is required.'),
 
-  body("courseDuration")
+  body('courseDuration')
     .trim()
-    .notEmpty()
-    .withMessage("Course duration is required."),
+    .notEmpty().withMessage('Course duration is required.'),
 
-  body("priceOfCourse")
-    .notEmpty()
-    .withMessage("Price is required.")
-    .isNumeric()
-    .withMessage("Price must be a number."),
+  body('priceOfCourse')
+    .notEmpty().withMessage('Price is required.')
+    .isNumeric().withMessage('Price must be a number.'),
 
-  body("classSize")
-    .notEmpty()
-    .withMessage("Class size is required.")
-    .isNumeric()
-    .withMessage("Class size must be a number."),
+  body('classSize')
+    .notEmpty().withMessage('Class size is required.')
+    .isNumeric().withMessage('Class size must be a number.'),
 
-  body("eligibilityCriteria")
+  body('eligibilityCriteria')
     .trim()
-    .notEmpty()
-    .withMessage("Eligibility criteria is required."),
+    .notEmpty().withMessage('Eligibility criteria is required.'),
   // This field is handled by the branch assignment logic, so it can be optional here.
-  body("createdBranch").optional({ checkFalsy: true }).trim(),
+  body('createdBranch').optional({ checkFalsy: true }).trim()
 ];
 
 const l2CoachingCourseRules = [
@@ -570,50 +492,33 @@ const l2CoachingCourseRules = [
     .notEmpty()
     .withMessage("Course duration is required."),
 
-  body("priceOfCourse")
-    .notEmpty()
-    .withMessage("Price is required.")
-    .isNumeric()
-    .withMessage("Price must be a number."),
-  body("location")
+  body('priceOfCourse')
+    .notEmpty().withMessage('Price is required.')
+    .isNumeric().withMessage('Price must be a number.'),
+  body('location')
     .trim()
     // This regex checks if the string starts with 'http://' or 'https://'
     .matches(/^https?:\/\/.+/)
-    .withMessage("URL must start with http:// or https://"),
-  body("mode")
-    .isIn(["Offline", "Online", "Hybrid"])
-    .withMessage("A valid mode is required."),
+    .withMessage('URL must start with http:// or https://'),
+  body('mode')
+    .isIn(['Offline', 'Online', 'Hybrid']).withMessage('A valid mode is required.'),
 
   body("createdBranch").optional({ checkFalsy: true }).trim(),
 
   // --- Coaching-specific Rules ---
-  body("categoriesType")
+  body('categoriesType')
     .isIn([
-      "Academic",
-      "Competitive Exam",
-      "Professional",
-      "Skill Development",
-      "Language",
-      "Arts & Crafts",
-      "Sports",
-      "Music & Dance",
+      "Academic", "Competitive Exam", "Professional", "Skill Development",
+      "Language", "Arts & Crafts", "Sports", "Music & Dance"
     ])
-    .withMessage("Please select a valid categories type."),
+    .withMessage('Please select a valid categories type.'),
 
-  body("domainType")
+  body('domainType')
     .isIn([
-      "Engineering",
-      "Medical",
-      "Management",
-      "Law",
-      "Banking",
-      "Government Jobs",
-      "IT & Software",
-      "Design",
-      "Marketing",
-      "Finance",
+      "Engineering", "Medical", "Management", "Law", "Banking",
+      "Government Jobs", "IT & Software", "Design", "Marketing", "Finance"
     ])
-    .withMessage("Please select a valid domain type."),
+    .withMessage('Please select a valid domain type.'),
 
   body("classSize")
     .notEmpty()
@@ -665,58 +570,52 @@ const l2TuitionCourseRules = [
     }),
 
   // Validates 'operationalDays' has at least one day selected
-  body("operationalDays")
-    .isArray({ min: 1 })
-    .withMessage("At least one operational day must be selected."),
+  body('operationalDays')
+    .isArray({ min: 1 }).withMessage('At least one operational day must be selected.'),
 
   // Validates 'openingTime' and 'closingTime' are in HH:MM format
-  body("openingTime")
-    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
-    .withMessage("Opening time must be in a valid HH:MM format."),
+  body('openingTime')
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Opening time must be in a valid HH:MM format.'),
 
   body("closingTime")
     .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
     .withMessage("Closing time must be in a valid HH:MM format."),
 
   // Validates 'pricePerSeat' is a non-negative number
-  body("pricePerSeat")
-    .notEmpty()
-    .withMessage("Price per seat is required.")
-    .isFloat({ min: 0 })
-    .withMessage("Price must be a non-negative number."),
+  body('pricePerSeat')
+    .notEmpty().withMessage('Price per seat is required.')
+    .isFloat({ min: 0 }).withMessage('Price must be a non-negative number.'),
 
   // Allows 'createdBranch' to be optional
-  body("createdBranch").optional({ checkFalsy: true }).trim(),
+  body('createdBranch')
+    .optional({ checkFalsy: true }).trim(),
 ];
 
 // ✅ --- L2 STUDY HALL COURSE RULES ---
 const l2StudyHallRules = [
-  body("hallName").trim().notEmpty().withMessage("Hall name is required."),
+  body('hallName')
+    .trim()
+    .notEmpty().withMessage('Hall name is required.'),
   // Validates 'seatingOption' dropdown
-  body("seatingOption")
+  body('seatingOption')
     .isIn(["Individual Desk", "Shared Table", "Private Cabin", "Open Seating"])
-    .withMessage("Please select a valid seating option."),
+    .withMessage('Please select a valid seating option.'),
 
   // Validates time formats
-  body("openingTime")
-    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
-    .withMessage("Opening time must be in a valid HH:MM format."),
+  body('openingTime')
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Opening time must be in a valid HH:MM format.'),
 
-  body("closingTime")
-    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
-    .withMessage("Closing time must be in a valid HH:MM format."),
+  body('closingTime')
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).withMessage('Closing time must be in a valid HH:MM format.'),
 
   // Validates 'operationalDays' is an array with at least one day
-  body("operationalDays")
-    .isArray({ min: 1 })
-    .withMessage("At least one operational day must be selected."),
+  body('operationalDays')
+    .isArray({ min: 1 }).withMessage('At least one operational day must be selected.'),
 
   // Validates seats are non-negative numbers
-  body("totalSeats")
-    .notEmpty()
-    .withMessage("Total seats is required.")
-    .isInt({ min: 0 })
-    .withMessage("Total seats must be a non-negative number."),
+  body('totalSeats')
+    .notEmpty().withMessage('Total seats is required.')
+    .isInt({ min: 0 }).withMessage('Total seats must be a non-negative number.'),
 
   // Validates available seats and ensures it's not greater than total seats
   body("availableSeats")
@@ -732,29 +631,20 @@ const l2StudyHallRules = [
     }),
 
   // Validates 'pricePerSeat' is a non-negative number
-  body("pricePerSeat")
-    .notEmpty()
-    .withMessage("Price per seat is required.")
-    .isFloat({ min: 0 })
-    .withMessage("Price must be a non-negative number."),
+  body('pricePerSeat')
+    .notEmpty().withMessage('Price per seat is required.')
+    .isFloat({ min: 0 }).withMessage('Price must be a non-negative number.'),
 
   //      // ✅ Validates that the facility fields are either "yes" or "no"
   //   body('hasWifi').isIn(['yes', 'no']).withMessage('A selection for Wi-Fi is required.'),
   //   body('hasChargingPoints').isIn(['yes', 'no']).withMessage('A selection for Charging Points is required.'),
   //   body('hasAC').isIn(['yes', 'no']).withMessage('A selection for Air Conditioner is required.'),
   //   body('hasPersonalLocker').isIn(['yes', 'no']).withMessage('A selection for Personal Lockers is required.'),
-  body("hasWifi")
-    .isIn(["Yes", "No"])
-    .withMessage("A selection for Wi-Fi is required."),
-  body("hasChargingPoints")
-    .isIn(["Yes", "No"])
-    .withMessage("A selection for Charging Points is required."),
-  body("hasAC")
-    .isIn(["Yes", "No"])
-    .withMessage("A selection for Air Conditioner is required."),
-  body("hasPersonalLocker")
-    .isIn(["Yes", "No"])
-    .withMessage("A selection for Personal Lockers is required."),
+  body('hasWifi').isIn(['Yes', 'No']).withMessage('A selection for Wi-Fi is required.'),
+  body('hasChargingPoints').isIn(['Yes', 'No']).withMessage('A selection for Charging Points is required.'),
+  body('hasAC').isIn(['Yes', 'No']).withMessage('A selection for Air Conditioner is required.'),
+  body('hasPersonalLocker').isIn(['Yes', 'No']).withMessage('A selection for Personal Lockers is required.'),
+
 
   // Allows 'createdBranch' to be optional
   body("createdBranch").optional({ checkFalsy: true }).trim(),
@@ -826,43 +716,30 @@ const kindergartenL3Rules = [
     .escape(),
 
   // Validates time fields are not empty
-  body("openingTime")
+  body('openingTime')
     .trim()
-    .notEmpty()
-    .withMessage("Opening time is required."),
+    .notEmpty().withMessage('Opening time is required.'),
 
-  body("closingTime")
+  body('closingTime')
     .trim()
-    .notEmpty()
-    .withMessage("Closing time is required."),
+    .notEmpty().withMessage('Closing time is required.'),
 
   // Validates the array of operational days
-  body("operationalDays")
-    .isArray({ min: 1 })
-    .withMessage("Select at least one operational day."),
+  body('operationalDays')
+    .isArray({ min: 1 }).withMessage('Select at least one operational day.'),
 
-  body("operationalDays.*").isIn([
-    "Mon",
-    "Tues",
-    "Wed",
-    "Thur",
-    "Fri",
-    "Sat",
-    "Sun",
-  ]),
+  body('operationalDays.*')
+    .isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun']),
 
   // Validates the Yes/No fields, which are converted to booleans on the backend
-  body("extendedCare")
-    .isBoolean()
-    .withMessage("A selection for Extended Care is required."),
+  body('extendedCare')
+    .isBoolean().withMessage('A selection for Extended Care is required.'),
 
-  body("mealsProvided")
-    .isBoolean()
-    .withMessage("A selection for Meals Provided is required."),
+  body('mealsProvided')
+    .isBoolean().withMessage('A selection for Meals Provided is required.'),
 
-  body("outdoorPlayArea")
-    .isBoolean()
-    .withMessage("A selection for Outdoor Play Area is required."),
+  body('outdoorPlayArea')
+    .isBoolean().withMessage('A selection for Outdoor Play Area is required.'),
 ];
 
 const schoolL3Rules = [
@@ -882,19 +759,11 @@ const schoolL3Rules = [
     .withMessage("Invalid curriculum type selected."),
 
   // Validates the array of operational days
-  body("operationalDays")
-    .isArray({ min: 1 })
-    .withMessage("Select at least one operational day."),
+  body('operationalDays')
+    .isArray({ min: 1 }).withMessage('Select at least one operational day.'),
 
-  body("operationalDays.*").isIn([
-    "Mon",
-    "Tues",
-    "Wed",
-    "Thur",
-    "Fri",
-    "Sat",
-    "Sun",
-  ]),
+  body('operationalDays.*')
+    .isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun']),
 
   // Validates 'otherActivities' text area
   body("otherActivities")
@@ -906,17 +775,14 @@ const schoolL3Rules = [
     .escape(),
 
   // Validates the Yes/No fields, expecting booleans after normalization
-  body("hostelFacility")
-    .isBoolean()
-    .withMessage("A selection for Hostel Facility is required."),
+  body('hostelFacility')
+    .isBoolean().withMessage('A selection for Hostel Facility is required.'),
 
-  body("playground")
-    .isBoolean()
-    .withMessage("A selection for Playground is required."),
+  body('playground')
+    .isBoolean().withMessage('A selection for Playground is required.'),
 
-  body("busService")
-    .isBoolean()
-    .withMessage("A selection for Bus Service is required."),
+  body('busService')
+    .isBoolean().withMessage('A selection for Bus Service is required.'),
 ];
 
 const intermediateCollegeL3Rules = [
@@ -942,19 +808,11 @@ const intermediateCollegeL3Rules = [
     .withMessage("Invalid curriculum type selected."),
 
   // Validates the array of operational days
-  body("operationalDays")
-    .isArray({ min: 1 })
-    .withMessage("Select at least one operational day."),
+  body('operationalDays')
+    .isArray({ min: 1 }).withMessage('Select at least one operational day.'),
 
-  body("operationalDays.*").isIn([
-    "Mon",
-    "Tues",
-    "Wed",
-    "Thur",
-    "Fri",
-    "Sat",
-    "Sun",
-  ]),
+  body('operationalDays.*')
+    .isIn(['Mon', 'Tues', 'Wed', 'Thur', 'Fri', 'Sat', 'Sun']),
 
   // Validates 'otherActivities' text area
   body("otherActivities")
@@ -966,17 +824,14 @@ const intermediateCollegeL3Rules = [
     .escape(),
 
   // Validates the Yes/No fields, which are converted to booleans on the backend
-  body("hostelFacility")
-    .isBoolean()
-    .withMessage("A selection for Hostel Facility is required."),
+  body('hostelFacility')
+    .isBoolean().withMessage('A selection for Hostel Facility is required.'),
 
-  body("playground")
-    .isBoolean()
-    .withMessage("A selection for Playground is required."),
+  body('playground')
+    .isBoolean().withMessage('A selection for Playground is required.'),
 
-  body("busService")
-    .isBoolean()
-    .withMessage("A selection for Bus Service is required."),
+  body('busService')
+    .isBoolean().withMessage('A selection for Bus Service is required.'),
 ];
 
 const ugPgUniversityL3Rules = [
@@ -1082,18 +937,12 @@ exports.validateUploadedFile = async (req, res, next) => {
   }
 
   try {
-    const fileContent = req.file.buffer.toString("utf8");
+    const fileContent = req.file.buffer.toString('utf8');
     const jsonData = JSON.parse(fileContent);
     console.log("Fil data", JSON.stringify(jsonData, null, 2));
     if (!jsonData.institution || !jsonData.courses) {
-      console.error(
-        "❌ ERROR: JSON must contain 'institution' and 'courses' keys."
-      );
-      return res
-        .status(400)
-        .json({
-          message: "File must contain 'institution' and 'courses' properties.",
-        });
+      console.error("❌ ERROR: JSON must contain 'institution' and 'courses' keys.");
+      return res.status(400).json({ message: "File must contain 'institution' and 'courses' properties." });
     }
 
     const { institution, courses } = jsonData;
@@ -1101,15 +950,11 @@ exports.validateUploadedFile = async (req, res, next) => {
     // --- STEP 1: Run L1 Validation ---
     console.log("\n🕵️‍♂️ [Step 1] Running L1 Validation...");
     req.body = institution;
-    await Promise.all(
-      exports.validateL1Creation.slice(0, -1).map((v) => v.run(req))
-    );
+    await Promise.all(exports.validateL1Creation.slice(0, -1).map(v => v.run(req)));
     let errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.error("❌ FAILED: L1 Validation.", errors.array());
-      return res
-        .status(422)
-        .json({ context: "L1 Data Error", errors: errors.array() });
+      return res.status(422).json({ context: 'L1 Data Error', errors: errors.array() });
     }
     console.log("✅ PASSED: L1 Validation.");
 
@@ -1127,31 +972,21 @@ exports.validateUploadedFile = async (req, res, next) => {
     console.log("✅ PASSED: L2 Branch Validation.");
 
     // --- STEP 3: Run L2 Course Validation (Conditionally) ---
-    console.log(
-      `\n🕵️‍♂️ [Step 3] Running L2 Course Validation for type: "${institution.instituteType}"...`
-    );
+    console.log(`\n🕵️‍♂️ [Step 3] Running L2 Course Validation for type: "${institution.instituteType}"...`);
     let courseValidationChain;
     switch (institution.instituteType) {
-      case "Kindergarten/childcare center":
+      case 'Kindergarten/childcare center':
       case "School's":
-      case "Intermediate college(K12)":
+      case 'Intermediate college(K12)':
         courseValidationChain = l2BaseCourseRules;
         break;
       // ✅ Case added for UG/PG courses
-      case "Under Graduation/Post Graduation":
-        courseValidationChain = l2UgPgCourseRules;
-        break;
+      case 'Under Graduation/Post Graduation': courseValidationChain = l2UgPgCourseRules; break;
       // ✅ Case added for Coaching Centers
-      case "Coaching centers":
-        courseValidationChain = l2CoachingCourseRules;
-        break;
+      case 'Coaching centers': courseValidationChain = l2CoachingCourseRules; break;
       // Add other cases here
-      case "Tution Center's":
-        courseValidationChain = l2TuitionCourseRules;
-        break;
-      case "Study Halls":
-        courseValidationChain = l2StudyHallRules;
-        break;
+      case "Tution Center's": courseValidationChain = l2TuitionCourseRules; break;
+      case 'Study Halls': courseValidationChain = l2StudyHallRules; break;
       default:
         courseValidationChain = [];
     }
@@ -1182,45 +1017,29 @@ exports.validateUploadedFile = async (req, res, next) => {
     console.log("✅ PASSED: L2 Course Validation.");
 
     // --- STEP 4: Run L3 Validation (Conditionally) ---
-    console.log(
-      `\n🕵️‍♂️ [Step 4] Running L3 Details Validation for type: "${institution.instituteType}"...`
-    );
+    console.log(`\n🕵️‍♂️ [Step 4] Running L3 Details Validation for type: "${institution.instituteType}"...`);
     req.body = institution; // Set body back to institution data
     let l3ValidationChain;
     switch (institution.instituteType) {
-      case "Kindergarten/childcare center":
-        l3ValidationChain = kindergartenL3Rules;
-        break;
+      case 'Kindergarten/childcare center': l3ValidationChain = kindergartenL3Rules; break;
       // ✅ Case added for School's
-      case "School's":
-        l3ValidationChain = schoolL3Rules;
-        break;
+      case "School's": l3ValidationChain = schoolL3Rules; break;
       // ✅ Case added for Intermediate College
-      case "Intermediate college(K12)":
-        l3ValidationChain = intermediateCollegeL3Rules;
-        break;
+      case 'Intermediate college(K12)': l3ValidationChain = intermediateCollegeL3Rules; break;
       // ✅ Case added for UG/PG
-      case "Under Graduation/Post Graduation":
-        l3ValidationChain = ugPgUniversityL3Rules;
-        break;
+      case 'Under Graduation/Post Graduation': l3ValidationChain = ugPgUniversityL3Rules; break;
       // ✅ Case added for Coaching Centers
-      case "Coaching centers":
-        l3ValidationChain = coachingCenterL3Rules;
-        break;
+      case 'Coaching centers': l3ValidationChain = coachingCenterL3Rules; break;
       default:
         l3ValidationChain = [];
     }
 
     if (l3ValidationChain.length > 0) {
-      await Promise.all(
-        l3ValidationChain.map((validation) => validation.run(req))
-      );
+      await Promise.all(l3ValidationChain.map(validation => validation.run(req)));
       errors = validationResult(req);
       if (!errors.isEmpty()) {
         console.error("❌ FAILED: L3 Validation.", errors.array());
-        return res
-          .status(422)
-          .json({ context: "L3 Data Error", errors: errors.array() });
+        return res.status(422).json({ context: 'L3 Data Error', errors: errors.array() });
       }
     }
     console.log("✅ PASSED: L3 Details Validation.");
@@ -1230,17 +1049,76 @@ exports.validateUploadedFile = async (req, res, next) => {
     req.institutionData = institution;
     req.coursesData = courses;
     next();
+
   } catch (error) {
-    logger.error(
-      { error: error.message },
-      "Error during file upload validation."
-    );
+    logger.error({ error: error.message }, "Error during file upload validation.");
     console.error("🔥 CRITICAL ERROR in validateUploadedFile:", error);
-    return res
-      .status(400)
-      .json({ message: "Invalid JSON format or file structure." });
+    return res.status(400).json({ message: "Invalid JSON format or file structure." });
   }
 };
+
+// 🚨 SECURITY: Whitelist of all possible filters. This is critical to prevent
+// parameter pollution and NoSQL injection attempts with unknown fields.
+const allowedFilters = new Set([
+  // General
+  'page', 'limit', 'state', 'pincode', 'instituteType',
+
+  // Kindergarten/childcare center
+  'extendedCare', 'mealsProvided', 'outdoorPlayArea', 'curriculumType',
+
+  // School's & Intermediate college(K12)
+  'schoolType', 'schoolCategory', 'hostelFacility', 'playground', 'busService',
+
+  // Under Graduation/Post Graduation
+  'library', 'entranceExam', 'managementQuota',
+
+  // Coaching centers & UG/PG Placements
+  'placementDrives', 'mockInterviews', 'resumeBuilding', 'linkedinOptimization',
+  'exclusiveJobPortal', 'certification'
+]);
+
+exports.validateInstitutionFilter = [
+  // --- Pagination Sanitization ---
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer.').toInt(),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100.').toInt(),
+
+  // --- General Filter Validation ---
+  query('state').optional().isString().trim().escape(),
+  query('pincode').optional().isPostalCode('IN').withMessage('Invalid pincode format.').trim(),
+  query('instituteType').optional().isString().isIn([
+    'Kindergarten/childcare center', "School's", 'Intermediate college(K12)',
+    'Under Graduation/Post Graduation', 'Coaching centers', "Tution Center's",
+    'Study Halls', 'Study Abroad'
+  ]).withMessage('Invalid institute type.'),
+
+  // --- Boolean Filter Validation & Sanitization ---
+  query('playground').optional().toBoolean(),
+  query('busService').optional().toBoolean(),
+  query('hostelFacility').optional().toBoolean(),
+  query('extendedCare').optional().toBoolean(),
+  query('mealsProvided').optional().toBoolean(),
+  query('outdoorPlayArea').optional().toBoolean(),
+  query('placementDrives').optional().isBoolean().toBoolean(),
+  query('mockInterviews').optional().isBoolean().toBoolean(),
+  query('resumeBuilding').optional().isBoolean().toBoolean(),
+  query('linkedinOptimization').optional().isBoolean().toBoolean(),
+  query('exclusiveJobPortal').optional().isBoolean().toBoolean(),
+  query('certification').optional().isBoolean().toBoolean(),
+  query('library').optional().isBoolean().toBoolean(),
+  query('entranceExam').optional().isBoolean().toBoolean(),
+  query('managementQuota').optional().isBoolean().toBoolean(),
+
+  query().custom((value, { req }) => {
+    for (const param in req.query) {
+      if (!allowedFilters.has(param)) {
+        throw new Error(`Unknown or disallowed filter parameter: '${param}'.`);
+      }
+    }
+    return true;
+  }),
+
+  handleValidationErrors,
+];
 
 // =======================
 // --- L2 COURSE RULES ---
@@ -1259,3 +1137,5 @@ module.exports.schoolL3Rules = schoolL3Rules;
 module.exports.intermediateCollegeL3Rules = intermediateCollegeL3Rules;
 module.exports.ugPgUniversityL3Rules = ugPgUniversityL3Rules;
 module.exports.coachingCenterL3Rules = coachingCenterL3Rules;
+
+module.exports.validateInstitutionFilter = this.validateInstitutionFilter;

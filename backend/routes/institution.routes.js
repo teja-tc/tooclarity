@@ -1,6 +1,6 @@
 const express = require('express');
 const institutionController = require('../controllers/institution.controller');
-const { validateL1Creation, validateL2Update } = require('../middleware/validators')
+const { validateL1Creation, validateL2Update, validateInstitutionFilter } = require('../middleware/validators')
 const { validateUploadedFile } = require('../middleware/validators');
 
 
@@ -8,6 +8,12 @@ const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
+
+router.get(
+    '/search',
+    validateInstitutionFilter,
+    institutionController.filterInstitutions
+);
 
 // CREATE (L1)
 router.post('/', validateL1Creation, institutionController.createL1Institution);
