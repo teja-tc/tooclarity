@@ -83,6 +83,7 @@ exports.register = async (req, res, next, options = {}) => {
         name,
         email,
         password: password || undefined,
+        designation: undefined,
         contactNumber,
         role: "STUDENT",
         isProfileCompleted: false,
@@ -258,7 +259,7 @@ exports.forgotPassword = async (req, res, next) => {
       await user.save({ validateBeforeSave: false });
 
       // 2. Create the full reset URL
-      const resetURL = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+      const resetURL = `${process.env.CLIENT_ORIGIN_WEB}/reset-password/${resetToken}`;
 
       // 3. Send the email with the link
       try {
