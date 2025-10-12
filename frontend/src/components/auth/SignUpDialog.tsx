@@ -25,7 +25,7 @@ interface SignUpDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   caller?: SignUpCaller;
-  onSuccess?: () => void; // called after successful verification
+  onSuccess?: (email: string) => void; // called after successful verification
 }
 
 export default function SignUpDialog({
@@ -120,12 +120,11 @@ export default function SignUpDialog({
         // Close signup dialog
         setOpen(false);
         if (caller === "admin") {
-          // For admin, skip OTP and go directly to dashboard
           await refreshUser();
           router.push('/dashboard');
-        } else {
-          // For non-admin, open OTP verification dialog
-          setOpenVerify(true);
+        } else if (caller === "institution") {
+          onSuccess?.(formData.email);
+          setOpen(false);
         }
       } else {
         setErrors({
@@ -157,7 +156,7 @@ export default function SignUpDialog({
 
     // If parent wants to handle success (e.g., admin-login -> dashboard), delegate
     if (onSuccess) {
-      onSuccess();
+      onSuccess(formData.email);
       return;
     }
 

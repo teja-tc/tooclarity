@@ -13,7 +13,6 @@ import {
 import { useRouter } from "next/navigation";
 
 import { authAPI } from "@/lib/api";
-import { studentAuthAPI } from "@/lib/students-api";
 import { useAuth } from "@/lib/auth-context";
 import {
   initializeGoogleIdentity,
@@ -159,7 +158,7 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onSuccess }) => {
     setError(null);
 
     try {
-      const response = await studentAuthAPI.login(formData);
+      const response = await authAPI.login(formData);
       
       if (!response.success) {
         setError(response.message || "Login failed");

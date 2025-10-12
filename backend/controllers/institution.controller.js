@@ -5,6 +5,7 @@ const logger = require("../config/logger");
 const InstituteAdmin = require("../models/InstituteAdmin");
 const Branch = require("../models/Branch");
 const Course = require("../models/Course");
+const { validationResult } = require('express-validator');
 
 /**
  * @desc    CREATE L1 Institution (General Info)
@@ -318,7 +319,7 @@ exports.uploadFileData = asyncHandler(async (req, res, next) => {
       success: true,
       message: "File processed successfully",
       data: {
-        message : "Successfully created institution and associated data",
+        message: "Successfully created institution and associated data",
         isProfileCompleted: true,
       },
     });
@@ -334,4 +335,62 @@ exports.uploadFileData = asyncHandler(async (req, res, next) => {
       data: { error: err.message },
     });
   }
+});
+
+/**
+ * @desc    Filter and find institutions with pagination
+ * @route   GET /api/v1/institutions/search
+ * @access  Public
+ */
+exports.filterInstitutions = asyncHandler(async (req, res, next) => {
+  // 1. Pagination
+  const page = req.query.page || 1;
+  const limit = req.query.limit || 10;
+  const skip = (page - 1) * limit;
+
+  const query = {};
+  const { instituteType, state, pincode, ...booleanFilters } = req.query;
+
+  if (instituteType) {
+    query.instituteType = instituteType;
+  }
+  if (state) {
+    query.state = state;
+  }
+  if (pincode) {
+    query.pincode = pincode;
+  }
+
+  // Add boolean filters to the query
+  for (const key in booleanFilters) {
+    if (booleanFilters[key] === 'true') {
+      query[key] = true;
+    } else {
+      query[key] = false;
+    }
+  }
+
+  // 3. Execute query
+  const institutions = await Institution.find(query)
+    .limit(limit)
+    .skip(skip)
+    .select('-institutionAdmin -__v')
+    .lean(); //.lean() gives plain JS objects instead of Mongoose docs, making it faster for read-only ops.
+
+  // 4. Get total count for pagination metadata
+  const totalDocuments = await Institution.countDocuments(query);
+
+  logger.info({ filters: query, results: institutions.length }, "Institution search performed.");
+
+  // 5. Send response
+  res.status(200).json({
+    success: true,
+    count: institutions.length,
+    pagination: {
+      currentPage: page,
+      totalPages: Math.ceil(totalDocuments / limit),
+      totalInstitutions: totalDocuments,
+    },
+    data: institutions,
+  });
 });
