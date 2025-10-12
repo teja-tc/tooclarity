@@ -191,9 +191,9 @@ exports.validateBranchCreation = [
     .withMessage("Branch address is required.")
     .isLength({ max: 255 }),
   body("locationUrl")
-    .optional({ checkFalsy: true })
-    .isURL()
-    .withMessage("Must be a valid URL."),
+    .optional({ checkFalsy: true }),
+    // .isURL()
+    // .withMessage("Must be a valid URL."),
   handleValidationErrors,
 ];
 
@@ -219,9 +219,9 @@ exports.validateBranchUpdate = [
     .withMessage("Branch address cannot be empty.")
     .isLength({ max: 255 }),
   body("locationUrl")
-    .optional({ checkFalsy: true })
-    .isURL()
-    .withMessage("Must be a valid URL."),
+    .optional({ checkFalsy: true }),
+    // .isURL()
+    // .withMessage("Must be a valid URL."),
   handleValidationErrors,
 ];
 
@@ -366,9 +366,13 @@ exports.validateL1Creation = [
     .isNumeric().withMessage('Pincode must only contain digits'),
 
   // --- Location URL ---
-  body('locationURL')
-    .notEmpty().withMessage('Location URL is required')
-    .isURL().withMessage('Please enter a valid URL'),
+  body("locationURL")
+    .notEmpty()
+    .withMessage("Location URL is required"),
+    // .isURL()
+    // .withMessage("Please enter a valid URL"),
+
+  body("logoUrl").trim().isURL().withMessage("Logo URL must be a valid URL."),
 
   handleValidationErrors, // Your existing error handler
 ];
@@ -404,8 +408,8 @@ const l2BranchRules = [
     .trim()
     .notEmpty()
     .withMessage("Location URL is required when a branch name is provided.")
-    .isURL()
-    .withMessage("Must be a valid URL."),
+    // .isURL()
+    // .withMessage("Must be a valid URL."),
 ];
 
 // ✅ --- L2 BASE COURSE VALIDATOR ---
