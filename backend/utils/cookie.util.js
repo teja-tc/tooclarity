@@ -34,8 +34,8 @@ class CookieUtil {
    * @param {string} name - Cookie name
    * @param {Object} options - Extra options (path must match original cookie path)
    */
-  static clearAllCookies(req, res, options = {}) {
-    const cookies = req.cookies || {};
+  static clearAllCookies(res, options = {}) {
+    const cookies = res.req?.cookies || {}; // ✅ safely get cookies from attached request
     Object.keys(cookies).forEach((cookieName) => {
       res.clearCookie(cookieName, {
         ...this.defaultOptions,
