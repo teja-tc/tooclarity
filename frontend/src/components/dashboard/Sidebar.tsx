@@ -17,6 +17,7 @@ import Link from "next/link";
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   const items = [
     { icon: faHome, label: "Dashboard", href: "/dashboard" },
@@ -78,18 +79,12 @@ const Sidebar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await useAuth().logout();
-    } catch (err) {
-      console.error("Sidebar: logout failed", err);
-    }
-    try {
+      await logout();
       localStorage.removeItem("auth_token");
-      document.cookie =
-        "username=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+      window.location.href = "/";
     } catch (err) {
-      console.error("Sidebar: clearing client auth state failed", err);
+      console.error("Logout failed:", err);
     }
-    window.location.href = "/";
   };
 
   // Hover control

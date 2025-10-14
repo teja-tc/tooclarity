@@ -6,7 +6,7 @@ const pinoHttp = require("pino-http");
 const logger = require("./config/logger");
 const cookieParser = require("cookie-parser");
 
-const authRoutes = require("./routes/auth.routes");
+const { publicRouter: authPublicRoutes, protectedRouter: authProtectedRoutes } = require("./routes/auth.routes");
 const institutionRoutes = require("./routes/institution.routes");
 const branchRoutes = require("./routes/branch.routes");
 const courseRoutes = require("./routes/course.routes");
@@ -73,7 +73,7 @@ app.use(cookieParser());
 
 app.use(express.json({ limit: "10kb" }));
 
-app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/auth", authPublicRoutes);
 app.use("/auth/google", googleRoutes);
 app.use("/api/v1/payment/", paymentPublicRoutes);
 
@@ -84,6 +84,7 @@ const requireInstituteAdmin = [authorizeRoles(["INSTITUTE_ADMIN"])];
 const requireAdmin = [authorizeRoles(["ADMIN"])];
 const requireStudent = [authorizeRoles(["STUDENT"])];
 
+app.use("/api/v1/auth", authProtectedRoutes);
 app.use("/api/v1/students", studentRoutes, requireStudent); 
 
 app.use("/api/v1/payment", requireInstituteAdmin, paymentProtectedRoutes);

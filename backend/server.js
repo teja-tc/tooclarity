@@ -23,7 +23,7 @@ const server = app.listen(port, () => {
 const { Server } = require('socket.io');
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_ORIGIN,
+    origin: process.env.CLIENT_ORIGIN_WEB,
     credentials: true
   }
 });
