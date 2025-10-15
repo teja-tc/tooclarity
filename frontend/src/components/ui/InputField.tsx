@@ -68,7 +68,7 @@ function validateDateInstant(value: string, isBirthday = false): string | undefi
 }
 
 // Styling constants for StudentOnboarding consistency
-const labelCls = "text-[12px] font-semibold";
+const labelCls = "text-[16px] font-semibold";
 const inputBase = "w-full h-[52px] rounded-[12px] px-4 outline-none border transition-colors";
 const inputIdle = "border-gray-200 bg-white focus:border-[#3B82F6]";
 const inputError = "border-red-400 bg-white";
@@ -87,6 +87,7 @@ interface OriginalInputFieldProps {
 	isTextarea?: boolean;
 	as?: 'textarea';
 	options?: string[];
+  layout?: "vertical" | "horizontal";
 	icon?: ReactNode;
 	inputMode?: "text" | "numeric" | "decimal" | "tel" | "email" | "search" | "url";
 	pattern?: string;
@@ -110,6 +111,7 @@ function InputField({
 	isRadio = false,
 	isTextarea = false,
 	options = [],
+  layout = "vertical",
 	icon,
 	inputMode,
 	pattern,
@@ -165,21 +167,28 @@ function InputField({
 						</div>
 					)}
 				</div>
-			) : isRadio ? (
-				<div className="flex gap-4">
+            ) : isRadio ? (
+                <div className={layout === "horizontal" ? "flex items-center gap-6" : "flex flex-col gap-3"}>
 					{options.map((option) => (
-						<label key={option} className="flex items-center gap-2">
-							<input
-								type="radio"
-								name={name}
-								value={option}
-								checked={value === option}
-								onChange={onChange}
-								disabled={disabled}
-								className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-							/>
-							<span className="text-sm font-semibold">{option}</span>
-						</label>
+						<button
+							key={option}
+							type="button"
+							disabled={disabled}
+							onClick={() => {
+								const event = {
+									target: { name, value: option },
+								} as unknown as ChangeEvent<HTMLInputElement>;
+								onChange(event);
+							}}
+                            className="group flex items-center gap-3 text-left"
+						>
+                            <span className={`relative grid place-items-center w-[18px] h-[18px] rounded-full border ${value === option ? "border-[#0A46E4] ring-4 ring-[#0A46E4]/20" : "border-gray-300"}`}>
+                                {value === option && <span className="w-[8px] h-[8px] rounded-full bg-[#0A46E4]" />}
+							</span>
+                            <span className="text-[16px] font-semibold text-[#111827]">
+								{option}
+							</span>
+						</button>
 					))}
 				</div>
 			) : isTextarea ? (

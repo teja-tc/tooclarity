@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useUserStore } from "@/lib/user-store";
 import { studentDashboardAPI, studentOnboardingAPI } from "@/lib/students-api";
 import { apiRequest } from "@/lib/api";
-import { DateInput, FormField, RadioGroup, Dropdown, validateDateInstant } from "@/components/ui/InputField";
+import InputField, { DateInput, FormField, RadioGroup, Dropdown, validateDateInstant } from "@/components/ui/InputField";
 
-const labelCls = "text-[12px] font-semibold";
+const labelCls = "text-[17px] font-semibold text-gray-900";
 const inputBase =
-	"w-full h-[52px] rounded-[12px] px-4 outline-none border transition-colors";
-const inputIdle = "border-gray-200 bg-white focus:border-[#3B82F6]";
+	"w-full h-[52px] rounded-[12px] px-4 outline-none border transition-colors font-semibold text-gray-900 placeholder:text-gray-500 bg-white dark:text-gray-100 dark:placeholder:text-gray-400";
+const inputIdle = "border-gray-200 bg-white focus:border-[#3B82F6] text-gray-900 placeholder:text-gray-500";
 const inputActive = "border-[#0A46E4] ring-1 ring-[#0A46E4]";
 const inputDisabled = "bg-gray-50 border-gray-200 text-gray-400";
 const inputError = "border-red-400 bg-white";
@@ -60,6 +60,29 @@ const interests = [
 ];
 
 
+
+const interestImageFor = (key: string): string => {
+  switch (key) {
+    case "KINDERGARTEN":
+      return "/kindergarden.png";
+    case "SCHOOL":
+      return "/school.png";
+    case "INTERMEDIATE":
+      return "/intermediate.png";
+    case "GRADUATION":
+      return "/graduation.png";
+    case "COACHING_CENTER":
+      return "/coachingcenters.png";
+    case "STUDY_HALLS":
+      return "/studyhalls.png";
+    case "STUDY_ABROAD":
+      return "/studyabroad.png";
+    case "TUITION_CENTER":
+      return "/tutioncenter.png";
+    default:
+      return "/globe.svg";
+  }
+};
 
 const StudentonBoarding: React.FC = () => {
 	const router = useRouter();
@@ -612,19 +635,20 @@ const StudentonBoarding: React.FC = () => {
 
 	const renderAcademicForm = () => {
 		switch (selectedInterest) {
-			case "KINDERGARTEN":
-				return (
-					<div className="flex flex-col gap-4 mt-6">
-						<RadioGroup
-							label="Academic Status"
-							name="academicStatus"
-							value={academicStatus}
-							onChange={setAcademicStatus}
-							options={["Currently in Kindergarten", "Completed Kindergarten", "Seeking Admission to Kindergarten"]}
-							error={errors.academicStatus}
-						/>
-					</div>
-				);
+            case "KINDERGARTEN":
+                return (
+                    <div className="flex flex-col gap-4 mt-6">
+                        <InputField
+                            label="Academic Status"
+                            name="academicStatus"
+                            value={academicStatus}
+                            onChange={(e) => setAcademicStatus((e.target as HTMLInputElement).value)}
+                            isRadio
+                            options={["Currently in Kindergarten", "Completed Kindergarten", "Seeking Admission to Kindergarten"]}
+                            error={errors.academicStatus}
+                        />
+                    </div>
+                );
 
 			case "SCHOOL":
 				return (
@@ -732,15 +756,13 @@ const StudentonBoarding: React.FC = () => {
 					<div className="flex flex-col gap-4 mt-6">
 						<div className="transition">
 							<span className={labelCls}>Graduation type</span>
-							<select
-								className={[inputBase, errors.graduationType ? inputError : inputIdle].join(" ")}
+							<Dropdown
+								label="Select graduation type"
 								value={graduationType}
-								onChange={(e) => setGraduationType(e.target.value)}
-							>
-								<option value="">Select graduation type</option>
-								<option value="Under Graduation">Under Graduation</option>
-								<option value="Post Graduation">Post Graduation</option>
-							</select>
+								onChange={setGraduationType}
+								options={["Under Graduation", "Post Graduation"]}
+								error={errors.graduationType}
+							/>
 							{errors.graduationType && (
 								<span className="text-[12px] text-red-500">{errors.graduationType}</span>
 							)}
@@ -844,17 +866,18 @@ const StudentonBoarding: React.FC = () => {
 					</div>
 				);
 
-			case "COACHING_CENTER":
-				return (
-					<div className="flex flex-col gap-4 mt-6">
-						<RadioGroup
-							label="What are you looking for?"
-							name="lookingFor"
-							value={lookingFor}
-							onChange={setLookingFor}
-							options={["Upskilling / Skill Development", "Exam Preparation", "Vocational Training"]}
-							error={errors.lookingFor}
-						/>
+            case "COACHING_CENTER":
+                return (
+                    <div className="flex flex-col gap-4 mt-6">
+                        <InputField
+                            label="What are you looking for?"
+                            name="lookingFor"
+                            value={lookingFor}
+                            onChange={(e) => setLookingFor((e.target as HTMLInputElement).value)}
+                            isRadio
+                            options={["Upskilling / Skill Development", "Exam Preparation", "Vocational Training"]}
+                            error={errors.lookingFor}
+                        />
 
 						<div className="transition">
 							<span className={labelCls}>What is your academic level?</span>
@@ -904,27 +927,29 @@ const StudentonBoarding: React.FC = () => {
 					</div>
 				);
 
-			case "STUDY_ABROAD":
-				return (
-					<div className="flex flex-col gap-4 mt-6">
-						<RadioGroup
-							label="Highest Level of Education"
-							name="highestEducation"
-							value={highestEducation}
-							onChange={setHighestEducation}
-							options={["12th Grade", "Bachelor's", "Master's"]}
-							error={errors.highestEducation}
-						/>
+            case "STUDY_ABROAD":
+                return (
+                    <div className="flex flex-col gap-4 mt-6">
+                        <InputField
+                            label="Highest Level of Education"
+                            name="highestEducation"
+                            value={highestEducation}
+                            onChange={(e) => setHighestEducation((e.target as HTMLInputElement).value)}
+                            isRadio
+                            options={["12th Grade", "Bachelor's", "Master's"]}
+                            error={errors.highestEducation}
+                        />
 
-						<RadioGroup
-							label="Do you have any backlogs?"
-							name="hasBacklogs"
-							value={hasBacklogs}
-							onChange={setHasBacklogs}
-							options={["Yes", "No"]}
-							error={errors.hasBacklogs}
-							layout="horizontal"
-						/>
+                        <InputField
+                            label="Do you have any backlogs?"
+                            name="hasBacklogs"
+                            value={hasBacklogs}
+                            onChange={(e) => setHasBacklogs((e.target as HTMLInputElement).value)}
+                            isRadio
+                            options={["Yes", "No"]}
+                            error={errors.hasBacklogs}
+							layout="horizontal" // Added layout prop
+                        />
 
 						<div className="transition">
 							<span className={labelCls}>English Test Status</span>
@@ -1169,16 +1194,16 @@ const StudentonBoarding: React.FC = () => {
 				)}
 				{errors.preferredCountries && <span className="text-[12px] text-red-500">{errors.preferredCountries}</span>}
 			</div>
-
-			<RadioGroup
-				label="Do you have a valid passport?"
-				name="passportStatus"
-				value={passportStatus}
-				onChange={setPassportStatus}
-				options={["Yes", "No", "Applied"]}
-				error={errors.passportStatus}
+			<InputField
+                label="Do you have a valid passport?"
+                name="passportStatus"
+                value={passportStatus}
+                onChange={(e) => setPassportStatus((e.target as HTMLInputElement).value)}
+            	isRadio
+                options={["Yes", "No", "Applied"]}
+                error={errors.passportStatus}	
 				layout="horizontal"
-			/>
+            />	
 		</div>
 	);
 
@@ -1257,8 +1282,8 @@ const StudentonBoarding: React.FC = () => {
 	};
 
 	return (
-		<main className="min-h-screen bg-[#F5F6F9] flex items-start justify-center p-0 sm:p-6 overflow-hidden">
-			<section className="w-full max-w-md bg-white rounded-none sm:rounded-[20px] shadow-sm p-5 flex flex-col h-[100vh] sm:h-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+		<main className="min-h-screen bg-[#F5F6F9] flex items-start justify-center p-0 sm:p-6 overflow-auto">
+			<section className="w-full max-w-md bg-white rounded-none sm:rounded-[20px] shadow-sm p-5 flex flex-col h-[100vh] overflow-auto sm:h-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
 				<button
 					className="w-8 h-8 grid place-items-center rounded-full hover:bg-gray-100"
 					onClick={() => setStep((s) => (s > 1 ? ((s - 1) as Step) : s))}
@@ -1292,86 +1317,25 @@ const StudentonBoarding: React.FC = () => {
 						<div className="grid grid-cols-2 gap-3 pt-2 pb-3" style={{
 							// ensure the grid itself does not create scroll; we keep items compact
 						}}>
-							{interests.map((c) => (
-								<button
+                            {interests.map((c) => (
+                                <button
 									key={c.key}
 									onClick={() => setSelectedInterest(c.key)}
-									className={`h-[88px] rounded-[16px] text-left px-4 py-3 shadow-sm border ${
+                                    className={`relative overflow-hidden h-[96px] rounded-[16px] text-left px-4 py-3 shadow-sm border ${
 										selectedInterest === c.key ? "ring-2 ring-[#0A46E4]" : "border-transparent"
 									}`}
 									style={{ background: c.color, color: "#ffffff" }}
 								>
-									<div className="flex h-full w-full items-center justify-between">
-										<div className="whitespace-pre-line text-[13px] font-medium leading-tight pr-2">
+                                    <div className="flex h-full w-full items-center">
+                                        <div className="whitespace-pre-line text-[13px] font-semibold leading-tight pr-2 text-white [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">
 											{c.label}
 										</div>
-										<div className="w-[56px] h-[56px] shrink-0 opacity-95">
-											{/* simple inline illustration per category */}
-											{(() => {
-												switch (c.key) {
-													case "SCHOOL":
-														return (
-															<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
-															<rect x="6" y="24" width="52" height="30" rx="4" fill="white" opacity="0.9"/>
-															<path d="M8 24l24-12 24 12" stroke="#fff" strokeWidth="4" strokeLinecap="round"/>
-															<rect x="26" y="36" width="12" height="18" fill="#fff"/>
-														</svg>
-														);
-													case "KINDERGARTEN":
-														return (
-															<svg viewBox="0 0 64 64" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-															<circle cx="20" cy="44" r="12" fill="#fff"/>
-															<rect x="32" y="20" width="12" height="24" fill="#fff"/>
-															<rect x="10" y="20" width="12" height="18" fill="#fff"/>
-														</svg>
-													);
-													case "INTERMEDIATE":
-														return (
-															<svg viewBox="0 0 64 64" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-															<circle cx="24" cy="40" r="16" fill="#fff"/>
-															<rect x="36" y="20" width="18" height="10" fill="#fff"/>
-														</svg>
-													);
-													case "GRADUATION":
-														return (
-															<svg viewBox="0 0 64 64" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-															<path d="M6 26l26-10 26 10-26 10L6 26z" fill="#fff"/>
-															<rect x="20" y="32" width="24" height="10" fill="#fff"/>
-														</svg>
-													);
-													case "COACHING_CENTER":
-														return (
-															<svg viewBox="0 0 64 64" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-															<circle cx="40" cy="32" r="16" stroke="#fff" strokeWidth="6" fill="none"/>
-															<circle cx="40" cy="32" r="6" fill="#fff"/>
-														</svg>
-													);
-													case "STUDY_HALLS":
-														return (
-															<svg viewBox="0 0 64 64" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-															<rect x="10" y="36" width="44" height="10" fill="#fff"/>
-															<rect x="14" y="24" width="12" height="10" fill="#fff"/>
-															<rect x="38" y="24" width="12" height="10" fill="#fff"/>
-														</svg>
-													);
-													case "TUITION_CENTER":
-														return (
-															<svg viewBox="0 0 64 64" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-															<rect x="10" y="20" width="44" height="28" rx="4" fill="#fff"/>
-															<rect x="16" y="26" width="20" height="6" fill="#CCC"/>
-														</svg>
-													);
-													case "STUDY_ABROAD":
-														return (
-															<svg viewBox="0 0 64 64" className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-															<path d="M8 40l48-16-10 12 8 8-10 2-8-8-28 2z" fill="#fff"/>
-														</svg>
-													);
-													default:
-														return null;
-												}
-											})()}
-										</div>
+                                        <img
+                                            src={interestImageFor(c.key)}
+                                            alt={c.label}
+                                            className="pointer-events-none absolute bottom-1 right-2 w-[82px] h-[82px] object-contain opacity-95"
+                                            onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/globe.svg"; }}
+                                        />
 									</div>
 								</button>
 							))}
