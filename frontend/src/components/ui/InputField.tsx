@@ -135,11 +135,11 @@ function InputField({
 				<div className="relative">
 					<div
 						onClick={() => setOpen(!open)}
-						className={cn(
-							`w-full h-[48px] rounded-[12px] p-[12px] bg-[#F5F6F9] flex items-center justify-between cursor-pointer border border-[#DADADD]`,
-							value ? "text-black" : "text-[#697282]",
-							disabled && "opacity-50 cursor-not-allowed"
-						)}
+                    className={cn(
+                            `w-full h-[48px] rounded-[12px] p-[12px] bg-[#F5F6F9] dark:bg-gray-800 flex items-center justify-between cursor-pointer border border-[#DADADD] dark:border-gray-700`,
+                            value ? "text-black dark:text-gray-100" : "text-[#697282] dark:text-gray-300",
+                            disabled && "opacity-50 cursor-not-allowed"
+                        )}
 					>
 						{value || `Select ${label}`}
 						<span className="text-[#697282]">
@@ -148,7 +148,7 @@ function InputField({
 					</div>
 
 					{open && !disabled && (
-						<div className="mt-2 bg-white shadow-md rounded-[12px] border border-[#DADADD] flex flex-col">
+                        <div className="mt-2 bg-white dark:bg-gray-800 shadow-md rounded-[12px] border border-[#DADADD] dark:border-gray-700 flex flex-col">
 							{options.map((opt) => (
 								<div
 									key={opt}
@@ -192,7 +192,7 @@ function InputField({
 					))}
 				</div>
 			) : isTextarea ? (
-				<textarea
+                <textarea
 					name={name}
 					value={value}
 					disabled={disabled}
@@ -201,9 +201,9 @@ function InputField({
 					maxLength={maxLength}
 					rows={rows}
 					className={cn(
-						`w-full px-4 py-3 border border-[#DADADD] rounded-[12px] bg-[#F5F6F9]
-						placeholder:font-[Montserrat] placeholder:text-[16px] placeholder:text-[#697282]
-						resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
+                        `w-full px-4 py-3 border border-[#DADADD] dark:border-gray-700 rounded-[12px] bg-[#F5F6F9] dark:bg-gray-800 text-black dark:text-gray-100
+                        placeholder:font-[Montserrat] placeholder:text-[16px] placeholder:text-[#697282] dark:placeholder:text-gray-400
+                        resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`,
 						disabled && "opacity-50 cursor-not-allowed"
 					)}
 				/>
@@ -214,7 +214,7 @@ function InputField({
 							{icon}
 						</div>
 					)}
-					<input
+                    <input
 						type={type}
 						name={name}
 						value={value}
@@ -235,10 +235,10 @@ function InputField({
 						inputMode={inputMode}
 						pattern={pattern}
 						maxLength={maxLength}
-						className={cn(
-							`w-full h-[48px] rounded-[12px] border border-[#DADADD] bg-[#F5F6F9]
-							placeholder:font-[Montserrat] placeholder:text-[16px] placeholder:text-[#697282]
-							${icon ? "pl-12" : "p-5"}`,
+                        className={cn(
+                            `w-full h-[48px] rounded-[12px] border border-[#DADADD] dark:border-gray-700 bg-[#F5F6F9] dark:bg-gray-800 text-black dark:text-gray-100
+                            placeholder:font-[Montserrat] placeholder:text-[16px] placeholder:text-[#697282] dark:placeholder:text-gray-400
+                            ${icon ? "pl-12" : "p-5"}`,
 							disabled && "opacity-50 cursor-not-allowed"
 						)}
 					/>

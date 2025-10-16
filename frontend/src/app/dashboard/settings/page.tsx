@@ -40,7 +40,7 @@ const PasswordField: React.FC<PasswordFieldProps> = ({ label, value, show, place
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 disabled={disabled}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="dark:bg-gray-800 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
             />
             <button type="button" onClick={onToggle} disabled={disabled} className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed">
                 {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -339,7 +339,7 @@ const SettingsPage: React.FC = () => {
                                         <PasswordField label="Confirm Password" value={formData.confirmPassword} show={showPasswords.confirm} placeholder="Confirm new password" onChange={(val) => handleInputChange("confirmPassword", val)} onToggle={() => setShowPasswords(p => ({ ...p, confirm: !p.confirm }))} disabled={!isEmailVerified} />
                                     </div>
                                     <div className="flex justify-end">
-                                        <button onClick={handleSavePassword} disabled={!isEmailVerified || passwordSaveLoading || !formData.newPassword || !formData.confirmPassword} className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors text-base font-medium">
+                                        <button onClick={handleSavePassword} disabled={!isEmailVerified || passwordSaveLoading || !formData.newPassword || !formData.confirmPassword} className="dark:disabled:bg-blue-400 dark:bg-blue-600 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors text-base font-medium">
                                             {passwordSaveLoading ? "Saving..." : "Save New Password"}
                                         </button>
                                     </div>
@@ -351,7 +351,7 @@ const SettingsPage: React.FC = () => {
                     {activeTab === "course" && (
                         <div className="space-y-6">
                             <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Edit Program Details</h3>
+                                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-50 mb-4">Edit Program Details</h3>
 
                             {courseError && <p className="text-red-600 text-sm mb-4">{courseError}</p>}
 
