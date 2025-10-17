@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUserStore } from "@/lib/user-store";
 import { studentDashboardAPI, studentOnboardingAPI } from "@/lib/students-api";
 import { apiRequest } from "@/lib/api";
+import { uploadToS3 } from "@/lib/awsUpload";
 import InputField, { DateInput, FormField, RadioGroup, Dropdown, validateDateInstant } from "@/components/ui/InputField";
 
 const labelCls = "text-[17px] font-semibold text-gray-900";
@@ -91,6 +92,7 @@ const StudentonBoarding: React.FC = () => {
 
 	const [step, setStep] = useState<Step>(1);
 	const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
 	const fileRef = useRef<HTMLInputElement | null>(null);
 
 	const [fullName, setFullName] = useState("");
@@ -255,10 +257,87 @@ const StudentonBoarding: React.FC = () => {
 	const onAvatarChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
 		const f = e.target.files?.[0];
 		if (!f) return;
+        setAvatarFile(f);
 		const reader = new FileReader();
 		reader.onload = () => setAvatarUrl(String(reader.result));
 		reader.readAsDataURL(f);
 	};
+
+    // Upload profile picture to storage and persist to backend
+    const persistProfilePictureIfNeeded = useCallback(async (studentIdParam?: string) => {
+        try {
+            const studentIdFinal = studentIdParam || studentId;
+            if (!studentIdFinal) return { success: false, message: "Profile not initialized yet. Please try again." } as const;
+
+            // If no new file picked, attempt to persist existing avatarUrl (e.g., from Google)
+            if (!avatarFile) {
+                if (avatarUrl && typeof avatarUrl === 'string' && avatarUrl.trim().length > 0) {
+                    try {
+                        await apiRequest(`/v1/students/${encodeURIComponent(studentIdFinal)}`, {
+                            method: "PUT",
+                            body: JSON.stringify({ profilePicture: avatarUrl })
+                        });
+                        setErrors((p) => { const n = { ...p }; delete n.profilePicture; return n; });
+                        return { success: true } as const;
+                    } catch (e: any) {
+                        const msg = (e?.message || "Failed to save picture to profile.");
+                        setErrors((p) => ({ ...p, profilePicture: msg }));
+                        return { success: false, message: msg } as const;
+                    }
+                }
+                // No file and no existing avatar url -> mandatory field missing
+                const msg = "Profile picture is required.";
+                setErrors((p) => ({ ...p, profilePicture: msg }));
+                return { success: false, message: msg } as const;
+            }
+
+            // Validate file quickly before hitting backend
+            const maxBytes = 5 * 1024 * 1024; // 5MB
+            const allowed = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+            if (avatarFile.size > maxBytes) {
+                const msg = "Profile picture is too large (max 5MB).";
+                setErrors((p) => ({ ...p, profilePicture: msg }));
+                return { success: false, message: msg } as const;
+            }
+            if (!allowed.includes(avatarFile.type)) {
+                const msg = "Unsupported image format. Use JPG/PNG/WEBP.";
+                setErrors((p) => ({ ...p, profilePicture: msg }));
+                return { success: false, message: msg } as const;
+            }
+
+            // Upload via presigned URL
+            const uploaded = await uploadToS3(avatarFile);
+            if (!uploaded.success || !uploaded.fileUrl) {
+                const msg = uploaded.error || "Failed to upload profile picture. Please try again.";
+                setErrors((p) => ({ ...p, profilePicture: msg }));
+                return { success: false, message: msg } as const;
+            }
+
+            // Persist to backend profile with uploaded URL
+            try {
+                await apiRequest(`/v1/students/${encodeURIComponent(studentIdFinal)}`, {
+                    method: "PUT",
+                    body: JSON.stringify({ profilePicture: uploaded.fileUrl })
+                });
+            } catch (e: any) {
+                const msg = (e?.message || "Failed to save picture to profile.");
+                setErrors((p) => ({ ...p, profilePicture: msg }));
+                return { success: false, message: msg } as const;
+            }
+
+            // Clear picture error on success
+            setErrors((p) => { const n = { ...p }; delete n.profilePicture; return n; });
+            return { success: true } as const;
+        } catch (e: any) {
+            // Map common backend 500 from presign route to actionable hint
+            let msg = "Could not upload profile picture.";
+            if (typeof e?.message === 'string' && /presigned url|get presigned url|500/i.test(e.message)) {
+                msg = "Upload service not configured (presign failed). Please contact support.";
+            }
+            setErrors((p) => ({ ...p, profilePicture: msg }));
+            return { success: false, message: msg } as const;
+        }
+    }, [avatarFile, avatarUrl, studentId]);
 
 	const handleContinue = async () => {
 		// Single-screen personal form: when valid, directly submit and move to interests
@@ -486,12 +565,18 @@ const StudentonBoarding: React.FC = () => {
 
 			console.log("Sending academic profile:", { profileType: profileTypeToSend, details });
 
-			await studentOnboardingAPI.updateAcademicProfile(studentId!, {
+            await studentOnboardingAPI.updateAcademicProfile(studentId!, {
 				profileType: profileTypeToSend as any,
 					details,
 				});
-				setProfileCompleted(true);
-				router.replace("/dashboard");
+                // Attempt to upload/persist profile picture URL before finishing (mandatory)
+                const pic = await persistProfilePictureIfNeeded(studentId!);
+                if (!pic.success) {
+                    setErrors((p) => ({ ...p, submit: pic.message || "Profile picture is required." }));
+                    return;
+                }
+                setProfileCompleted(true);
+                router.replace("/dashboard");
 			} catch (e) {
 			console.error("Error submitting academic profile:", e);
 				setErrors((p) => ({ ...p, submit: e instanceof Error ? e.message : "Failed to save academic profile" }));
@@ -635,20 +720,20 @@ const StudentonBoarding: React.FC = () => {
 
 	const renderAcademicForm = () => {
 		switch (selectedInterest) {
-            case "KINDERGARTEN":
-                return (
-                    <div className="flex flex-col gap-4 mt-6">
+			case "KINDERGARTEN":
+				return (
+					<div className="flex flex-col gap-4 mt-6">
                         <InputField
-                            label="Academic Status"
-                            name="academicStatus"
-                            value={academicStatus}
+							label="Academic Status"
+							name="academicStatus"
+							value={academicStatus}
                             onChange={(e) => setAcademicStatus((e.target as HTMLInputElement).value)}
                             isRadio
-                            options={["Currently in Kindergarten", "Completed Kindergarten", "Seeking Admission to Kindergarten"]}
-                            error={errors.academicStatus}
-                        />
-                    </div>
-                );
+							options={["Currently in Kindergarten", "Completed Kindergarten", "Seeking Admission to Kindergarten"]}
+							error={errors.academicStatus}
+						/>
+					</div>
+				);
 
 			case "SCHOOL":
 				return (
@@ -866,18 +951,18 @@ const StudentonBoarding: React.FC = () => {
 					</div>
 				);
 
-            case "COACHING_CENTER":
-                return (
-                    <div className="flex flex-col gap-4 mt-6">
+			case "COACHING_CENTER":
+				return (
+					<div className="flex flex-col gap-4 mt-6">
                         <InputField
-                            label="What are you looking for?"
-                            name="lookingFor"
-                            value={lookingFor}
+							label="What are you looking for?"
+							name="lookingFor"
+							value={lookingFor}
                             onChange={(e) => setLookingFor((e.target as HTMLInputElement).value)}
                             isRadio
-                            options={["Upskilling / Skill Development", "Exam Preparation", "Vocational Training"]}
-                            error={errors.lookingFor}
-                        />
+							options={["Upskilling / Skill Development", "Exam Preparation", "Vocational Training"]}
+							error={errors.lookingFor}
+						/>
 
 						<div className="transition">
 							<span className={labelCls}>What is your academic level?</span>
@@ -927,29 +1012,29 @@ const StudentonBoarding: React.FC = () => {
 					</div>
 				);
 
-            case "STUDY_ABROAD":
-                return (
-                    <div className="flex flex-col gap-4 mt-6">
+			case "STUDY_ABROAD":
+				return (
+					<div className="flex flex-col gap-4 mt-6">
                         <InputField
-                            label="Highest Level of Education"
-                            name="highestEducation"
-                            value={highestEducation}
+							label="Highest Level of Education"
+							name="highestEducation"
+							value={highestEducation}
                             onChange={(e) => setHighestEducation((e.target as HTMLInputElement).value)}
                             isRadio
-                            options={["12th Grade", "Bachelor's", "Master's"]}
-                            error={errors.highestEducation}
-                        />
+							options={["12th Grade", "Bachelor's", "Master's"]}
+							error={errors.highestEducation}
+						/>
 
                         <InputField
-                            label="Do you have any backlogs?"
-                            name="hasBacklogs"
-                            value={hasBacklogs}
+							label="Do you have any backlogs?"
+							name="hasBacklogs"
+							value={hasBacklogs}
                             onChange={(e) => setHasBacklogs((e.target as HTMLInputElement).value)}
                             isRadio
-                            options={["Yes", "No"]}
-                            error={errors.hasBacklogs}
+							options={["Yes", "No"]}
+							error={errors.hasBacklogs}
 							layout="horizontal" // Added layout prop
-                        />
+						/>
 
 						<div className="transition">
 							<span className={labelCls}>English Test Status</span>
@@ -1195,15 +1280,15 @@ const StudentonBoarding: React.FC = () => {
 				{errors.preferredCountries && <span className="text-[12px] text-red-500">{errors.preferredCountries}</span>}
 			</div>
 			<InputField
-                label="Do you have a valid passport?"
-                name="passportStatus"
-                value={passportStatus}
+				label="Do you have a valid passport?"
+				name="passportStatus"
+				value={passportStatus}
                 onChange={(e) => setPassportStatus((e.target as HTMLInputElement).value)}
             	isRadio
-                options={["Yes", "No", "Applied"]}
-                error={errors.passportStatus}	
+				options={["Yes", "No", "Applied"]}
+				error={errors.passportStatus}
 				layout="horizontal"
-            />	
+			/>
 		</div>
 	);
 
@@ -1317,8 +1402,8 @@ const StudentonBoarding: React.FC = () => {
 						<div className="grid grid-cols-2 gap-3 pt-2 pb-3" style={{
 							// ensure the grid itself does not create scroll; we keep items compact
 						}}>
-                            {interests.map((c) => (
-                                <button
+							{interests.map((c) => (
+								<button
 									key={c.key}
 									onClick={() => setSelectedInterest(c.key)}
                                     className={`relative overflow-hidden h-[96px] rounded-[16px] text-left px-4 py-3 shadow-sm border ${

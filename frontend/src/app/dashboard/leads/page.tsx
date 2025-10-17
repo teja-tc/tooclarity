@@ -240,12 +240,13 @@ function LeadsPage() {
 			return getScrollParent(node.parentElement);
 		};
 
+        let removeScroll: (() => void) | null = null;
         const rootEl = getScrollParent(el.parentElement) || null;
         if (rootEl) {
             const onScroll = () => { userScrolledRef.current = true; };
             rootEl.addEventListener('scroll', onScroll, { passive: true });
             // cleanup listener later
-            var removeScroll = () => rootEl.removeEventListener('scroll', onScroll);
+            removeScroll = () => rootEl.removeEventListener('scroll', onScroll);
         }
 
         const observer = new IntersectionObserver((entries) => {
