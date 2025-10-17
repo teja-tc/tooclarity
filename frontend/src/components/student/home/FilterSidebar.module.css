@@ -1,0 +1,236 @@
+/* FilterSidebar.module.css - Filter panel for course discovery */
+
+.sidebar {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  height: fit-content;
+  position: sticky;
+  top: 20px;
+  width: 280px;
+  overflow-y: auto;
+  max-height: calc(100vh - 100px);
+}
+
+.content {
+  padding: 24px;
+}
+
+/* Header with Title and Icon */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #222;
+  margin: 0;
+  flex: 1;
+}
+
+.headerIcon {
+  width: 20px;
+  height: 20px;
+  color: #0222d7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Filter Sections */
+.section {
+  margin-bottom: 24px;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #222;
+  margin-bottom: 12px;
+  text-transform: capitalize;
+}
+
+/* Button Group for Filter Pills */
+.buttonGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Filter Button (Pill Style) */
+.filterButton {
+  padding: 8px 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 24px;
+  background: #f9f9f9;
+  color: #222;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  user-select: none;
+  display: inline-block;
+  line-height: 1.5;
+}
+
+.filterButton:hover {
+  border-color: #0222d7;
+  background: #f0f4ff;
+  color: #0222d7;
+}
+
+/* Active Filter Button */
+.filterButtonActive {
+  background: #0222d7;
+  color: white;
+  border-color: #0222d7;
+  font-weight: 600;
+}
+
+.filterButtonActive:hover {
+  background: #0119a8;
+  border-color: #0119a8;
+}
+
+.filterButton:focus-visible {
+  outline: 2px solid #0222d7;
+  outline-offset: 2px;
+}
+
+/* Sub-filter Animation */
+.section {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    overflow: visible;
+  }
+}
+
+/* Scrollbar Styling */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Tablet View (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .sidebar {
+    width: 240px;
+  }
+
+  .content {
+    padding: 20px;
+  }
+
+  .sectionTitle {
+    font-size: 13px;
+  }
+
+  .filterButton {
+    padding: 7px 14px;
+    font-size: 12px;
+  }
+
+  .buttonGroup {
+    gap: 6px;
+  }
+}
+
+/* Mobile View (<768px) */
+@media (max-width: 767px) {
+  .sidebar {
+    width: 100%;
+    position: static;
+    top: auto;
+    border-radius: 12px;
+    max-height: none;
+    margin-bottom: 24px;
+  }
+
+  .content {
+    padding: 16px;
+  }
+
+  .header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .title {
+    font-size: 16px;
+  }
+
+  .headerIcon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .section {
+    margin-bottom: 16px;
+  }
+
+  .sectionTitle {
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  .buttonGroup {
+    gap: 6px;
+  }
+
+  .filterButton {
+    padding: 7px 14px;
+    font-size: 12px;
+  }
+}
+
+/* Small Mobile View (<480px) */
+@media (max-width: 479px) {
+  .content {
+    padding: 12px;
+  }
+
+  .section {
+    margin-bottom: 12px;
+  }
+
+  .sectionTitle {
+    font-size: 12px;
+  }
+
+  .filterButton {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+}

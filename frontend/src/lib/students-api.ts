@@ -65,6 +65,29 @@ export interface UpdateAcademicProfilePayload {
   details: any;
 }
 
+// ===== Course Types for Student Dashboard =====
+export interface CourseForStudent {
+  _id: string;
+  id?: string;
+  courseName: string;
+  aboutCourse?: string;
+  priceOfCourse?: number;
+  mode?: "Offline" | "Online" | "Hybrid";
+  imageUrl?: string;
+  brochureUrl?: string;
+  startDate?: string;
+  endDate?: string;
+  courseDuration?: string;
+  location?: string;
+  institution?: {
+    _id: string;
+    instituteName: string;
+  };
+  rating?: number;
+  reviews?: number;
+  studentsEnrolled?: number;
+}
+
 // ===== Student Dashboard API (stubs) =====
 export const studentDashboardAPI = {
   // Fetch the current user's profile (shared profile endpoint)
@@ -81,6 +104,13 @@ export const studentDashboardAPI = {
       birthday: data?.birthday, // if backend provides
     };
     return { success: true, message: "ok", data: normalized } as StudentApiResponse<StudentProfile>;
+  },
+
+  // Fetch all visible courses (public endpoint - no auth required)
+  getVisibleCourses: async (): Promise<StudentApiResponse<CourseForStudent[]>> => {
+    return studentApiRequest<CourseForStudent[]>("/v1/public/courses", {
+      method: "GET",
+    });
   },
 
   // Fetch courses the student is enrolled in

@@ -1,0 +1,111 @@
+.header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 32px;
+  margin-bottom: 40px;
+  align-items: center;
+}
+
+.userInfo {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  flex-shrink: 0;
+  color: white;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.details h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  color: #222;
+}
+
+.details p {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 12px 0;
+}
+
+.editBtn {
+  padding: 8px 16px;
+  background: #d8ddff;
+  color: #0222d7;
+  border: 1px solid #0222d7;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+}
+
+.editBtn:hover {
+  background: #0222d7;
+  color: white;
+}
+
+@media (max-width: 1024px) {
+  .header {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .avatar {
+    width: 100px;
+    height: 100px;
+    font-size: 40px;
+  }
+
+  .details h1 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 32px;
+  }
+
+  .details h1 {
+    font-size: 20px;
+  }
+
+  .details p {
+    font-size: 13px;
+  }
+
+  .editBtn {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+}

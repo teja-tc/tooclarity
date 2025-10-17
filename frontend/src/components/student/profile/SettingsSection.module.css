@@ -1,0 +1,120 @@
+.section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e5e5;
+  color: #222;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  padding: 16px 0;
+  border-bottom: 1px solid #e5e5e5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.item:hover {
+  background: #d8ddff;
+  padding: 16px 12px;
+  border-radius: 8px;
+  margin: 0 -12px;
+  padding-left: 12px;
+}
+
+.item.dangerous:hover {
+  background: #ffe5e5;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon {
+  font-size: 20px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #222;
+}
+
+.item.dangerous .text {
+  color: #ff6b6b;
+}
+
+.arrow {
+  color: #666;
+  font-size: 20px;
+}
+
+.item.dangerous .arrow {
+  color: #ff6b6b;
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .title {
+    font-size: 15px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+
+  .item {
+    padding: 12px 0;
+  }
+
+  .item:hover {
+    padding: 12px 8px;
+    margin: 0 -8px;
+    padding-left: 8px;
+  }
+
+  .text {
+    font-size: 13px;
+  }
+
+  .icon {
+    font-size: 18px;
+  }
+
+  .arrow {
+    font-size: 18px;
+  }
+}
