@@ -31,7 +31,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
           {avatar ? (
             <img src={avatar} alt={name} />
           ) : (
-            getInitials(name)
+            <span className={styles.initials}>{getInitials(name)}</span>
           )}
         </div>
         <div className={styles.details}>

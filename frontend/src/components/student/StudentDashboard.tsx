@@ -8,6 +8,7 @@ import styles from "./StudentDashboard.module.css";
 import { studentDashboardAPI, type CourseForStudent } from "@/lib/students-api";
 import { useAuth } from "@/lib/auth-context";
 import { useNotifications } from "@/lib/hooks/notifications-hooks";
+import { useRouter } from "next/navigation";
 
 interface Course {
   id: string;
@@ -82,6 +83,7 @@ const transformApiCourse = (apiCourse: CourseForStudent, wishlisted: boolean): C
 
 const StudentDashboard: React.FC = () => {
   const { user } = useAuth();
+  const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -127,6 +129,12 @@ const StudentDashboard: React.FC = () => {
   const saveWishlistedCourseIds = (ids: Set<string>): void => {
     if (typeof window !== "undefined") {
       localStorage.setItem("wishlistedCourses", JSON.stringify(Array.from(ids)));
+      // Notify other components in the same window that wishlist changed
+      try {
+        window.dispatchEvent(new CustomEvent('wishlistUpdated'));
+      } catch (e) {
+        // ignore if dispatch fails in some environments
+      }
     }
   };
 
@@ -389,6 +397,7 @@ const StudentDashboard: React.FC = () => {
         onSearchChange={handleSearch}
         onNotificationClick={handleNotificationPaneToggle}
         onWishlistClick={handleWishlistPaneToggle}
+        onProfileClick={() => router.push("/student/profile")}
       />
 
       {activePane && (

@@ -11,6 +11,7 @@ interface HomeHeaderProps {
   onNotificationClick?: () => void;
   onWishlistClick?: () => void;
   onSearchChange?: (query: string) => void;
+  onProfileClick?: () => void;
 }
 
 export const HomeHeader: React.FC<HomeHeaderProps> = ({
@@ -21,6 +22,7 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
   onNotificationClick,
   onWishlistClick,
   onSearchChange,
+  onProfileClick,
 }) => {
   const getInitials = (name: string) => {
     return name
@@ -33,13 +35,18 @@ export const HomeHeader: React.FC<HomeHeaderProps> = ({
   return (
     <div className={styles.header}>
       <div className={styles.greetingSection}>
-        <div className={styles.avatar}>
+        <button
+          type="button"
+          className={styles.avatar}
+          onClick={onProfileClick}
+          aria-label="Open profile"
+        >
           {userAvatar ? (
             <img src={userAvatar} alt={userName} />
           ) : (
             <span className={styles.initialsText}>{getInitials(userName)}</span>
           )}
-        </div>
+        </button>
         <div className={styles.greetingText}>
           <h2 className={styles.greeting}>Welcome back</h2>
           <p className={styles.userName}>{userName} 👋</p>
