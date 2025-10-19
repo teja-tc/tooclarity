@@ -105,6 +105,10 @@ const instituteAdminSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.Mixed,
         },
     },
+    wishlist: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Course',
+    }],
 }, { timestamps: true});
 
 instituteAdminSchema.pre('save', async function(next) {
