@@ -197,8 +197,8 @@ const FeaturesPage = () => {
       </div>
 
      <Footer />
-     <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} />
-    <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen}/>
+     <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} caller="institution" />
+    <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen} caller="institution"/>
 
     </>
   );

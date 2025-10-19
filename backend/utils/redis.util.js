@@ -7,10 +7,12 @@ class RedisUtil {
    * @param {string} token
    * @param {number} ttlSeconds - expiration in seconds
    */
-  static async saveRefreshToken(userId, token, ttlSeconds) {
-    const key = `refresh:${userId}`;
+  static async saveAccessToken(sessionId, token, ttlSeconds) {
+    const key = `access:${sessionId}`;
     await redis.set(key, token, "EX", ttlSeconds);
-    console.log(`Saved refresh token for user ${userId} with TTL ${ttlSeconds} seconds`);
+    console.log(
+      `Saved refresh token for sessionId ${sessionId} with TTL ${ttlSeconds} seconds`
+    );
   }
 
   /**
@@ -18,8 +20,8 @@ class RedisUtil {
    * @param {string} userId
    * @returns {string|null}
    */
-  static async getRefreshToken(userId) {
-    const key = `refresh:${userId}`;
+  static async getAccessToken(sessionId) {
+    const key = `access:${sessionId}`;
     return await redis.get(key);
   }
 
@@ -27,8 +29,8 @@ class RedisUtil {
    * Delete refresh token (logout / revoke)
    * @param {string} userId
    */
-  static async deleteRefreshToken(userId) {
-    const key = `refresh:${userId}`;
+  static async deleteAccessToken(sessionId) {
+    const key = `access:${sessionId}`;
     await redis.del(key);
   }
 
@@ -90,25 +92,65 @@ class RedisUtil {
     return false;
   }
 
-  static async addSubscription(orderId, status, ttlSeconds = 300){
+  static async addSubscription(orderId, status, ttlSeconds = 300) {
     const key = `subscription:${orderId}`;
     await redis.set(key, status, "EX", ttlSeconds);
   }
 
-  static async getSubscription(orderId){
+  static async getSubscription(orderId) {
     const key = `subscription:${orderId}`;
     await redis.get(key);
   }
 
-  static async deleteSubscription(orderId){
+  static async deleteSubscription(orderId) {
     const key = `subscription:${orderId}`;
-    try{
+    try {
       await redis.del(key);
-    }catch{
-      console.log("key not found")
+    } catch {
+      console.log("key not found");
     }
   }
-  
+
+  // static async getLock(key, ttlSeconds = 5) {
+  //   const result = await redis.set(key, "1", "NX", "EX", ttlSeconds);
+  //   return result === "OK";
+  // }
+
+  // static async releaseLock(key) {
+  //   await redis.del(key);
+  // }
+
+  static async getLock(key, ttlSeconds = 5) {
+    if (!key) throw new Error("RedisLockUtil.getLock: key is required");
+
+    const ttl = parseInt(ttlSeconds, 10);
+    if (isNaN(ttl) || ttl <= 0) throw new Error("Invalid TTL for Redis lock");
+
+    try {
+      const result = await redis.set(key, "1", "NX", "EX", ttl);
+      return result === "OK";
+    } catch (err) {
+      console.error("⚠️ RedisLockUtil.getLock Error:", err);
+      return false;
+    }
+  }
+
+  /**
+   * Release a Redis lock manually.
+   * Simply deletes the lock key.
+   *
+   * @param {string} key - The Redis key used as the lock
+   * @returns {Promise<void>}
+   */
+  static async releaseLock(key) {
+    if (!key) throw new Error("RedisLockUtil.releaseLock: key is required");
+
+    try {
+      await redis.del(key);
+    } catch (err) {
+      console.error("⚠️ RedisLockUtil.releaseLock Error:", err);
+    }
+  }
 }
 
 module.exports = RedisUtil;

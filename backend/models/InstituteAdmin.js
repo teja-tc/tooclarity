@@ -10,15 +10,17 @@ const instituteAdminSchema = new mongoose.Schema({
     },
     name: {
         type: String,
-        required: [true, 'Name is required.'],
+        // required: [true, 'Name is required.'],
         trim: true,
     },
     email: {
         type: String,
-        required: [true, 'Email is required.'],
-        unique: true,
+        // required: [true, 'Email is required.'],
+        unique: false,
         lowercase: true,
         trim: true,
+        sparse: true,
+        default: null,
     },
     password: {
         type: String,

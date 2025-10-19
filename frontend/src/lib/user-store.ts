@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { authAPI } from "./api";
+import { authAPI, LoginData } from "./api";
 
 // Keep this in sync with existing app expectations
 export interface User {
@@ -28,7 +28,8 @@ interface UserStoreState {
   updateUser: (updates: Partial<User>) => void;
   setPaymentStatus: (isPaymentDone: boolean) => void;
   setProfileCompleted: (isProfileCompleted: boolean) => void;
-  login: (email: string, password: string, type?: "admin" | "institution") => Promise<boolean>;
+  // login: (email: string, password: string, type?: "admin" | "institution" | "student") => Promise<boolean>;
+  login: (loginData: LoginData) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -60,9 +61,11 @@ export const useUserStore = create<UserStoreState>((set, get) => ({
       user: state.user ? { ...state.user, isProfileCompleted } : state.user,
     })),
 
-  login: async (email: string, password: string, type?: "admin" | "institution") => {
+  // login: async (email: string, password: string, type?: "admin" | "institution" | "student") => {
+  login: async( loginData: LoginData) => {
     try {
-      const response = await authAPI.login({ email, password, type });
+      // const response = await authAPI.login({ email, password, type });
+      const response = await authAPI.login(loginData);
       if (response.success) {
         const data = response.data?.user || response.data;
         if (data && (data.id || data.email)) {
