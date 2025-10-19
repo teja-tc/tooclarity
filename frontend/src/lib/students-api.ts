@@ -25,6 +25,8 @@ export interface StudentProfile {
   name: string;
   email: string;
   phoneNumber?: string;
+  profilePicture?: string;
+  birthday?: string; // ISO or raw string if backend provides
 }
 
 export interface StudentCourse {
@@ -41,11 +43,72 @@ export interface StudentListParams {
   limit?: number;
 }
 
+// ===== Onboarding types =====
+export interface CreateStudentPayload {
+  name: string;
+  email: string;
+  contactNumber?: string;
+  address?: string;
+  googleId?: string;
+}
+
+export interface UpdateAcademicProfilePayload {
+  profileType:
+    | "KINDERGARTEN"
+    | "SCHOOL"
+    | "INTERMEDIATE"
+    | "GRADUATION"
+    | "COACHING_CENTER"
+    | "STUDY_HALLS"
+    | "TUITION_CENTER"
+    | "STUDY_ABROAD";
+  details: any;
+}
+
+// ===== Course Types for Student Dashboard =====
+export interface CourseForStudent {
+  _id: string;
+  id?: string;
+  courseName: string;
+  aboutCourse?: string;
+  priceOfCourse?: number;
+  mode?: "Offline" | "Online" | "Hybrid";
+  imageUrl?: string;
+  brochureUrl?: string;
+  startDate?: string;
+  endDate?: string;
+  courseDuration?: string;
+  location?: string;
+  institution?: {
+    _id: string;
+    instituteName: string;
+  };
+  rating?: number;
+  reviews?: number;
+  studentsEnrolled?: number;
+}
+
 // ===== Student Dashboard API (stubs) =====
 export const studentDashboardAPI = {
-  // Fetch the current student's profile
+  // Fetch the current user's profile (shared profile endpoint)
   getProfile: async (): Promise<StudentApiResponse<StudentProfile>> => {
-    return studentApiRequest("/v1/student/profile", {
+    const res = await studentApiRequest<any>("/v1/profile", { method: "GET" });
+    // Normalize shape to StudentProfile best-effort
+    const data: any = (res as any)?.data || res?.data || res;
+    const normalized: StudentProfile = {
+      id: data?.id || data?._id || "",
+      name: data?.name || "",
+      email: data?.email || "",
+      phoneNumber: data?.contactNumber,
+      profilePicture: data?.profilePicture || data?.ProfilePicutre, // backend may use ProfilePicutre
+      birthday: data?.birthday, // if backend provides
+    };
+    return { success: true, message: "ok", data: normalized } as StudentApiResponse<StudentProfile>;
+  },
+
+  // Fetch all visible courses (public endpoint - no auth required)
+  getVisibleCourses: async (): Promise<StudentApiResponse<CourseForStudent[]>> => {
+    return studentApiRequest<CourseForStudent[]>("/v1/public/courses", {
       method: "GET",
     });
   },
@@ -72,6 +135,39 @@ export const studentDashboardAPI = {
     return studentApiRequest("/v1/student/profile", {
       method: "PATCH",
       body: JSON.stringify(payload),
+    });
+  },
+};
+
+// ===== Onboarding API =====
+export const studentOnboardingAPI = {
+  createStudent: async (
+    payload: CreateStudentPayload
+  ): Promise<StudentApiResponse<any>> => {
+    return studentApiRequest("/v1/students", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateAcademicProfile: async (
+    studentId: string,
+    payload: UpdateAcademicProfilePayload
+  ): Promise<StudentApiResponse<any>> => {
+    return studentApiRequest(`/v1/students/${encodeURIComponent(studentId)}/academic-profile`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+};
+
+// ===== Student Authentication API =====
+export const studentAuthAPI = {
+  // Student login
+  login: async (loginData: StudentLoginData): Promise<StudentApiResponse> => {
+    return studentApiRequest("/v1/student/auth/login", {
+      method: "POST",
+      body: JSON.stringify(loginData),
     });
   },
 };

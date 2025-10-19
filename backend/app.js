@@ -10,6 +10,7 @@ const { publicRouter: authPublicRoutes, protectedRouter: authProtectedRoutes } =
 const institutionRoutes = require("./routes/institution.routes");
 const branchRoutes = require("./routes/branch.routes");
 const courseRoutes = require("./routes/course.routes");
+const subscriptionRoutes = require("./routes/subscription.routes");
 const enquiriesRoutes = require("./routes/enquiries.routes");
 const profileRoutes = require("./routes/profile.routes");
 const notificationRoutes = require("./routes/notification.routes");
@@ -26,6 +27,7 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 
 const googleRoutes = require('./routes/google.routes');
 const s3Routes = require("./routes/s3.routes")
+const publicRoutes = require("./routes/public.routes");
 
 // import global auth middleware
 const globalAuthMiddleware = require("./middleware/globalAuth.middleware");
@@ -61,6 +63,11 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(cookieParser());
 
+// Health check endpoint for Socket.IO availability
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // The limiter middleware has been commented out as requested.
 // const limiter = rateLimit({
 //     windowMs: 15 * 60 * 1000,
@@ -76,6 +83,7 @@ app.use(express.json({ limit: "10kb" }));
 app.use("/api/v1/auth", authPublicRoutes);
 app.use("/auth/google", googleRoutes);
 app.use("/api/v1/payment/", paymentPublicRoutes);
+app.use("/api/v1/public", publicRoutes);
 
 // Apply Global Auth Middleware (for all routes below this line)
 app.use(globalAuthMiddleware);
@@ -87,13 +95,14 @@ const requireStudent = [authorizeRoles(["STUDENT"])];
 app.use("/api/v1/auth", authProtectedRoutes);
 app.use("/api/v1/students", studentRoutes, requireStudent); 
 
+
 app.use("/api/v1/payment", requireInstituteAdmin, paymentProtectedRoutes);
 app.use("/api/v1/admin/coupon", requireAdmin, adminRoute);
 app.use("/api/v1/coupon", requireInstituteAdmin, InstitutionAdminRoute);
 
 app.use("/api/v1/", profileRoutes);
 
-app.use("/api/v1/enquiries", enquiriesRoutes);
+app.use("/api/v1/enquiries", requireInstituteAdmin, enquiriesRoutes);
 
 app.use("/api/v1/institutions", requireInstituteAdmin, institutionRoutes);
 
@@ -108,6 +117,13 @@ app.use(
   "/api/v1/institutions/:institutionId/courses",
   requireInstituteAdmin,
   courseRoutes
+);
+
+// Unified subscription scope under institution
+app.use(
+  "/api/v1/institutions/:institutionId/subscriptions",
+  requireInstituteAdmin,
+  subscriptionRoutes
 );
 
 app.use("/api/v1/notifications", notificationRoutes);

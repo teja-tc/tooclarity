@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const Enquiries = require('./Enquiries');
 const crypto = require('crypto');
 
 const instituteAdminSchema = new mongoose.Schema({
@@ -96,7 +97,7 @@ const instituteAdminSchema = new mongoose.Schema({
             'SCHOOL',
             'INTERMEDIATE',
             'GRADUATION',
-            'COACHING',
+            'COACHING_CENTER',
             'STUDY_HALLS',
             'TUITION_CENTER',
             'STUDY_ABROAD',
