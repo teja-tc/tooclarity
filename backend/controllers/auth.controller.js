@@ -1,6 +1,5 @@
 const InstituteAdmin = require("../models/InstituteAdmin");
 const otpService = require("../services/otp.service");
-const jwt = require("jsonwebtoken");
 const { promisify } = require("util");
 const AppError = require("../utils/appError");
 const crypto = require("crypto");
@@ -51,7 +50,7 @@ exports.register = async (req, res, next, options = {}) => {
     // ---- Validation ----
     let existingUser;
     if (type === "institution") {
-      existingUser = await checkDuplicateUser({ $or: [{ email }, { contactNumber }] });
+      existingUser = await checkDuplicateUser({ $or: [{ email, contactNumber }] });
       if (existingUser) {
         const conflictField = existingUser.email === email ? "Email" : "Contact number";
         if (options.returnTokens) throw new Error(`${conflictField.toUpperCase()}_EXISTS`);
@@ -73,11 +72,11 @@ exports.register = async (req, res, next, options = {}) => {
       name: name || null,
       email: email || null,
       password: password || undefined,
-      contactNumber: contactNumber || "",
-      designation: designation || "",
-      linkedinUrl: linkedin || "",
+      contactNumber: contactNumber || null,
+      designation: designation || null,
+      linkedinUrl: linkedin || null,
       googleId: googleId || undefined,
-      profilePicture: profilePicture || "",
+      profilePicture: profilePicture || null,
       isEmailVerified: !!googleId,
       isPhoneVerified: false,
       isProfileCompleted: false,
@@ -193,44 +192,57 @@ exports.register = async (req, res, next, options = {}) => {
   }
 };
 
-
 exports.verifyEmailOtp = async (req, res, next) => {
   try {
-    const { email, otp } = req.body;
+    const { email, otp, contactNumber } = req.body;
 
-    // 1. Validate OTP from Redis
-    const isOtpValid = await otpService.checkVerificationToken(email, otp);
+    if (!otp || (!email && !contactNumber)) {
+      return res.status(400).json({
+        status: "fail",
+        message: "OTP and either email or contact number are required.",
+      });
+    }
+
+    const isOtpValid = await otpService.checkVerificationToken(email, contactNumber, otp);
     if (!isOtpValid) {
       return res
         .status(400)
         .json({ status: "fail", message: "Incorrect or expired OTP." });
     }
 
-    // 2. Find user by email
-    const user = await InstituteAdmin.findOne({ email });
+    const query = email ? { email } : { contactNumber };
+    const user = await InstituteAdmin.findOne(query);
+
     if (!user) {
       return res
         .status(404)
         .json({ status: "fail", message: "User not found." });
     }
 
-    // 3. Check if already verified
-    if (user.isEmailVerified) {
-      return res
-        .status(400)
-        .json({ status: "fail", message: "Email is already verified." });
+    if (email) {
+      if (user.isEmailVerified) {
+        return res
+          .status(400)
+          .json({ status: "fail", message: "Email is already verified." });
+      }
+      user.isEmailVerified = true;
     }
 
-    // 4. Mark email as verified
-    user.isEmailVerified = true;
+    if (contactNumber) {
+      if (user.isPhoneVerified) {
+        return res
+          .status(400)
+          .json({ status: "fail", message: "Phone number is already verified." });
+      }
+      user.isPhoneVerified = true;
+    }
     await user.save();
-
-    // 5. Issue tokens (login user immediately after verification)
-    return await sendTokens(user, res, "Email verified successfully.");
+    return await sendTokens(user, res, "OTP verified successfully.");
   } catch (error) {
     next(error);
   }
 };
+
 
 exports.login = async (req, res, next, options = {}) => {
   try {

@@ -83,10 +83,10 @@ class RedisUtil {
    * @param {string} otp
    * @returns {boolean}
    */
-  static async validateOtp(email, otp) {
-    const stored = await this.getOtp(email);
+  static async validateOtp(key, otp) {
+    const stored = await this.getOtp(key);
     if (stored && stored === otp) {
-      await this.deleteOtp(email); // prevent reuse
+      await this.deleteOtp(key);
       return true;
     }
     return false;

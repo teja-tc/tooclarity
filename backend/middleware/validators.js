@@ -74,7 +74,7 @@ exports.validateRegistration = [
     .escape(),
 
   // ✅ LinkedIn URL → required only for institution
-  body("linkedinUrl")
+  body("linkedin")
     .if((value, { req }) => req.body.type === "institution")
     .notEmpty()
     .withMessage("LinkedIn URL is required for institutions.")

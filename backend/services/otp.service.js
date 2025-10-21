@@ -112,10 +112,35 @@ exports.sendVerificationTokenSMS = async (phoneNumber, name) => {
     const phoneNumberWithCountryCode = `91${phoneNumber}`;
     const appName = process.env.APP_NAME;
 
+    logger.info(
+      { event: "otp_sms_start", phoneNumber },
+      "🟡 Starting OTP SMS generation process."
+    );
+
+    // 1. Generate OTP
     const otp = this.generateOtp();
     const expirySeconds = 10 * 60; // 10 minutes
-    await RedisUtil.saveOtp(`sms:${phoneNumber}`, otp, expirySeconds);
 
+    logger.info(
+      { event: "otp_generated", phoneNumber, otp },
+      "✅ OTP generated successfully."
+    );
+
+    // 2. Save OTP into Redis
+    const redisKey = `sms:${phoneNumber}`;
+    logger.info(
+      { event: "otp_redis_save_start", redisKey, otp, expirySeconds },
+      "🟡 Saving OTP into Redis."
+    );
+
+    await RedisUtil.saveOtp(redisKey, otp, expirySeconds);
+
+    logger.info(
+      { event: "otp_redis_save_success", redisKey },
+      "✅ OTP successfully saved into Redis."
+    );
+
+    // 3. Prepare variables for SMS
     const variables = {
       OTP: otp,
       // name: name || "User",
@@ -123,6 +148,12 @@ exports.sendVerificationTokenSMS = async (phoneNumber, name) => {
       // expiry_minutes: expirySeconds / 60,
     };
 
+    logger.info(
+      { event: "otp_sms_send_start", phoneNumberWithCountryCode, variables },
+      "🟡 Sending OTP via MSG91 flow."
+    );
+
+    // 4. Send SMS using MSG91 flow
     await sendOtpSMSFlow(phoneNumberWithCountryCode, variables);
 
     logger.info(
@@ -147,7 +178,7 @@ exports.sendVerificationToken = async (email, name) => {
 
     const otp = this.generateOtp();
     const expirySeconds = 10 * 60; // 10 minutes
-    await RedisUtil.saveOtp(email, otp, expirySeconds);
+    await RedisUtil.saveOtp(`email:${email}`, otp, expirySeconds);
 
     const variables = {
       OTP: otp,

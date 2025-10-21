@@ -45,6 +45,8 @@ const instituteAdminSchema = new mongoose.Schema({
         type: String,
         match: [/^\d{10}$/, 'Contact number must be 10 digits'],
         trim: true,
+        default:null,
+        sparse:true,
         // required: [true, 'Contact number is required']
     },
     designation: {
@@ -79,7 +81,6 @@ const instituteAdminSchema = new mongoose.Schema({
     },
     isPaymentDone:{
         type:Boolean,
-        default:false
     },
     isProfileCompleted:{
         type:Boolean,
