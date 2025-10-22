@@ -4,7 +4,7 @@ const { promisify } = require("util");
 const AppError = require("../utils/appError");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
-const Session = require("../models/Session")
+const Session = require("../models/Session");
 
 const CookieUtil = require("../utils/cookie.util");
 const RedisUtil = require("../utils/redis.util");
@@ -40,8 +40,10 @@ exports.register = async (req, res, next, options = {}) => {
 
     const sendOtp = async () => {
       try {
-        if (type === "institution") await otpService.sendVerificationToken(email, name);
-        else if (type === "student") await otpService.sendVerificationTokenSMS(contactNumber);
+        if (type === "institution")
+          await otpService.sendVerificationToken(email, name);
+        else if (type === "student")
+          await otpService.sendVerificationTokenSMS(contactNumber);
       } catch {
         throw new Error("OTP_SEND_FAILED");
       }
@@ -49,11 +51,21 @@ exports.register = async (req, res, next, options = {}) => {
 
     // ---- Validation ----
     let existingUser;
+    if (googleId) {
+      if ((existingUser = await checkDuplicateUser({ googleId }))) {
+        console.log("Google ID already in use.");
+        throw new Error("GOOGLE_ID_EXISTS");
+      }
+    }
     if (type === "institution") {
-      existingUser = await checkDuplicateUser({ $or: [{ email, contactNumber }] });
+      existingUser = await checkDuplicateUser({
+        $or: [{ email, contactNumber }],
+      });
       if (existingUser) {
-        const conflictField = existingUser.email === email ? "Email" : "Contact number";
-        if (options.returnTokens) throw new Error(`${conflictField.toUpperCase()}_EXISTS`);
+        const conflictField =
+          existingUser.email === email ? "Email" : "Contact number";
+        if (options.returnTokens)
+          throw new Error(`${conflictField.toUpperCase()}_EXISTS`);
         return await abort(409, `${conflictField} already in use.`);
       }
     } else if (type === "student" && !googleId) {
@@ -110,7 +122,11 @@ exports.register = async (req, res, next, options = {}) => {
     const [newUser] = await InstituteAdmin.create([userPayload], { session });
 
     // ---- OTP sending ----
-    if (!googleId && !options.returnTokens && ["institution", "student"].includes(type)) {
+    if (
+      !googleId &&
+      !options.returnTokens &&
+      ["institution", "student"].includes(type)
+    ) {
       try {
         await sendOtp();
       } catch (err) {
@@ -126,7 +142,9 @@ exports.register = async (req, res, next, options = {}) => {
       session.endSession();
       return res.status(201).json({
         status: "success",
-        message: `OTP sent to ${type === "student" ? "phone" : "email"}. Please verify to complete registration.`,
+        message: `OTP sent to ${
+          type === "student" ? "phone" : "email"
+        }. Please verify to complete registration.`,
       });
     }
 
@@ -143,29 +161,65 @@ exports.register = async (req, res, next, options = {}) => {
 
     // Enqueue welcome notification per role
     try {
-      const { addNotificationJob } = require('../jobs/notification.job');
-      const title = 'Welcome to TooClarity';
+      const { addNotificationJob } = require("../jobs/notification.job");
+      const title = "Welcome to TooClarity";
       const description = `Hi ${newUser.name}, your account has been created.`;
-      if (newUser.role === 'INSTITUTE_ADMIN') {
-        await addNotificationJob({ title, description, category: 'system', recipientType: 'ADMIN', institutionAdmin: newUser._id });
-      } else if (newUser.role === 'STUDENT') {
-        await addNotificationJob({ title, description, category: 'system', recipientType: 'STUDENT', student: newUser._id });
-      } else if (newUser.role === 'ADMIN') {
-        await addNotificationJob({ title, description, category: 'system', recipientType: 'ADMIN', institutionAdmin: newUser._id });
+      if (newUser.role === "INSTITUTE_ADMIN") {
+        await addNotificationJob({
+          title,
+          description,
+          category: "system",
+          recipientType: "ADMIN",
+          institutionAdmin: newUser._id,
+        });
+      } else if (newUser.role === "STUDENT") {
+        await addNotificationJob({
+          title,
+          description,
+          category: "system",
+          recipientType: "STUDENT",
+          student: newUser._id,
+        });
+      } else if (newUser.role === "ADMIN") {
+        await addNotificationJob({
+          title,
+          description,
+          category: "system",
+          recipientType: "ADMIN",
+          institutionAdmin: newUser._id,
+        });
       }
     } catch (_) {}
 
     // Enqueue welcome notification per role
     try {
-      const { addNotificationJob } = require('../jobs/notification.job');
-      const title = 'Welcome to TooClarity';
+      const { addNotificationJob } = require("../jobs/notification.job");
+      const title = "Welcome to TooClarity";
       const description = `Hi ${newUser.name}, your account has been created.`;
-      if (newUser.role === 'INSTITUTE_ADMIN') {
-        await addNotificationJob({ title, description, category: 'system', recipientType: 'ADMIN', institutionAdmin: newUser._id });
-      } else if (newUser.role === 'STUDENT') {
-        await addNotificationJob({ title, description, category: 'system', recipientType: 'STUDENT', student: newUser._id });
-      } else if (newUser.role === 'ADMIN') {
-        await addNotificationJob({ title, description, category: 'system', recipientType: 'ADMIN', institutionAdmin: newUser._id });
+      if (newUser.role === "INSTITUTE_ADMIN") {
+        await addNotificationJob({
+          title,
+          description,
+          category: "system",
+          recipientType: "ADMIN",
+          institutionAdmin: newUser._id,
+        });
+      } else if (newUser.role === "STUDENT") {
+        await addNotificationJob({
+          title,
+          description,
+          category: "system",
+          recipientType: "STUDENT",
+          student: newUser._id,
+        });
+      } else if (newUser.role === "ADMIN") {
+        await addNotificationJob({
+          title,
+          description,
+          category: "system",
+          recipientType: "ADMIN",
+          institutionAdmin: newUser._id,
+        });
       }
     } catch (_) {}
 
@@ -188,7 +242,12 @@ exports.register = async (req, res, next, options = {}) => {
       });
     }
 
-    next(error);
+    // next(error);
+    if (!options.returnTokens) {
+      next(error);
+    } else {
+      throw error;
+    }
   }
 };
 
@@ -203,7 +262,11 @@ exports.verifyEmailOtp = async (req, res, next) => {
       });
     }
 
-    const isOtpValid = await otpService.checkVerificationToken(email, contactNumber, otp);
+    const isOtpValid = await otpService.checkVerificationToken(
+      email,
+      contactNumber,
+      otp
+    );
     if (!isOtpValid) {
       return res
         .status(400)
@@ -232,7 +295,10 @@ exports.verifyEmailOtp = async (req, res, next) => {
       if (user.isPhoneVerified) {
         return res
           .status(400)
-          .json({ status: "fail", message: "Phone number is already verified." });
+          .json({
+            status: "fail",
+            message: "Phone number is already verified.",
+          });
       }
       user.isPhoneVerified = true;
     }
@@ -242,7 +308,6 @@ exports.verifyEmailOtp = async (req, res, next) => {
     next(error);
   }
 };
-
 
 exports.login = async (req, res, next, options = {}) => {
   try {
@@ -291,7 +356,9 @@ exports.login = async (req, res, next, options = {}) => {
       // Check email verification for institution admins
       if (user.role === "INSTITUTE_ADMIN" && !user.isEmailVerified) {
         if (options.returnTokens) {
-          const err = new Error("Account not verified. Please verify your email.");
+          const err = new Error(
+            "Account not verified. Please verify your email."
+          );
           err.code = "EMAIL_NOT_VERIFIED";
           throw err;
         }
@@ -304,7 +371,9 @@ exports.login = async (req, res, next, options = {}) => {
 
     // ✅ STUDENT LOGIN USING CONTACT NUMBER
     else if (type === "student") {
-      user = await InstituteAdmin.findOne({ contactNumber }).select("+password");
+      user = await InstituteAdmin.findOne({ contactNumber }).select(
+        "+password"
+      );
       const invalid = !user || !(await user.comparePassword(password));
 
       if (invalid) {
@@ -334,7 +403,6 @@ exports.login = async (req, res, next, options = {}) => {
     next(error);
   }
 };
-
 
 exports.logout = async (req, res, next) => {
   const userId = req.userId;
