@@ -2,11 +2,13 @@
 
 import React, { createContext, useContext, useEffect } from "react";
 import { useUserStore, type User } from "./user-store";
+import { LoginData } from "./api";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string, type?: "admin" | "institution") => Promise<boolean>;
+  // login: (email: string, password: string, type?: "admin" | "institution" | "student") => Promise<boolean>;
+  login: (loginData: LoginData) => Promise<boolean>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
@@ -39,7 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = {
     user,
     loading,
-    login: (email, password, type) => login(email, password, type),
+    // login: (email, password, type) => login(email, password, type),
+    login: (loginData) => login(loginData),
     logout,
     refreshUser,
     isAuthenticated,

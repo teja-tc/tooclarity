@@ -31,7 +31,7 @@ interface SignUpDialogProps {
 export default function SignUpDialog({
   open: externalOpen,
   onOpenChange,
-  caller = "institution",
+  caller,
   onSuccess,
 }: SignUpDialogProps = {}) {
   const router = useRouter();
