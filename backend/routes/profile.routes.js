@@ -1,8 +1,11 @@
+// backend/routes/profile.routes.js
 const express = require('express');
 const router = express.Router();
-const profileController = require('../controllers/profile.controller');
+const { getProfile, getWishlist, addToWishlist } = require('../controllers/profile.controller');
 
-// Protected profile route
-router.get('/profile', profileController.getProfile);
+router.get('/profile', getProfile);
+router.route('/wishlist')
+    .get(getWishlist)
+    .post(addToWishlist);
 
 module.exports = router;
