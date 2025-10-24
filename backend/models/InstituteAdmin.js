@@ -67,7 +67,7 @@ const instituteAdminSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Institution',
     },
-    ProfilePicutre:{
+    profilePicture:{
         type:String,
         trim:true,
     },
