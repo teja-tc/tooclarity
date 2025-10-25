@@ -25,21 +25,26 @@ const sendTokens = async (user, res, message, options ={}) => {
   const refreshTtlSeconds = decodedRefresh.exp - Math.floor(Date.now() / 1000);
 
   await Promise.all([
-      RedisUtil.saveAccessToken(sessionId, accessToken, 900),
-      Session.create({
-        sessionId,
-        userId,
-        refreshToken,
-        expiresAt: new Date(decodedRefresh.exp * 1000),
-      }),
-    ]);
+    RedisUtil.saveAccessToken(sessionId, accessToken, 900),
+    Session.create({
+      sessionId,
+      userId,
+      refreshToken,
+      expiresAt: new Date(decodedRefresh.exp * 1000),
+    }),
+  ]);
 
   CookieUtil.setCookie(res, "session_id", sessionId,{
     maxAge: refreshTtlSeconds * 1000,
   });
 
   if (options.returnTokens) {
-    return { sessionId };
+    return {
+      sessionId,
+      role: user.role,
+      isProfileCompleted: user.isProfileCompleted,
+      isPaymentDone: user.isPaymentDone,
+    };
   }
 
   return res.status(200).json({

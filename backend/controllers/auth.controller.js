@@ -293,12 +293,10 @@ exports.verifyEmailOtp = async (req, res, next) => {
 
     if (contactNumber) {
       if (user.isPhoneVerified) {
-        return res
-          .status(400)
-          .json({
-            status: "fail",
-            message: "Phone number is already verified.",
-          });
+        return res.status(400).json({
+          status: "fail",
+          message: "Phone number is already verified.",
+        });
       }
       user.isPhoneVerified = true;
     }
@@ -317,7 +315,7 @@ exports.login = async (req, res, next, options = {}) => {
     // ✅ If Google login — keep it completely intact
     if (googleId) {
       user = await InstituteAdmin.findOne({ email, googleId });
-
+      
       if (!user) {
         if (options.returnTokens) {
           const err = new Error("No account found for this Google user.");
@@ -331,13 +329,27 @@ exports.login = async (req, res, next, options = {}) => {
         });
       }
 
-      // ✅ Issue tokens immediately for Google users
+      // 🚫 Restrict cross-role login (important)
+      if (
+        (type === "student" && user.role === "INSTITUTE_ADMIN") ||
+        (type === "institution" && user.role === "STUDENT")
+      ) {
+        const errMsg = "This account belongs to a different user type.";
+        if (options.returnTokens) {
+          const err = new Error(errMsg);
+          err.code = "ROLE_MISMATCH";
+          throw err;
+        }
+        return res.status(403).json({
+          status: "fail",
+          message: errMsg,
+        });
+      }
+
       return await sendTokens(user, res, "Login successful.", options);
     }
 
-    // ✅ Normal login (non-Google)
     if (type === "institution" || type === "admin") {
-      // INSTITUTION ADMIN LOGIN USING EMAIL
       user = await InstituteAdmin.findOne({ email }).select("+password");
       const invalid = !user || !(await user.comparePassword(password));
 
@@ -353,7 +365,6 @@ exports.login = async (req, res, next, options = {}) => {
         });
       }
 
-      // Check email verification for institution admins
       if (user.role === "INSTITUTE_ADMIN" && !user.isEmailVerified) {
         if (options.returnTokens) {
           const err = new Error(
@@ -367,9 +378,21 @@ exports.login = async (req, res, next, options = {}) => {
           message: "Account not verified. Please verify your Email first.",
         });
       }
+
+      if (user.role === "STUDENT" && type === "institution") {
+        const errMsg = "This account belongs to a student, not an institution.";
+        if (options.returnTokens) {
+          const err = new Error(errMsg);
+          err.code = "ROLE_MISMATCH";
+          throw err;
+        }
+        return res.status(403).json({
+          status: "fail",
+          message: errMsg,
+        });
+      }
     }
 
-    // ✅ STUDENT LOGIN USING CONTACT NUMBER
     else if (type === "student") {
       user = await InstituteAdmin.findOne({ contactNumber }).select(
         "+password"
@@ -387,9 +410,21 @@ exports.login = async (req, res, next, options = {}) => {
           message: "Incorrect contact number or password.",
         });
       }
+
+      if (user.role === "INSTITUTE_ADMIN" && type === "student") {
+        const errMsg = "This account belongs to an institution, not a student.";
+        if (options.returnTokens) {
+          const err = new Error(errMsg);
+          err.code = "ROLE_MISMATCH";
+          throw err;
+        }
+        return res.status(403).json({
+          status: "fail",
+          message: errMsg,
+        });
+      }
     }
 
-    // ✅ Unknown type check
     else {
       return res.status(400).json({
         status: "fail",
@@ -397,10 +432,13 @@ exports.login = async (req, res, next, options = {}) => {
       });
     }
 
-    // ✅ Common token issuing for both student and institution
     return await sendTokens(user, res, "Login successful.", options);
   } catch (error) {
-    next(error);
+    if (!options.returnTokens) {
+      next(error);
+    } else {
+      throw error;
+    }
   }
 };
 
