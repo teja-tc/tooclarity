@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
@@ -16,7 +16,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, loading } = useAuth();
-  const [profileName, setProfileName] = useState<string | undefined>(undefined);
+  // const [profileName, setProfileName] = useState<string | undefined>(undefined);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -70,7 +70,7 @@ export default function DashboardLayout({
               transition={{ duration: 0.2 }}
             >
               <Topbar
-                userName={profileName || user?.name || user?.admin}
+                userName={user?.name || user?.admin}
                 onSearch={(query) => console.log("Search:", query)}
                 onNotificationClick={() => console.log("Notifications clicked")}
                 onProfileClick={() => console.log("Profile clicked")}

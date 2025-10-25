@@ -8,7 +8,8 @@ import L2DialogBox from "@/components/auth/L2DialogBox";
 import L3DialogBox from "@/components/auth/L3DialogBox";
 import CourseOrBranchSelectionDialog from "@/components/auth/CourseOrBranchSelectionDialog";
 import Stepper from "@/components/ui/Stepper";
-import TermsConditionsPage from "../TermsConditions/page";
+// import TermsConditionsPage from "../TermsConditions/page";
+import Image from "next/image";
 
 export default function SignupPage() {
   // ✅ ALL HOOKS ARE NOW AT THE TOP LEVEL, BEFORE ANY CONDITIONAL RETURNS
@@ -162,9 +163,11 @@ export default function SignupPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#FBF9F5] pt-[104px]">
       {/* Top navigation bar */}
       <div className="w-full h-auto sm:h-[64px] md:h-[80px] flex flex-col sm:flex-row justify-between items-center px-4 sm:px-6 md:px-20 z-10 fixed top-0 left-0 py-3 sm:py-0">
-        <img
+        <Image
           src="/Too%20Clarity.png"
           alt="Too Clarity Logo"
+          width={120}
+          height={28}
           className="h-6 sm:h-7 w-auto mb-2 sm:mb-0"
         />
         <a

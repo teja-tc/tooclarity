@@ -1,0 +1,9 @@
+git init
+git add .
+git commit -m "Initial commit - RPS gesture recognition project"
+git branch -M main
+git remote add origin https://github.com/Muskanvs/rps-gesture-recognition.git
+git push -u origin main
+
+git config --global user.name "muskan"
+git config --global user.email "muskanvs786@gmail.com"

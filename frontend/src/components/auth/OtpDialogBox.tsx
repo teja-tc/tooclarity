@@ -7,7 +7,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import InputField from "@/components/ui/InputField";
+import _InputField from "@/components/ui/InputField";
 import { authAPI } from "../../lib/api";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../lib/auth-context";
@@ -106,7 +106,7 @@ export default function OtpDialogBox({
       } else {
         setError(response.message || "Invalid OTP. Please try again.");
       }
-    } catch (error) {
+    } catch (_error) {
       setError("Failed to verify OTP. Please try again.");
     } finally {
       setLoading(false);
@@ -129,7 +129,7 @@ export default function OtpDialogBox({
       } else {
         setError(response.message || "Failed to resend OTP");
       }
-    } catch (error) {
+    } catch (_error) {
       setError("Failed to resend OTP. Please try again.");
     } finally {
       setResendLoading(false);
@@ -147,7 +147,7 @@ export default function OtpDialogBox({
             Verify Your Email
           </DialogTitle>
           <DialogDescription className="max-w-xs font-montserrat font-normal text-sm sm:text-[14px] leading-relaxed text-center">
-            We've sent a 6-digit code to {email}
+            We&apos;ve sent a 6-digit code to {email}
           </DialogDescription>
         </DialogHeader>
 

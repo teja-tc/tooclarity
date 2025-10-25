@@ -3,6 +3,7 @@ import { Card, CardContent } from "../ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
+import Image from "next/image";
 
 export interface StudentItem {
   date: string;
@@ -46,8 +47,8 @@ const StudentList: React.FC<StudentListProps> = ({
   useIconWhenNoAvatar = false
 }) => {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'date' | 'name' | 'status'>('date');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [sortBy, _setSortBy] = useState<'date' | 'name' | 'status'>('date');
+  const [filterStatus, _setFilterStatus] = useState<string>('all');
 
   const cardVariants = {
     hidden: { opacity: 0, y: 30 },
@@ -67,7 +68,7 @@ const StudentList: React.FC<StudentListProps> = ({
     })
   };
 
-  const statusOptions = [
+  const _statusOptions = [
     'all', 'Requested for call back', 'Requested for demo', 
     'Interested in pricing', 'Follow up needed', 'Hot lead', 
     'Qualified prospect', 'Demo scheduled'
@@ -128,7 +129,10 @@ const StudentList: React.FC<StudentListProps> = ({
 
   const renderAvatar = (item: StudentItem) => {
     if (item.avatarUrl) {
-      return <img src={item.avatarUrl} alt={item.name} className="h-9 w-9 rounded-full object-cover" />;
+      return <Image src={item.avatarUrl} alt={item.name} className="h-9 w-9 rounded-full object-cover"
+        width={36}
+        height={36}
+      />
     }
     if (useIconWhenNoAvatar) {
       return (

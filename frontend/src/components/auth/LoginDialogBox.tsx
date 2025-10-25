@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,7 @@ interface LoginDialogBoxProps {
   onSuccess?: () => void;
 }
 
-const GoogleIcon = () => (
+const _GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 488 512">
     <path
       fill="#4285F4"
@@ -77,7 +77,7 @@ const GoogleIcon = () => (
   </svg>
 );
 
-const MicrosoftIcon = () => (
+const _MicrosoftIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 23 23">
     <path fill="#f25022" d="M1 1h10v10H1z" />
     <path fill="#00a4ef" d="M12 1h10v10H12z" />
@@ -86,7 +86,7 @@ const MicrosoftIcon = () => (
   </svg>
 );
 
-const AppleIcon = () => (
+const _AppleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 384 512">
     <path
       fill="currentColor"
@@ -184,8 +184,8 @@ export default function LoginDialogBox({
               }
 
               router.push("/");
-            } catch (error) {
-              console.error("Error sending Google token", error);
+            } catch (_error) {
+              console.error("Error sending Google token", _error);
             } finally {
               setLoadingProvider(null);
             }
@@ -193,8 +193,8 @@ export default function LoginDialogBox({
         });
 
         if (isMounted) setIsScriptLoaded(true);
-      } catch (error) {
-        console.error("Failed to initialize Google Identity Services", error);
+      } catch (_error) {
+        console.error("Failed to initialize Google Identity Services", _error);
       }
     };
 
@@ -205,7 +205,7 @@ export default function LoginDialogBox({
   }, [refreshUser, router, onOpenChange, onSuccess]);
 
   // ✅ Handle Google OAuth button click
-  const handleGoogleClick = () => {
+  const handleGoogleClick = useCallback(() => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
     const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ?? "";
     const state = JSON.stringify({ state: "institution", type: "login", device: "web" });
@@ -217,7 +217,7 @@ export default function LoginDialogBox({
       state: state,
       type: "login",
     });
-  };
+  }, []);
 
   // Forgot Password Timer Effect
   useEffect(() => {
@@ -260,7 +260,7 @@ export default function LoginDialogBox({
       } else {
         setForgotPasswordError(response.message || "Failed to send reset email. Please try again.");
       }
-    } catch (error) {
+    } catch (_error) {
       setForgotPasswordError("Network error. Please try again.");
     } finally {
       setForgotPasswordLoading(false);
@@ -279,7 +279,7 @@ export default function LoginDialogBox({
       } else {
         setForgotPasswordError(response.message || "Failed to resend email. Please try again.");
       }
-    } catch (error) {
+    } catch (_error) {
       setForgotPasswordError("Network error. Please try again.");
     } finally {
       setForgotPasswordLoading(false);
@@ -481,7 +481,7 @@ export default function LoginDialogBox({
                     </div>
 
                     <div className="text-sm text-gray-600 mb-4">
-                      Didn't receive the email? Please wait and check your spam folder.
+                      Didn&apos;t receive the email? Please wait and check your spam folder.
                     </div>
 
                     <Button

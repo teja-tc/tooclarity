@@ -27,12 +27,12 @@ export async function exportInstitutionAndCoursesToFile(): Promise<File> {
   // 2) Fetch all courses grouped by branch
   const coursesGroups = await getCoursesGroupsByBranchName();
 
-  const sanitizedCourses = coursesGroups.map((branch: any) => {
-    const { id, createdAt, ...branchRest } = branch;
+  const sanitizedCourses = coursesGroups.map((branch: { [key: string]: unknown; courses: Array<Record<string, unknown>> }) => {
+    const { id, createdAt, ...branchRest } = branch as Record<string, unknown>;
     return {
       ...branchRest,
-      courses: branch.courses.map((course: any) => {
-        const { id, image, imagePreviewUrl, brochure, brochurePreviewUrl, ...courseRest } = course;
+      courses: branch.courses.map((course: Record<string, unknown>) => {
+        const { id, image, imagePreviewUrl, brochure, brochurePreviewUrl, ...courseRest } = course as Record<string, unknown>;
         return courseRest;
       }),
     };

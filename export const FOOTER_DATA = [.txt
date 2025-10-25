@@ -1,0 +1,36 @@
+export const FOOTER_DATA = [
+  {
+   
+  
+    title: "Social Media",
+    data: [
+       {
+    name: "Github",
+    icon: RxGithubLogo,
+    link: "https://github.com/Muskanvs",
+  },
+      {
+        name: "SiLeetcode",
+        icon: SiLeetcode,
+    link: "https://leetcode.com/u/VadlaShaikmuskan/",
+      },
+      {
+        name: "GFG",
+        icon: SiGeeksforgeeks,
+    link: "https://www.geeksforgeeks.org/user/muskan8e33/",
+      },
+      {
+        name: "Linkedin",
+        icon: RxLinkedinLogo,
+        link: "www.linkedin.com/in/vadla-shaik-muskan-567837278",
+      },
+       {
+        name: "Contact Me",
+        icon: null,
+        link: "mailto:muskanvs786@gmail.com",
+      },
+    ],
+  },
+     
+    
+] as const;

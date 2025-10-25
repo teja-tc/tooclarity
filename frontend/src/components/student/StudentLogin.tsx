@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import Image from "next/image";
 import {
   ArrowLeft,
   Loader2,
   Mail,
   Lock,
-  Apple,
   type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -126,9 +125,9 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onSuccess }) => {
     return () => {
       isMounted = false;
     };
-  }, [refreshUser, router]);
+  }, [refreshUser, router, onSuccess]);
 
-  const handleGoogleClick = () => {
+  const handleGoogleClick = useCallback (() => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
     const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ?? "";
     const state = JSON.stringify({ state: "student", type: "login", device: "web" });
@@ -139,7 +138,7 @@ const StudentLogin: React.FC<StudentLoginProps> = ({ onSuccess }) => {
       state: state,
       type: "login",
     });
-  };
+  }, []);
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

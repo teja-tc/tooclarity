@@ -45,7 +45,7 @@ function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
 }
 
 // Helper: describe an arc path for a donut segment (outer and inner radii)
-function describeDonutArc(
+function _describeDonutArc(
   cx: number,
   cy: number,
   outerR: number,

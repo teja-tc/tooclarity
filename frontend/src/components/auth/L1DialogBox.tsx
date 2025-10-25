@@ -2,7 +2,8 @@
 
 import { useState, ChangeEvent, FormEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { validateField, validateForm } from "@/lib/validations/validateField";
+import Image from "next/image";
+// import { validateField, validateForm } from "@/lib/validations/validateField";
 import {
   addInstitutionToDB,
   getAllInstitutionsFromDB,
@@ -19,11 +20,11 @@ import {
 } from "@/components/ui/levels_dialog";
 import {
   Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
+  // CardHeader,
+  // CardTitle,
+  // CardDescription,
   CardContent,
-  CardFooter,
+  //CardFooter,
 } from "@/components/ui/card";
 import InputField from "@/components/ui/InputField";
 // import { institutionAPI, clearInstitutionData } from "@/lib/api";
@@ -399,7 +400,7 @@ export default function L1DialogBox({
       setErrors({});
 
       // ✅ 4) Normalize data before saving
-      const normalize = (x: any) => ({
+      const normalize = (x: Partial<FormData> & { id?: number; createdAt?: number; logoUrl?: string; logoPreviewUrl?: string }) => ({
         instituteType: x.instituteType || "",
         instituteName: x.instituteName || "",
         approvedBy: x.approvedBy || "",
@@ -428,7 +429,7 @@ export default function L1DialogBox({
         } else {
           console.log("🔄 Updating institution in IndexedDB...");
           await updateInstitutionInDB({
-            ...(latest as any),
+            ...(latest as Record<string, unknown>),
             ...current,
             id: latest.id,
           });
@@ -482,13 +483,13 @@ export default function L1DialogBox({
 
   const isFormComplete = isBaseFormValid && isLogoValid;
 
-  const countryFlags = {
+ /* const countryFlags = {
     "+91": "/India-flag.png",
     "+1": "/US-flag.png",
     "+44": "/UK-flag.png",
     "+61": "/Australia-flag.png",
     // add more as needed
-  };
+  }; */
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -607,9 +608,11 @@ export default function L1DialogBox({
                 {/* <div className="flex flex-row items-center gap-3 px-4 h-[48px] w-full bg-white border border-[#DADADD] rounded-[12px]"> */}
                 <div className="flex flex-row items-center gap-3 px-4 h-[48px] w-full bg-[#F5F6F9] border border-[#DADADD] rounded-[12px]">
                   {/* Left placeholder / icon */}
-                  <img
-                    src="call log icon.png"
+                  <Image
+                    src="/call log icon.png"
                     alt="phone icon"
+                    width={20}
+                    height={20}
                     className="w-[20px] h-[20px] object-cover"
                   />
 
@@ -618,9 +621,11 @@ export default function L1DialogBox({
                     className="flex items-center gap-2 cursor-pointer relative"
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   >
-                    <img
+                    <Image
                       src={selectedCountryContact.flag}
                       alt={selectedCountryContact.code}
+                      width={20}
+                      height={14}
                       className="w-[20px] h-[14px] object-cover rounded-sm"
                     />
                     <span className="text-[#060B13]">
@@ -694,9 +699,11 @@ export default function L1DialogBox({
                 </label>
                 <div className="flex flex-row items-center gap-3 px-4 h-[48px] w-full bg-[#F5F6F9] border border-[#DADADD] rounded-[12px]">
                   {/* <div className="flex flex-row items-center gap-3 px-4 h-[48px] w-full bg-white border border-[#DADADD] rounded-[12px]"> */}
-                  <img
-                    src="call log icon.png"
+                  <Image
+                    src="/call log icon.png"
                     alt="phone icon"
+                    width={20}
+                    height={20}
                     className="w-[20px] h-[20px] object-cover"
                   />
 
@@ -706,8 +713,10 @@ export default function L1DialogBox({
                       setIsDropdownOpenAdditional(!isDropdownOpenAdditional)
                     }
                   >
-                    <img
+                    <Image
                       src={selectedCountryAdditional.flag}
+                      width={20}
+                      height={14}
                       alt={selectedCountryAdditional.code}
                       className="w-[20px] h-[14px] object-cover rounded-sm"
                     />
@@ -914,10 +923,12 @@ export default function L1DialogBox({
                       </span>
                     </>
                   ) : (
-                    <img
+                    <Image
                       src={formData.logoPreviewUrl}
                       alt="Logo preview"
                       className="w-[100px] h-[100px] object-cover rounded-md"
+                      width={100}
+                      height={100}
                     />
                   )}
                 </div>
@@ -929,7 +940,7 @@ export default function L1DialogBox({
               </div>
             </CardContent>
 
-            <CardFooter>
+            {/* <CardFooter> */}
               <Button
                 type="submit"
                 disabled={isLoading}
@@ -941,7 +952,7 @@ export default function L1DialogBox({
               >
                 {isLoading ? "Saving..." : "Save & Next"}
               </Button>
-            </CardFooter>
+            {/* </CardFooter> */}
           </form>
         </Card>
       </DialogContent>

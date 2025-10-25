@@ -77,23 +77,23 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
 
   // Payment flow UI states
-  const [paymentVerified, setPaymentVerified] = useState<{
+  const [_paymentVerified, setPaymentVerified] = useState<{
     transactionId?: string | null;
     paymentId?: string | null;
     orderId?: string | null;
   } | null>(null);
-  const [paymentProcessing, setPaymentProcessing] = useState<{
+  const [_paymentProcessing, setPaymentProcessing] = useState<{
     paymentId?: string | null;
     orderId?: string | null;
   } | null>(null);
-  const [paymentFailed, setPaymentFailed] = useState<{
+  const [_paymentFailed, setPaymentFailed] = useState<{
     paymentId?: string | null;
     orderId?: string | null;
   } | null>(null);
 
   const baseAmount = plan.currentPrice;
-  const subtotal = baseAmount;
-  const payable = Math.max(subtotal - couponDiscount, 0);
+  const _subtotal = baseAmount;
+  const _payable = Math.max(_subtotal - couponDiscount, 0);
 
   async function applyCoupon() {
     const code = coupon.trim();
@@ -104,15 +104,15 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
       setCouponDiscount(0);
 
       const res = await paymentAPI.applyCoupon(code);
-      if (res.success && res.data && typeof (res.data as any).discountAmount === "number") {
-        const discount = (res.data as any).discountAmount;
-        setCouponDiscount(discount);
+      if (res.success && res.data && typeof (res.data as { discountAmount?: number }).discountAmount === "number") {
+        const discount = (res.data as { discountAmount?: number }).discountAmount;
+        setCouponDiscount(discount || 0);
         setAppliedCoupon(code);
         setCouponMessage("Coupon applied successfully.");
       } else {
         setCouponMessage(res.message || "Invalid or expired coupon.");
       }
-    } catch (e) {
+    } catch (_e) {
       setCouponMessage("Invalid or expired coupon.");
     } finally {
       setIsApplyingCoupon(false);
@@ -143,8 +143,8 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
       }
 
       // 3) Open Razorpay checkout using returned values
-      const { key, amount, orderId } = res.data as any;
-      const options: any = {
+      const { key, amount, orderId } = res.data as { key: string; amount: number; orderId: string };
+      const options: Record<string, unknown> = {
         key,
         amount,
         currency: "INR",
@@ -161,7 +161,7 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
             setIsPaying(false);
           },
         },
-        handler: async (response: any) => {
+        handler: async (response: { razorpay_payment_id?: string; razorpay_order_id?: string; razorpay_signature?: string }) => {
           // Show processing UI while verifying with backend
           setPaymentProcessing({
             paymentId: response.razorpay_payment_id ?? null,
@@ -174,26 +174,26 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
           });
           try {
             const verifyRes = await paymentAPI.verifyPayment({
-              orderId: response.razorpay_order_id,
-              paymentId: response.razorpay_payment_id,
-              signature: response.razorpay_signature,
+              orderId: response.razorpay_order_id || '',
+              paymentId: response.razorpay_payment_id || '', 
+              signature: response.razorpay_signature || '',
               planType: selectedPlan,
               coupon: appliedCoupon ?? null,
-              amount: payable,
+              amount: _payable,
             });
 
             const status = (verifyRes.message || "").toLowerCase();
 
             if (status === "active") {
               // Success
-              const txnId = (verifyRes.data as any)?.transactionId || null;
+              const txnId = (verifyRes.data as { transactionId?: string | null })?.transactionId || null;
 
               // Mark payment as done in global store for redirects
               try {
                 useUserStore.getState().setPaymentStatus(true);
                 console.log("[Payment] isPaymentDone set to true in store");
-              } catch (e) {
-                console.warn("[Payment] Failed to set isPaymentDone in store:", e);
+              } catch (_e) {
+                console.warn("[Payment] Failed to set isPaymentDone in store:", _e);
               }
 
               setPaymentVerified({
@@ -242,10 +242,10 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
         },
       };
 
-      const rzp = new (window as any).Razorpay(options);
+      const rzp = new (window as unknown as { Razorpay: new (opts: Record<string, unknown>) => { open: () => void } }).Razorpay(options);
       rzp.open();
-    } catch (e) {
-      console.error("Payment init error:", e);
+    } catch (_e) {
+      console.error("Payment init error:", _e);
     }
   }
 
@@ -257,7 +257,7 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
         <div>
           <h1 className="text-xl font-semibold">Choose Your Plan</h1>
           <p className="text-sm text-muted-foreground">
-            Select the plan that best fits your institution's growth goals.
+            Select the plan that best fits your institution&apos;s growth goals.
           </p>
         </div>
       </div>
@@ -268,7 +268,7 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
         <section className="space-y-6">
           <div>
             <p className="mb-3 text-sm text-muted-foreground font-bold">
-              Select the plan that's right for you
+              Select the plan that&apos;s right for you
             </p>
 
             {/* Plans */}
@@ -403,7 +403,7 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
               {/* Payable amount */}
               <div className="flex items-center justify-between rounded-md bg-blue-50 px-3 py-3 text-sm">
                 <div className="font-medium">Payable Amount</div>
-                <div className="font-semibold">{formatINR(payable)} INR</div>
+                <div className="font-semibold">{formatINR(_payable)} INR</div>
               </div>
 
               {/* Note */}

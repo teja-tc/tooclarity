@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import SignUpDialog from "@/components/auth/SignUpDialog";
 import LoginDialogBox from "@/components/auth/LoginDialogBox";
-import { useAuth } from "@/lib/auth-context";
+// import { useAuth } from "@/lib/auth-context";
 
 // NOTE: Please adjust the import paths for these components to match your project structure.
 import StaticDashboardCard from "@/components/LandingPage/DashboardCard";

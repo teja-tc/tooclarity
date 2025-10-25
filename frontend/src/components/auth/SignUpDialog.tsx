@@ -11,13 +11,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import InputField from "@/components/ui/InputField";
 import { authAPI } from "../../lib/api";
 import OtpDialogBox from "./OtpDialogBox";
 import { useAuth } from "../../lib/auth-context";
 import { redirectToGoogleOAuth } from "@/lib/google-auth";
+import Image from "next/image";
 
 type SignUpCaller = "admin" | "institution";
 
@@ -62,7 +62,7 @@ export default function SignUpDialog({
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
   const validateForm = () => {
-    let newErrors: { [key: string]: string } = {};
+    const newErrors: { [key: string]: string } = {};
 
     if (!formData.name.trim()) {
       newErrors.name = "Admin Name is required.";
@@ -131,7 +131,7 @@ export default function SignUpDialog({
           general: response.message || "Sign up failed. Please try again.",
         });
       }
-    } catch (error) {
+    } catch {
       setErrors({ general: "Network error. Please try again." });
     } finally {
       setLoading(false);
@@ -192,7 +192,7 @@ export default function SignUpDialog({
               Welcome Aboard!
             </DialogTitle>
             <DialogDescription className="max-w-xs font-montserrat font-normal text-sm sm:text-[14px] leading-relaxed text-center">
-              Let's finalize your details.
+              Let&apos;s finalize your details.
             </DialogDescription>
           </DialogHeader>
 
@@ -227,12 +227,12 @@ export default function SignUpDialog({
               },
               // Only include LinkedIn when not admin
               ...(caller === "admin" ? [] : [{ label: "LinkedIn", id: "linkedin", formKey: "linkedin" }]),
-            ].map((f: any) => (
-              <div key={f.id}>
+            ].map((f: Record<string, unknown>) => (
+              <div key={f.id as string}>
                 {f.id === "phone" ? (
                   <InputField
-                    label={f.label}
-                    name={f.formKey}
+                    label={f.label as string}
+                    name={f.formKey as string}
                     type="tel"
                     placeholder="+91 0000000000"
                     value={formData.contactNumber}
@@ -246,27 +246,29 @@ export default function SignUpDialog({
                       })
                     }
                     required={true}
-                    error={errors[f.formKey]}
+                    error={errors[f.formKey as string]}
                     icon={
-                      <img
+                      <Image
                         src="/India-flag.png"
                         alt="India Flag"
+                        width={24}
+                        height={16}
                         className="w-6 h-4 object-cover rounded-sm"
                       />
                     }
                   />
                 ) : (
                   <InputField
-                    label={f.label}
-                    name={f.formKey}
-                    type={f.type || "text"}
-                    placeholder={`Enter your ${f.label}`}
-                    value={formData[f.formKey as keyof typeof formData]}
+                    label={f.label as string}
+                    name={f.formKey as string}
+                    type={(f.type as string) || "text"}
+                    placeholder={`Enter your ${f.label as string}`}
+                    value={formData[f.formKey as keyof typeof formData] as string}
                     onChange={(e) =>
-                      setFormData({ ...formData, [f.formKey]: e.target.value })
+                      setFormData({ ...formData, [f.formKey as string]: e.target.value })
                     }
                     required={true}
-                    error={errors[f.formKey]}
+                    error={errors[f.formKey as string]}
                   />
                 )}
               </div>
@@ -367,7 +369,7 @@ export default function SignUpDialog({
               onClick={handleGoogleSignUp}
               className="w-full border border-gray-300 rounded py-2 flex items-center justify-center gap-2 hover:bg-gray-100 transition"
             >
-              <img src="/google.png" alt="Google" className="w-5 h-5" />
+              <Image src="/google.png" alt="Google" width={20} height={20} className="w-5 h-5" />
               Sign up with Google
             </button>
           </div>

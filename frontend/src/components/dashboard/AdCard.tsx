@@ -4,11 +4,11 @@ import { Button } from "../ui/button";
 import { motion } from "framer-motion";
 
 interface AdCardProps {
-  onShare?: (platform: string) => void;
+ _onShare?: (platform: string) => void;
 }
 
 import { WhatsAppLogo, XLogo, LinkedInLogo } from "../ui/BrandLogos";
-const AdCard: React.FC<AdCardProps> = ({ onShare }) => {
+const AdCard: React.FC<AdCardProps> = ({ _onShare }) => {
   return (
     <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
       <Card className="relative overflow-visible md:overflow-hidden border-none rounded-2xl shadow-sm bg-gradient-to-br from-[#F2F6FF] via-[#E8EEFF] to-[#E3E9FF] dark:from-gray-800 dark:via-gray-800 dark:to-gray-800">

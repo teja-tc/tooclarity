@@ -143,7 +143,7 @@ export interface DashboardChartCache {
 export interface CachedApiResponseRecord {
   id?: number;
   key: string;
-  data: any;
+  data: unknown;
   timestamp: number;
   expiresAt: number;
 }
@@ -275,7 +275,7 @@ export async function addBranchesToDB(
     const ids: number[] = [];
 
     branches.forEach((b) => {
-      const { id: _ignored, ...rest } = b;
+      const {...rest } = b;
       const record = { ...rest, createdAt: Date.now() };
 
       const req = store.add(record);
@@ -300,7 +300,7 @@ export async function addCoursesGroupToDB(
     const tx = db.transaction(COURSES_STORE, "readwrite");
     const store = tx.objectStore(COURSES_STORE);
 
-    const { id: _ignored, ...rest } = group;
+    const {...rest } = group;
     const record = { ...rest, createdAt: Date.now() };
 
     const req = store.add(record);
@@ -394,7 +394,7 @@ export async function addInstitutionToDB(
     const tx = db.transaction(INSTITUTION_STORE, "readwrite");
     const store = tx.objectStore(INSTITUTION_STORE);
 
-    const { id: _ignored, ...rest } = institution;
+    const {...rest } = institution;
     const record = { ...rest, createdAt: Date.now() };
 
     const req = store.add(record);
@@ -470,7 +470,7 @@ export async function saveBranchWithCoursesToDB(
 
 /* ---------------- Dashboard caching helpers ---------------- */
 
-export async function cacheSet(key: string, data: any, duration: number): Promise<void> {
+export async function cacheSet(key: string, data: unknown, duration: number): Promise<void> {
   const db = await openDB();
   const now = Date.now();
   return new Promise((resolve, reject) => {
@@ -486,7 +486,7 @@ export async function cacheSet(key: string, data: any, duration: number): Promis
         data,
         timestamp: now,
         expiresAt: now + duration
-      } as any;
+      } as CachedApiResponseRecord;
       const putReq = store.put(record);
       putReq.onsuccess = () => resolve();
       putReq.onerror = () => reject(putReq.error || new Error("Failed to cache value"));
@@ -673,12 +673,12 @@ export async function prependAndTrimDashboardStudents(newStudents: Omit<Dashboar
     getReq.onsuccess = () => {
       const now = Date.now();
       let rows = (getReq.result as DashboardStudentCache[]) || [];
-      rows = [...newStudents.map(c => ({ ...c, lastUpdated: c.lastUpdated || now } as any)), ...rows]
+      rows = [...newStudents.map(c => ({ ...c, lastUpdated: c.lastUpdated || now } as DashboardStudentCache)), ...rows]
         .sort((a, b) => (b.lastUpdated || now) - (a.lastUpdated || now))
         .slice(0, 10);
       const clearReq = store.clear();
       clearReq.onsuccess = () => {
-        rows.forEach(r => store.put(r as any));
+        rows.forEach(r => store.put(r as DashboardStudentCache));
       };
       clearReq.onerror = () => reject(clearReq.error || new Error("Failed to trim students"));
     };

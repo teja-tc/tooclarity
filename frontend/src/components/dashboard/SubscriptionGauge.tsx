@@ -5,10 +5,10 @@ import Kebab from "../ui/Kebab";
 
 interface Props {
   daysLeft: number;
-  onUpgrade?: () => void;
+  _onUpgrade?: () => void;
 }
 
-const SubscriptionGauge: React.FC<Props> = ({ daysLeft, onUpgrade }) => {
+const SubscriptionGauge: React.FC<Props> = ({ daysLeft, _onUpgrade }) => {
   const [animatedDaysLeft, setAnimatedDaysLeft] = useState(daysLeft);
 
   // Sync with prop updates from backend
@@ -18,7 +18,7 @@ const SubscriptionGauge: React.FC<Props> = ({ daysLeft, onUpgrade }) => {
 
   // Fixed 11 rectangles with level colors like the mock
   const totalSegments = 11;
-  const totalDays = 30;
+  const _totalDays = 30;
 
   const cardVariants = {
     hidden: { opacity: 0, scale: 0.9 },

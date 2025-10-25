@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, Loader2, Smartphone, type LucideIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -41,7 +41,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
   // Handle success flow (same as login)
-  const handleRegisterSuccess = async () => {
+  const handleRegisterSuccess = useCallback(async () => {
     await refreshUser();
     
     // Call the onSuccess prop if provided
@@ -69,7 +69,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
         return;
       }
     }
-  };
+  }, [refreshUser, onSuccess, router]);
 
   // Google script + identity init
   useEffect(() => {
@@ -127,9 +127,9 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [handleRegisterSuccess]);
 
-  const handleGoogleClick = () => {
+  const handleGoogleClick = useCallback(() => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
     const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ?? "";
     const state = JSON.stringify({ state: "student", type: "register", device: "web" });
@@ -141,7 +141,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({ onSuccess }) 
       state,
       type: "register",
     });
-  };
+  }, []);
 
   const renderedProviders = useMemo(
     () =>

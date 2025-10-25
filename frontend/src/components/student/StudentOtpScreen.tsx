@@ -200,7 +200,7 @@ const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
 
             {/* Resend OTP */}
             <div className="text-sm text-gray-600">
-              <span>Didn't get a code? </span>
+              <span>Didn&apos;t get a code? </span>
               {canResend ? (
                 <button
                   onClick={handleResendOtp}

@@ -814,7 +814,7 @@ export default function L2DialogBox({
 
                         <div className="flex flex-col gap-2">
                           <label className="font-medium text-[16px]">
-                            Operational Time's
+                            Operational Time&apos;s
                           </label>
                           <div className="grid grid-cols-2 gap-2">
                             <input
@@ -838,7 +838,7 @@ export default function L2DialogBox({
 
                         <div className="flex flex-col gap-2">
                           <label className="font-medium text-[16px]">
-                            Operational Day's
+                            Operational Day&apos;s
                           </label>
                           <div className="flex flex-wrap gap-2">
                             {["Mon", "Tues", "Wed", "Thur", "Fri", "Sat"].map(
@@ -1056,7 +1056,7 @@ export default function L2DialogBox({
 
                         <div className="flex flex-col gap-2">
                           <label className="font-medium text-[16px]">
-                            Personal Locker's ?
+                            Personal Locker&apos;s ?
                           </label>
                           <div className="flex gap-4">
                             <label className="flex items-center gap-2">
@@ -1160,7 +1160,7 @@ export default function L2DialogBox({
 
                         <div className="flex flex-col gap-2">
                           <label className="font-medium text-[16px]">
-                            Operational Day's
+                            Operational Day&apos;s
                           </label>
                           <div className="flex flex-wrap gap-2">
                             {["Mon", "Tues", "Wed", "Thur", "Fri", "Sat"].map(
@@ -1186,7 +1186,7 @@ export default function L2DialogBox({
 
                         <div className="flex flex-col gap-2">
                           <label className="font-medium text-[16px]">
-                            Operational Time's
+                            Operational Time&apos;s
                           </label>
                           <div className="grid grid-cols-2 gap-2">
                             <input
@@ -1568,7 +1568,7 @@ export default function L2DialogBox({
                       Branch Details
                     </h3>
                     <p className="text-[#697282] text-sm">
-                      here information about your institution's branches.
+                      here information about your institution&apos;s branches.
                     </p>
                   </div>
 

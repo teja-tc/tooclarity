@@ -67,9 +67,9 @@ const SettingsPage: React.FC = () => {
     const [formData, setFormData] = useState<AdminFormData>({ currentEmail: "", newPassword: "", confirmPassword: "" });
     
     // Course editing state
-    const [allCourses, setAllCourses] = useState<any[]>([]);
-    const [selectedCourse, setSelectedCourse] = useState<any>(null);
-    const [institutionData, setInstitutionData] = useState<any | null>(null);
+    const [allCourses, setAllCourses] = useState<Record<string, unknown>[]>([]);
+    const [selectedCourse, setSelectedCourse] = useState<Record<string, unknown> | null>(null);
+    const [institutionData, setInstitutionData] = useState<Record<string, unknown> | null>(null);
     const [courseError, setCourseError] = useState("");
 
     // Handle editProgram query parameter
@@ -91,8 +91,8 @@ const SettingsPage: React.FC = () => {
             try {
                 const profileRes = await authAPI.getProfile();
                 if (profileRes.success && profileRes.data) {
-                    setFormData((prev) => ({ ...prev, currentEmail: profileRes.data.email || "" }));
-                    setUserName(profileRes.data.name || "User");
+                    setFormData((prev) => ({ ...prev, currentEmail: String((profileRes.data as Record<string, unknown>)?.email || "") }));
+                    setUserName(String((profileRes.data as Record<string, unknown>)?.name || "User"));
                 }
             } catch (error) {
                 console.error("Failed to fetch admin profile:", error);
@@ -112,20 +112,20 @@ const SettingsPage: React.FC = () => {
             try {
                 const cachedData = await cacheGet("fullDashboardData");
                 if (cachedData && typeof cachedData === 'object' && 'branchesWithCourses' in cachedData) {
-                    const courses = (cachedData as any).branchesWithCourses.flatMap((b: any) => b.courses);
+                    const courses = (cachedData as { branchesWithCourses: { courses: Record<string, unknown>[] }[] }).branchesWithCourses.flatMap((b: { courses: Record<string, unknown>[] }) => b.courses);
                     setAllCourses(courses);
-                    setInstitutionData((cachedData as any).institution);
+                    setInstitutionData((cachedData as unknown as { institution: Record<string, unknown> }).institution);
                     return;
                 }
 
-                const fileOrBlob: any = await dashboardAPI.getFullDashboardDetails();
-                if (fileOrBlob instanceof Blob || fileOrBlob instanceof File) {
+                const fileOrBlob = await dashboardAPI.getFullDashboardDetails();
+                if ((fileOrBlob as unknown) instanceof Blob || (fileOrBlob as unknown) instanceof File) {
                     const textData = await fileOrBlob.text();
-                    const data = JSON.parse(textData);
+                    const data = JSON.parse(textData) as { branchesWithCourses: { courses: Record<string, unknown>[] }[]; institution: Record<string, unknown> };
 
                     await cacheSet("fullDashboardData", data, 5 * 60 * 1000); // 5 minutes cache
 
-                    const courses = data.branchesWithCourses.flatMap((b: any) => b.courses);
+                    const courses = data.branchesWithCourses.flatMap((b: { courses: Record<string, unknown>[] }) => b.courses);
                     setAllCourses(courses);
                     setInstitutionData(data.institution);
                 } else {
@@ -156,17 +156,17 @@ const SettingsPage: React.FC = () => {
         // Refresh the data
         const refreshData = async () => {
             try {
-                const fileOrBlob: any = await dashboardAPI.getFullDashboardDetails();
-                if (fileOrBlob instanceof Blob || fileOrBlob instanceof File) {
+                const fileOrBlob = await dashboardAPI.getFullDashboardDetails();
+                if ((fileOrBlob as unknown) instanceof Blob || (fileOrBlob as unknown) instanceof File) {
                     const textData = await fileOrBlob.text();
-                    const data = JSON.parse(textData);
+                    const data = JSON.parse(textData) as { branchesWithCourses: { courses: Record<string, unknown>[] }[]; institution: Record<string, unknown> };
                     await cacheSet("fullDashboardData", data, 5 * 60 * 1000);
-                    const courses = data.branchesWithCourses.flatMap((b: any) => b.courses);
+                    const courses = data.branchesWithCourses.flatMap((b: { courses: Record<string, unknown>[] }) => b.courses);
                     setAllCourses(courses);
                     setInstitutionData(data.institution);
                 }
-            } catch (error) {
-                console.error("Failed to refresh data:", error);
+            } catch {
+                console.error("Failed to refresh data");
             }
         };
         refreshData();
@@ -185,7 +185,7 @@ const SettingsPage: React.FC = () => {
             } else {
                 setOtpError(response.message || "Failed to send verification code.");
             }
-        } catch (error) {
+        } catch {
             setOtpError("An unexpected error occurred. Please try again.");
         } finally {
             setVerificationLoading(false);
@@ -207,7 +207,7 @@ const SettingsPage: React.FC = () => {
             } else {
                 setOtpError(response.message || "Invalid OTP. Please try again.");
             }
-        } catch (error) {
+        } catch {
             setOtpError("An unexpected error occurred during verification.");
         } finally {
             setVerificationLoading(false);
@@ -364,11 +364,11 @@ const SettingsPage: React.FC = () => {
                                     <>
                                         <div className="mb-4">
                                             <AppSelect
-                                                value={selectedCourse?._id || ""}
+                                                value={String(selectedCourse?._id || "")}
                                                 onChange={handleCourseSelect}
                                                 options={allCourses.map(course => ({
-                                                    value: course._id,
-                                                    label: course.courseName || course.hallName || course.subject || "Unnamed Program"
+                                                value: String(course._id),
+                                                label: String(course.courseName || course.hallName || course.subject || "Unnamed Program")
                                                 }))}
                                                 placeholder="Choose a Program to Edit"
                                                 variant="white"
@@ -383,7 +383,7 @@ const SettingsPage: React.FC = () => {
                                                 <L2DialogBox
                                                     renderMode="inline"
                                                     mode="settingsEdit"
-                                                    institutionId={institutionData?._id}
+                                                    institutionId={String(institutionData?._id || '')}
                                                     editMode={true}
                                                     existingCourseData={selectedCourse}
                                                     onEditSuccess={handleEditSuccess}

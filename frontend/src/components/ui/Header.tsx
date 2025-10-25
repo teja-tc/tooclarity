@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import SignUpDialog from "../auth/SignUpDialog";
@@ -41,7 +42,7 @@ const Header: React.FC = () => {
       <div className="max-w-6xl mx-auto flex justify-between items-center">
         {/* Logo */}
         <div className="flex items-center cursor-pointer" onClick={() => router.push("/")}>
-          <img src="/OO_black_whiteBG (1).png" alt="Logo" className="w-8 h-8 md:w-9 md:h-9" />
+          <Image src="/OO_black_whiteBG (1).png" alt="Logo" width={36} height={36} className="w-8 h-8 md:w-9 md:h-9" />
           <span className="ml-2 text-xl md:text-2xl font-bold text-gray-900">TOO CLARITY</span>
         </div>
 
