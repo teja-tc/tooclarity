@@ -430,8 +430,8 @@ const _CARD_HEIGHT = 958;
         </div>
       </section>
       {/* Render dialogs at the top level (not inside button!) */}
-      {isSignUpOpen && <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} onSuccess={handleSignUpSuccess} />}
-      {isLoginOpen && <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen} />}
+      {isSignUpOpen && <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} onSuccess={handleSignUpSuccess} caller="institution" />}
+      {isLoginOpen && <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen} caller="institution"/>}
       {isOtpOpen && ( <OtpDialogBox open={isOtpOpen} setOpen={setIsOtpOpen} email={otpEmail} onVerificationSuccess={handleOtpVerified}/>)}
 
     </div>

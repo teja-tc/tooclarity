@@ -5,23 +5,25 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost
 // Types for API requests and responses
 
 export interface SignUpData {
-  name: string;
-  email: string;
+  name?: string;
+  email?: string;
   contactNumber: string;
-  designation: string;
-  linkedin: string;
+  designation?: string;
+  linkedin?: string;
   password: string;
-  type?: "admin" | "institution";
+  type?: "admin" | "institution" | "student";
 }
 
 export interface LoginData {
-  email: string;
-  password: string;
-  type?: "admin" | "institution";
+  email?: string;
+  contactNumber?: string;
+  password?: string;
+  type?: "admin" | "institution" | "student";
 }
 
 export interface OTPData {
-  email: string;
+  email?: string;
+  contactNumber?: string;
   otp: string;
 }
 

@@ -27,6 +27,7 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 
 const googleRoutes = require('./routes/google.routes');
 const s3Routes = require("./routes/s3.routes")
+const publicRoutes = require("./routes/public.routes");
 
 // import global auth middleware
 const globalAuthMiddleware = require("./middleware/globalAuth.middleware");
@@ -82,6 +83,7 @@ app.use(express.json({ limit: "10kb" }));
 app.use("/api/v1/auth", authPublicRoutes);
 app.use("/auth/google", googleRoutes);
 app.use("/api/v1/payment/", paymentPublicRoutes);
+app.use("/api/v1/public", publicRoutes);
 
 // Apply Global Auth Middleware (for all routes below this line)
 app.use(globalAuthMiddleware);

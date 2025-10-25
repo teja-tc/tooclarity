@@ -37,7 +37,8 @@ publicRouter.post("/register", validateRegistration, authController.register);
 // 📧 Email OTP verification
 publicRouter.post(
   "/verify-email",
-  body("email").isEmail().normalizeEmail(),
+  body("email"),
+  // .isEmail().normalizeEmail(),
   body("otp").isString().isLength({ min: 6, max: 6 }).trim(),
   authController.verifyEmailOtp
 );

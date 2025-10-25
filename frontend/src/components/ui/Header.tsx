@@ -65,9 +65,9 @@ const Header: React.FC = () => {
       </div>
 
       {/* Render dialogs at the top level */}
-      {isSignUpOpen && <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} onSuccess={handleSignUpSuccess} />}
+      {isSignUpOpen && <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} onSuccess={handleSignUpSuccess} caller="institution" />}
       
-      {isLoginOpen && <LoginDialog open={isLoginOpen} onOpenChange={setIsLoginOpen} />}
+      {isLoginOpen && <LoginDialog open={isLoginOpen} onOpenChange={setIsLoginOpen} caller="institution" />}
       {isOtpOpen && ( <OtpDialogBox open={isOtpOpen} setOpen={setIsOtpOpen} email={otpEmail} onVerificationSuccess={handleOtpVerified}/>)}
     </header>
   );

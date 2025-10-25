@@ -98,7 +98,7 @@ const _AppleIcon = () => (
 export default function LoginDialogBox({
   open,
   onOpenChange,
-  caller = "institution",
+  caller,
   onSuccess,
 }: LoginDialogBoxProps) {
   const router = useRouter();
@@ -302,7 +302,7 @@ export default function LoginDialogBox({
     setErrors({});
 
     try {
-      const success = await login(formData.email, formData.password, caller);
+      const success = await login({email:formData.email, password:formData.password, type:caller});
 
       if (success) {
         await refreshUser();
