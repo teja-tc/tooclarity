@@ -1,8 +1,0 @@
-week 1:- VR = one motto -> ENTERTAINMENT
-
-number ofways in which the sense can move wrt the world is called number of degrees of Freedom 
-space of all the changes = configuration space
-dimension of all configuration spaces = number of degree of freedom
-DOF of EAR=HEAD = 3+3 x,y,z axis + 3 orientations, EYE =2
-
-oculus quest 2 = DOF = 6
