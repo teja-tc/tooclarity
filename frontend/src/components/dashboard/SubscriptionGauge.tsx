@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardContent } from "../ui/card";
+import { _Card, _CardContent } from "../ui/card";
 import { motion } from "framer-motion";
 import Kebab from "../ui/Kebab";
 
@@ -88,8 +88,8 @@ const SubscriptionGauge: React.FC<Props> = ({ daysLeft, _onUpgrade }) => {
       initial="hidden"
       animate="visible"
     >
-      <Card className="border-none bg-gray-50 h-full shadow-sm rounded-2xl border border-gray-100 hover:shadow-md transition-shadow duration-200 overflow-hidden dark:bg-gray-900 dark:border-gray-800">
-      <CardContent className="p-6 h-full flex flex-col">
+      <_Card className="border-none bg-gray-50 h-full shadow-sm rounded-2xl border border-gray-100 hover:shadow-md transition-shadow duration-200 overflow-hidden dark:bg-gray-900 dark:border-gray-800">
+      <_CardContent className="p-6 h-full flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <div className="tezt-sm md:text-2xl font-semibold dark:text-gray-100">Subscription</div>
           <motion.div 
@@ -128,8 +128,8 @@ const SubscriptionGauge: React.FC<Props> = ({ daysLeft, _onUpgrade }) => {
               Days left
             </motion.div>
         </div>
-      </CardContent>
-    </Card>
+      </_CardContent>
+    </_Card>
     </motion.div>
   );
 };

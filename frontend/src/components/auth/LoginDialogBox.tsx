@@ -6,11 +6,11 @@ import { Eye, EyeOff, Loader2, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+  _Dialog,
+  _DialogContent,
+  _DialogHeader,
+  _DialogTitle,
+  _DialogDescription,
 } from "@/components/ui/dialog";
 import InputField from "@/components/ui/InputField";
 import { useAuth } from "@/lib/auth-context";
@@ -371,18 +371,18 @@ export default function LoginDialogBox({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg flex flex-col justify-between scrollbar-hide"
+      <_Dialog open={open} onOpenChange={onOpenChange}>
+        <_DialogContent className="max-w-lg flex flex-col justify-between scrollbar-hide"
         overlayClassName="bg-black/50"
         >
-          <DialogHeader className="flex flex-col items-center gap-2">
-            <DialogTitle className="text-xl sm:text-[24px] font-bold">
+          <_DialogHeader className="flex flex-col items-center gap-2">
+            <_DialogTitle className="text-xl sm:text-[24px] font-bold">
               Welcome Back!
-            </DialogTitle>
-            <DialogDescription className="text-center text-gray-600">
+            </_DialogTitle>
+            <_DialogDescription className="text-center text-gray-600">
               Please sign in to your account
-            </DialogDescription>
-          </DialogHeader>
+            </_DialogDescription>
+          </_DialogHeader>
 
           {errors.general && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm text-center">
@@ -522,8 +522,8 @@ export default function LoginDialogBox({
             </>
           )}
 
-        </DialogContent>
-      </Dialog>
+        </_DialogContent>
+      </_Dialog>
     </>
   );
 }

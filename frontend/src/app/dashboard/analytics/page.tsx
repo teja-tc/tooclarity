@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { _Card, _CardContent } from "@/components/ui/card";
 import AnalyticsTable, { CoursePerformanceRow } from "@/components/dashboard/AnalyticsTable";
 import CourseReachChart from "@/components/dashboard/CourseReachChart";
 import LeadTypeAnalytics, { LeadTypeData } from "@/components/dashboard/LeadTypeAnalytics";
@@ -305,8 +305,8 @@ function AnalyticsPage() {
 
 	return (
 		<div className="grid grid-cols-1 gap-6 mb-6 p-2 mt-5 rounded-2xl">
-			<Card className="m-5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
-				<CardContent className="p-4 sm:p-6">
+			<_Card className="m-5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
+				<_CardContent className="p-4 sm:p-6">
 					{/* Header with Time Range Toggle to mirror dashboard UI */}
 					<div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-2 mb-4 sm:mb-6 m-0">
 						<div className="text-lg sm:text-sm md:text-2xl font-semibold">Analytics</div>
@@ -350,8 +350,8 @@ function AnalyticsPage() {
 							/>
 						</AnimatePresence>
 					</motion.div>
-				</CardContent>
-			</Card>
+				</_CardContent>
+			</_Card>
 
 			{/* Program performance table with inner loading */}
 			<div className="relative">

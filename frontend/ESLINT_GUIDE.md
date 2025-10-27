@@ -40,7 +40,7 @@ This project uses a production-level ESLint configuration that balances code qua
         "varsIgnorePattern": "^_",      // Ignore vars starting with _
         "caughtErrorsIgnorePattern": "^_", // Ignore catch errors starting with _
         "destructuredArrayIgnorePattern": "^_", // Ignore destructured elements starting with _
-        "ignoreRestSiblings": true,    // Ignore rest siblings in destructuring ex:-const { name, age, ...rest } = user;
+        "ignoreRestSiblings": true,    // Ignore rest siblings in destructuring ex:-const { _name=SiddikVadla, age, ...rest } = user;
         "args": "after-used",          // Only check args after the last used one ex:- function handleClick(event, index) //Without this: ❌ “index is defined but never used.”
 
 
@@ -223,6 +223,7 @@ npx husky add .husky/pre-commit "cd frontend && npm run lint:check"
 2. **Enable caching** in CI/CD
 3. **Run linting in parallel** for large codebases
 4. **Use `--max-warnings 0`** only in production builds
+5. for **Unsplash URLs** use "unoptimized" prop bcoz, unsplash have already optimized CDNs
 
 ## Migration Guide
 

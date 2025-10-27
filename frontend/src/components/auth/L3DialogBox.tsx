@@ -4,20 +4,20 @@ import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 // import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  // DialogHeader,
-  // DialogTitle,
-  // DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/levels_dialog";
+  _Dialog,
+  _DialogContent,
+  _DialogHeader,
+  _DialogTitle,
+  _DialogDescription,
+  _DialogTrigger,
+} from "@/components/ui/dialog";
 import {
-  Card,
-  // CardHeader,
-  // CardTitle,
-  // CardDescription,
-  CardContent,
-  // CardFooter,
+  _Card,
+  _CardHeader,
+  _CardTitle,
+  _CardDescription,
+  _CardContent,
+  _CardFooter,
 } from "@/components/ui/card";
 // import InputField from "@/components/ui/InputField";
 // import { Clock } from "lucide-react";
@@ -176,7 +176,7 @@ export default function L3DialogBox({
   const [isLoading, setIsLoading] = useState(false);
   
   // Handle controlled open state
-  const dialogOpen = open !== undefined ? open : isOpen;
+  const DialogOpen = open !== undefined ? open : isOpen;
   const setDialogOpen = onOpenChange || setIsOpen;
   
   let institutionType: string | null = null;
@@ -195,7 +195,7 @@ export default function L3DialogBox({
     institutionType === "Under Graduation/Post Graduation";
 
   useEffect(() => {
-    if (!dialogOpen) return;
+    if (!DialogOpen) return;
 
     let isMounted = true;
     (async () => {
@@ -238,7 +238,7 @@ export default function L3DialogBox({
     return () => {
       isMounted = false;
     };
-  }, [dialogOpen]);
+  }, [DialogOpen]);
 
   const [formData, setFormData] = useState<KindergartenFormData>({
     schoolType: "",
@@ -1215,17 +1215,17 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
   };
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+    <_Dialog open={DialogOpen} onOpenChange={setDialogOpen}>
+      {trigger && <_DialogTrigger asChild>{trigger}</_DialogTrigger>}
 
-      <DialogContent
+      <_DialogContent
         className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
         showCloseButton={false}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
-          <CardContent className="space-y-6">
+        <_Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
+          <_CardContent className="space-y-6">
 
             {/* ✅ 2. Conditionally render the correct imported form component */}
 
@@ -1294,22 +1294,22 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
               />
             )}
             
-          </CardContent>
-        </Card>
-      </DialogContent>
-    </Dialog>
+          </_CardContent>
+        </_Card>
+      </_DialogContent>
+    </_Dialog>
   );
-//     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-//       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+//     <_Dialog open={DialogOpen} onOpenChange={setDialogOpen}>
+//       {trigger && <_DialogTrigger asChild>{trigger}</_DialogTrigger>}
 
-//       <DialogContent
+//       <_DialogContent
 //         className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
 //         showCloseButton={false}
-//         onEscapeKeyDown={(e) => e.preventDefault()}
-//         onInteractOutside={(e) => e.preventDefault()}
+//         onEscapeKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => e.preventDefault()}
+//         onInteractOutside={(e: React.MouseEvent<HTMLDivElement>) => e.preventDefault()}
 //       >
-//         <Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
-//           <CardContent className="space-y-6">
+//         <_Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
+//           <_CardContent className="space-y-6">
 //             {isKindergarten && (
 //               <>
 //                 <div className="space-y-2">
@@ -2286,9 +2286,9 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 //   </form>
 // </>
 //             )}
-//           </CardContent>
-//         </Card>
-//       </DialogContent>
-//     </Dialog>
+//           </_CardContent>
+//         </_Card>
+//       </_DialogContent>
+//     </_Dialog>
 //   );
 }

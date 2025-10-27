@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { _Card, _CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
@@ -38,8 +38,8 @@ const StatusPill: React.FC<{ status: CoursePerformanceRow["status"] }> = ({ stat
 
 const AnalyticsTable: React.FC<AnalyticsTableProps> = ({ rows, onAddCourse, titleOverride, nameHeaderOverride }) => {
   return (
-    <Card className="m-5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
-      <CardContent className="p-3 sm:p-6 ">
+    <_Card className="m-5 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
+      <_CardContent className="p-3 sm:p-6 ">
         <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">{titleOverride || "Course Performance"}</h3>
         <div className="w-full overflow-x-auto">
           <table className="min-w-[650px] w-full">
@@ -81,8 +81,8 @@ const AnalyticsTable: React.FC<AnalyticsTableProps> = ({ rows, onAddCourse, titl
             Add Course
           </Button>
         </div>
-      </CardContent>
-    </Card>
+      </_CardContent>
+    </_Card>
   );
 };
 

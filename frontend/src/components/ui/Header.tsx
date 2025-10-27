@@ -16,7 +16,7 @@ const Header: React.FC = () => {
   const router = useRouter();
 
   const handleSignUpSuccess = (email: string) => {
-    // Close signup dialog
+    // Close signup _Dialog
     setIsSignUpOpen(false);
 
     // Store email for OTP verification
@@ -64,7 +64,7 @@ const Header: React.FC = () => {
         </div>
       </div>
 
-      {/* Render dialogs at the top level */}
+      {/* Render _Dialogs at the top level */}
       {isSignUpOpen && <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} onSuccess={handleSignUpSuccess} caller="institution" />}
       
       {isLoginOpen && <LoginDialog open={isLoginOpen} onOpenChange={setIsLoginOpen} caller="institution" />}

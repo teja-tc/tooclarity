@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { _Card, _CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useInstitution } from "@/lib/hooks/dashboard-hooks";
 import { programsAPI } from "@/lib/api";
@@ -99,9 +99,9 @@ function ProgramsPage() {
 
   return (
     <div className="p-2 mt-5 space-y-6">
-      {/* Card 1: Your Listed Programs */}
-      <Card className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
-        <CardContent className="p-4 sm:p-6">
+      {/* _Card 1: Your Listed Programs */}
+      <_Card className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
+        <_CardContent className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="text-2xl font-semibold">Your Listed Programs</div>
           </div>
@@ -241,12 +241,12 @@ function ProgramsPage() {
           </div>
           )}
 
-        </CardContent>
-      </Card>
+        </_CardContent>
+      </_Card>
 
-      {/* Card 2: Transaction History */}
-      <Card className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
-        <CardContent className="p-4 sm:p-6">
+      {/* _Card 2: Transaction History */}
+      <_Card className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
+        <_CardContent className="p-4 sm:p-6">
           <div className="text-2xl font-semibold mb-4">Transaction History</div>
           {/* Header row */}
           <div className="grid grid-cols-12 text-sm text-gray-600 px-3 pb-2">
@@ -275,8 +275,8 @@ function ProgramsPage() {
             ))
             )}
           </div>
-        </CardContent>
-      </Card>
+        </_CardContent>
+      </_Card>
     </div>
   );
 }

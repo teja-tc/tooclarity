@@ -54,7 +54,7 @@ const _CARD_HEIGHT = 958;
   }, []);
 
   const handleSignUpSuccess = (email: string) => {
-    // Close signup dialog
+    // Close signup _Dialog
     setIsSignUpOpen(false);
 
     // Store email for OTP verification
@@ -429,12 +429,12 @@ const _CARD_HEIGHT = 958;
           </button>
         </div>
       </section>
-      {/* Render dialogs at the top level (not inside button!) */}
+      {/* Render Dialogs at the top level (not inside button!) */}
       {isSignUpOpen && <SignUpDialog open={isSignUpOpen} onOpenChange={setIsSignUpOpen} onSuccess={handleSignUpSuccess} caller="institution" />}
       {isLoginOpen && <LoginDialogBox open={isLoginOpen} onOpenChange={setIsLoginOpen} caller="institution"/>}
       {isOtpOpen && ( <OtpDialogBox open={isOtpOpen} setOpen={setIsOtpOpen} email={otpEmail} onVerificationSuccess={handleOtpVerified}/>)}
 
-    </div>
+    </div>  
   );
 };
 

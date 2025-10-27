@@ -8,14 +8,14 @@ import StudentOtpSuccess from "./StudentOtpSuccess"; // 👈 Import success scre
 
 interface StudentOtpScreenProps {
   phoneNumber?: string;
-  onVerify?: (otp: string) => Promise<void>;
+  _onVerify?: (otp: string) => Promise<void>;
   onResendOtp?: () => Promise<void>;
   onBack?: () => void;
 }
 
 const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
   phoneNumber = "",
-  onVerify,
+  _onVerify,
   onResendOtp,
   onBack,
 }) => {

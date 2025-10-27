@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { _Card, _CardContent, _CardHeader, _CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle2, Info } from "lucide-react";
@@ -280,14 +280,14 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
                 }
                 aria-disabled
               >
-                <Card className="m-0 border-muted bg-muted/30">
-                  <CardContent className="px-6">
+                <_Card className="m-0 border-muted bg-muted/30">
+                  <_CardContent className="px-6">
                     <div className="flex h-[100px] flex-col items-center justify-center gap-1 text-center opacity-80">
                       <div className="text-base font-medium">Monthly</div>
                       <div className="text-xs text-muted-foreground">Coming Soon</div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </_CardContent>
+                </_Card>
               </div>
 
               {/* Yearly */}
@@ -299,8 +299,8 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
                 }`}
                 aria-pressed={selectedPlan === "yearly"}
               >
-                <Card className="m-0">
-                  <CardContent className="px-6">
+                <_Card className="m-0">
+                  <_CardContent className="px-6">
                     <div className="relative flex h-[100px] flex-col items-center justify-center gap-1 text-center">
                       {PLAN_MAP.yearly.badge ? (
                         <span className="absolute -top-3 rounded-full bg-[#0222D7] px-2 py-1 text-[10px] font-medium text-white shadow">
@@ -315,18 +315,18 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
                       ) : null}
                       <div className="text-lg font-semibold">{formatINR(PLAN_MAP.yearly.currentPrice)} INR</div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </_CardContent>
+                </_Card>
               </button>
             </div>
           </div>
 
           {/* Features */}
           <div>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">You will get</CardTitle>
-            </CardHeader>
-            <CardContent className=" pb-6">
+            <_CardHeader className="pb-3">
+              <_CardTitle className="text-base">You will get</_CardTitle>
+            </_CardHeader>
+            <_CardContent className=" pb-6">
               <div className="rounded-lg bg-muted px-4 py-4">
                 <ul className="space-y-3">
                   <li className="flex items-start gap-3">
@@ -343,17 +343,17 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
                   </li>
                 </ul>
               </div>
-            </CardContent>
+            </_CardContent>
           </div>
         </section>
 
         {/* Right column: Summary */}
         <aside className="sm:pt-7">
-          <Card className="bg-muted/30">
-            <CardHeader className="px-6">
-              <CardTitle className="text-base">Amount summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 px-6 pb-6">
+          <_Card className="bg-muted/30">
+            <_CardHeader className="px-6">
+              <_CardTitle className="text-base">Amount summary</_CardTitle>
+            </_CardHeader>
+            <_CardContent className="space-y-4 px-6 pb-6">
               {/* Line items */}
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
@@ -422,8 +422,8 @@ export default function PaymentCheckout({ onProcessing, onSuccess, onFailure }: 
                 <span>Secured by</span>
                 <span className="font-semibold">Razorpay</span>
               </div>
-            </CardContent>
-          </Card>
+            </_CardContent>
+          </_Card>
         </aside>
       </div>
     </main>

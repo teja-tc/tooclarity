@@ -188,7 +188,7 @@ export default function SignupPage() {
         </div>
       </div>
 
-      {/* L1 Dialog Box */}
+      {/* L1 _Dialog Box */}
       <L1DialogBox
         open={l1DialogOpen}
         onOpenChange={setL1DialogOpen}
@@ -196,7 +196,7 @@ export default function SignupPage() {
         onInstituteTypeChange={handleInstituteTypeChange}
       />
 
-      {/* Selection Dialog between L1 and L2 */}
+      {/* Selection _Dialog between L1 and L2 */}
       <CourseOrBranchSelectionDialog
         open={selectionOpen}
         onOpenChange={setSelectionOpen}
@@ -207,7 +207,7 @@ export default function SignupPage() {
         }}
       />
 
-      {/* L2 Dialog Box */}
+      {/* L2 _Dialog Box */}
       <L2DialogBox
         open={l2DialogOpen}
         onOpenChange={setL2DialogOpen}
@@ -216,7 +216,7 @@ export default function SignupPage() {
         initialSection={l2Section}
       />
 
-      {/* L3 Dialog Box */}
+      {/* L3 _Dialog Box */}
       <L3DialogBox
         open={l3DialogOpen}
         onOpenChange={setL3DialogOpen}

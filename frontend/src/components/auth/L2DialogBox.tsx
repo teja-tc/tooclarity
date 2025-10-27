@@ -7,20 +7,20 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import {
-  Dialog,
-  DialogContent,
-  // DialogHeader,
-  // DialogTitle,
-  // DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/levels_dialog";
+  _Dialog,
+  _DialogContent,
+  _DialogHeader,
+  _DialogTitle,
+  _DialogDescription,
+  _DialogTrigger,
+} from "@/components/ui/dialog";
 import {
-  Card,
-  // CardHeader,
-  // CardTitle,
-  // CardDescription,
-  CardContent,
-  // CardFooter,
+  _Card,
+  _CardHeader,
+  _CardTitle,
+  _CardDescription,
+  _CardContent,
+  _CardFooter,
 } from "@/components/ui/card";
 import InputField from "@/components/ui/InputField";
 import { Upload, Plus, MoreVertical } from "lucide-react";
@@ -59,8 +59,8 @@ interface L2DialogBoxProps {
   onSuccess?: () => void;
   onPrevious?: () => void;
   initialSection?: "course" | "branch";
-  // New: render inline (non-dialog) for subscription page usage
-  renderMode?: "dialog" | "inline";
+  // New: render inline (non-_Dialog) for subscription page usage
+  renderMode?: "_Dialog" | "inline";
   // New: subscription mode for Program creation flow on Subscription page
   mode?: "default" | "subscriptionProgram" | "settingsEdit";
   institutionId?: string;
@@ -93,6 +93,7 @@ export interface Course {
   classSize: string;
   categoriesType: string;
   domainType: string;
+  subdomainType: string;
   seatingOption: string;
   openingTime: string;
   closingTime: string;
@@ -130,7 +131,7 @@ export default function L2DialogBox({
   onPrevious,
 
   initialSection: initialSectionProp,
-  renderMode = "dialog",
+  renderMode = "_Dialog",
   mode = "default",
   institutionId,
   editMode = false,
@@ -207,22 +208,22 @@ export default function L2DialogBox({
   }, []);
 
   // Handle controlled open state
-  const dialogOpen = renderMode === "inline" ? true : (open !== undefined ? open : isOpen);
+  const DialogOpen = renderMode === "inline" ? true : (open !== undefined ? open : isOpen);
   const setDialogOpen = onOpenChange || setIsOpen;
   
   const isSubscriptionProgram = mode === "subscriptionProgram" || mode === "settingsEdit";
 
-  // Load institution type from localStorage when dialog opens
+  // Load institution type from localStorage when _Dialog opens
   useEffect(() => {
-    if (dialogOpen) {
+    if (DialogOpen) {
       setIsCourseOrBranch(localStorage.getItem("selected"));
       setInstitutionType(localStorage.getItem("institutionType"));
     }
-  }, [dialogOpen, institutionId, isSubscriptionProgram]);
+  }, [DialogOpen, institutionId, isSubscriptionProgram]);
 
   // Load remote branches for subscription programs
   useEffect(() => {
-    if (!dialogOpen || !isSubscriptionProgram) return;
+    if (!DialogOpen || !isSubscriptionProgram) return;
     
     (async () => {
       try {
@@ -233,7 +234,7 @@ export default function L2DialogBox({
         console.log('Error loading branches:', e);
       }
     })();
-  }, [dialogOpen, institutionId, isSubscriptionProgram]);
+  }, [DialogOpen, institutionId, isSubscriptionProgram]);
 
   // Auto-select branch for edit mode
   useEffect(() => {
@@ -273,6 +274,7 @@ export default function L2DialogBox({
         // Additional fields for Coaching centers
         categoriesType: existingCourseData.categoriesType || "",
         domainType: existingCourseData.domainType || "",
+        subdomainType: existingCourseData.subdomainType || "",
         // Additional fields for Study Hall
         seatingOption: existingCourseData.seatingOption || "",
         openingTime: existingCourseData.openingTime || "",
@@ -321,6 +323,7 @@ export default function L2DialogBox({
       // Additional fields for Coaching centers
       categoriesType: "",
       domainType: "",
+      subdomainType: "",
       // Additional fields for Study Hall
       seatingOption: "",
       openingTime: "",
@@ -341,7 +344,7 @@ export default function L2DialogBox({
     }];
   });
 
-  // dialogOpen and setDialogOpen are declared above with useEffect hooks
+  // DialogOpen and setDialogOpen are declared above with useEffect hooks
 
   // Get current course
   const currentCourse =
@@ -591,6 +594,7 @@ export default function L2DialogBox({
       categoriesType: "",
       domainType: "",
       eligibilityCriteria: "",
+      subdomainType: "",
       // Additional fields for Study Hall
       seatingOption: "",
       openingTime: "",
@@ -1230,8 +1234,8 @@ export default function L2DialogBox({
 };
 
   const content = (
-    <Card className="w-full sm:p-6 rounded-[24px] bg-white dark:bg-gray-900 border-0 shadow-none">
-      <CardContent className="space-y-6 text-gray-900 dark:text-gray-100">
+    <_Card className="w-full sm:p-6 rounded-[24px] bg-white dark:bg-gray-900 border-0 shadow-none">
+      <_CardContent className="space-y-6 text-gray-900 dark:text-gray-100">
               {/* Render based on initialSection */}
               {initialSection === "course" ? (
                 <div className="space-y-6">
@@ -1905,8 +1909,8 @@ export default function L2DialogBox({
                   )}
                 </div>
               )}
-      </CardContent>
-    </Card>
+      </_CardContent>
+    </_Card>
   );
 
   if (renderMode === "inline") {
@@ -1915,17 +1919,17 @@ export default function L2DialogBox({
 
   return (
     <>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-        <DialogContent
+      <_Dialog open={DialogOpen} onOpenChange={setDialogOpen}>
+        {trigger && <_DialogTrigger asChild>{trigger}</_DialogTrigger>}
+        <_DialogContent
           className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
           showCloseButton={false}
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
           {content}
-        </DialogContent>
-      </Dialog>
+        </_DialogContent>
+      </_Dialog>
     </>
   );
 }

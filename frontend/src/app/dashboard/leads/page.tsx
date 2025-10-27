@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { _Card, _CardContent } from "@/components/ui/card";
 import StudentList, { StudentItem } from "@/components/dashboard/StudentList";
 import AppSelect from "@/components/ui/AppSelect";
 import { Button } from "@/components/ui/button";
@@ -365,8 +365,8 @@ function LeadsPage() {
 
 	return (
 		<div className="p-2 mt-5">
-			<Card className="mx-2 sm:mx-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
-				<CardContent className="p-4 sm:p-6">
+			<_Card className="mx-2 sm:mx-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl">
+				<_CardContent className="p-4 sm:p-6">
 					<div className="px-0 sm:px-0">
 						{/* Header and KPI cards area matching main dashboard/analytics */}
 						<div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-2 mb-4 sm:mb-6 m-0">
@@ -410,11 +410,11 @@ function LeadsPage() {
 							</AnimatePresence>
 						</motion.div>
 					</div>
-				</CardContent>
-			</Card>
+				</_CardContent>
+			</_Card>
 
-			<Card className="mx-2 sm:mx-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl mt-4">
-				<CardContent className="p-0 bg-gray-50 dark:bg-gray-900">
+			<_Card className="mx-2 sm:mx-4 bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl mt-4">
+				<_CardContent className="p-0 bg-gray-50 dark:bg-gray-900">
 					<div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 						<div className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Lead List</div>
 						<div className="flex items-center gap-2 w-full sm:w-auto">
@@ -455,8 +455,8 @@ function LeadsPage() {
 							<div ref={sentinelRef} style={{ height: 1 }} />
 						</div>
 						<div className="lg:col-span-1">
-							<Card className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800">
-								<CardContent className="p-6">
+							<_Card className="bg-white border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800">
+								<_CardContent className="p-6">
 									<h4 className="text-lg font-semibold text-gray-900 mb-2 dark:text-gray-100">Lead Details</h4>
 									<p className="text-sm text-gray-500 mb-4 dark:text-gray-300">Detailed information about the selected lead</p>
 									{selectedStudent ? (
@@ -597,12 +597,12 @@ function LeadsPage() {
 									) : (
 										<div className="text-gray-500 dark:text-gray-400">Select a Lead to see details.</div>
 									)}
-								</CardContent>
-							</Card>
+								</_CardContent>
+							</_Card>
 						</div>
 					</div>
-				</CardContent>
-			</Card>
+				</_CardContent>
+			</_Card>
 		</div>
 	);
 }

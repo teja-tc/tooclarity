@@ -44,6 +44,7 @@ const DummyDashboard = () => {
                 width={32}
                 height={32}
                 className="w-8 h-8 rounded-full"
+                unoptimized //Recommended for Unsplash, since they already serve optimized CDN images
               />
               <div className="hidden sm:block">
                 <div className="text-sm font-medium">Srinivas Chari</div>
@@ -136,6 +137,7 @@ const DummyDashboard = () => {
                               width={32}
                               height={32}
                               className="w-8 h-8 rounded-full mr-3"
+                              unoptimized
                             />
                             <div>
                               <div className="text-sm font-medium text-gray-900">

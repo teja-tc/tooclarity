@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+  _Dialog,
+  _DialogContent,
+  _DialogHeader,
+  _DialogTitle,
+  _DialogDescription,
 } from "@/components/ui/dialog";
 import InputField from "@/components/ui/InputField";
 import { authAPI } from "../../lib/api";
@@ -117,7 +117,7 @@ export default function SignUpDialog({
 
       // Check for successful registration
       if (response.success) {
-        // Close signup dialog
+        // Close signup _Dialog
         setOpen(false);
         if (caller === "admin") {
           await refreshUser();
@@ -182,19 +182,19 @@ export default function SignUpDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent 
+      <_Dialog open={open} onOpenChange={setOpen}>
+        <_DialogContent 
           className="max-w-lg flex flex-col justify-between scrollbar-hide"
           overlayClassName="bg-black/50"
         >
-          <DialogHeader className="flex flex-col items-center gap-2">
-            <DialogTitle className="max-w-xs font-montserrat font-bold text-xl sm:text-[24px] leading-tight text-center">
+          <_DialogHeader className="flex flex-col items-center gap-2">
+            <_DialogTitle className="max-w-xs font-montserrat font-bold text-xl sm:text-[24px] leading-tight text-center">
               Welcome Aboard!
-            </DialogTitle>
-            <DialogDescription className="max-w-xs font-montserrat font-normal text-sm sm:text-[14px] leading-relaxed text-center">
+            </_DialogTitle>
+            <_DialogDescription className="max-w-xs font-montserrat font-normal text-sm sm:text-[14px] leading-relaxed text-center">
               Let&apos;s finalize your details.
-            </DialogDescription>
-          </DialogHeader>
+            </_DialogDescription>
+          </_DialogHeader>
 
           <div className="grid gap-6 flex-1">
             {/* General Error */}
@@ -373,10 +373,10 @@ export default function SignUpDialog({
               Sign up with Google
             </button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </_DialogContent>
+      </_Dialog>
 
-      {/* OTP Verification Dialog */}
+      {/* OTP Verification _Dialog */}
       <OtpDialogBox
         open={openVerify}
         setOpen={setOpenVerify}

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Card, CardContent } from "../ui/card";
+import { _Card, _CardContent } from "../ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
@@ -154,8 +154,8 @@ const StudentList: React.FC<StudentListProps> = ({
       initial="hidden"
       animate="visible"
     >
-      <Card className="border-none bg-gray-50 dark:bg-gray-900 shadow-sm rounded-2xl border border-gray-100 dark:border-gray-800">
-        <CardContent className="p-0 bg-gray-50 dark:bg-gray-900">
+      <_Card className="border-none bg-gray-50 dark:bg-gray-900 shadow-sm rounded-2xl border border-gray-100 dark:border-gray-800">
+        <_CardContent className="p-0 bg-gray-50 dark:bg-gray-900">
           {!hideActions && (
             <div className="px-6 pt-1 flex items-center justify-between">
               <div className="text-2xl font-semibold">{title}</div>
@@ -296,8 +296,8 @@ const StudentList: React.FC<StudentListProps> = ({
               )}
             </AnimatePresence>
         </div>
-      </CardContent>
-    </Card>
+      </_CardContent>
+    </_Card>
     </motion.div>
   );
 };

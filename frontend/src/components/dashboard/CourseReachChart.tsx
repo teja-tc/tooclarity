@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Card, CardContent } from "../ui/card";
+import { _Card, _CardContent } from "../ui/card";
 import { motion} from "framer-motion";
 
 interface CourseReachChartProps {
@@ -312,8 +312,8 @@ const CourseReachChart: React.FC<CourseReachChartProps> = ({ onDataPointClick, t
 
   return (
     <motion.div className="w-full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-      <Card className="m-5 border-none bg-gray-50 shadow-sm rounded-2xl border border-gray-100 dark:bg-gray-900 dark:border-gray-800">
-        <CardContent className="p-5">
+      <_Card className="m-5 border-none bg-gray-50 shadow-sm rounded-2xl border border-gray-100 dark:bg-gray-900 dark:border-gray-800">
+        <_CardContent className="p-5">
           {/* Header */}
           <div className="flex items-center justify-between mb-3 w-full">
             <div className="text-[22px] font-semibold text-gray-900 dark:text-gray-100">{title || "Program Reach Over Time"}</div>
@@ -451,8 +451,8 @@ const CourseReachChart: React.FC<CourseReachChartProps> = ({ onDataPointClick, t
               </motion.g>
             </svg>
         </div>
-      </CardContent>
-    </Card>
+      </_CardContent>
+    </_Card>
   </motion.div>
   );
 };

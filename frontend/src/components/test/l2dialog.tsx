@@ -4,25 +4,25 @@ import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/levels_dialog";
+  _Dialog,
+  _DialogContent,
+  _DialogHeader,
+  _DialogTitle,
+  _DialogDescription,
+  _DialogTrigger,
+} from "@/components/ui/dialog";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
+  _Card,
+  _CardHeader,
+  _CardTitle,
+  _CardDescription,
+  _CardContent,
+  _CardFooter,
 } from "@/components/ui/card";
 import InputField from "@/components/ui/InputField";
 import { Upload, Plus, MoreVertical } from "lucide-react";
 import SlidingIndicator from "@/components/ui/SlidingIndicator";
-//import CourseOrBranchSelectionDialog from "./CourseOrBranchSelectionDialog";
+//import CourseOrBranchSelection_Dialog from "./CourseOrBranchSelection_Dialog";
 import { courseAPI, branchAPI } from "@/lib/api";
 //import CoachingCourseForm from "./L2DialogBoxParts/Course/CoachingCourseForm";
 
@@ -74,7 +74,7 @@ export default function L2DialogBox({
   >(isStudyHall ? "Study Halls" : isTutionCenter ? "Tuition Hall" : "course");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState(1);
-  const [showSelectionDialog, setShowSelectionDialog] = useState(false);
+  const [showSelection_Dialog, setShowSelection_Dialog] = useState(false);
 
   // Get institution type from localStorage
   const [courses, setCourses] = useState([
@@ -118,15 +118,15 @@ export default function L2DialogBox({
   ]);
 
   // Handle controlled open state
-  const dialogOpen = open !== undefined ? open : isOpen;
-  const setDialogOpen = onOpenChange || setIsOpen;
+  const _DialogOpen = open !== undefined ? open : isOpen;
+  const set_DialogOpen = onOpenChange || setIsOpen;
 
-  // Show selection dialog when L2DialogBox opens (for all institution types)
+  // Show selection _Dialog when L2DialogBox opens (for all institution types)
   useEffect(() => {
-    if (dialogOpen) {
-      setShowSelectionDialog(true);
+    if (_DialogOpen) {
+      setShowSelection_Dialog(true);
     }
-  }, [dialogOpen]);
+  }, [_DialogOpen]);
 
   // Get current course
   const currentCourse =
@@ -215,7 +215,7 @@ export default function L2DialogBox({
     );
   };
 
-  const handleSelectionDialogChoice = (selection: "course" | "branch") => {
+  const handleSelection_DialogChoice = (selection: "course" | "branch") => {
     if (selection === "branch") {
       setActiveTab("branch");
     } else {
@@ -502,8 +502,8 @@ export default function L2DialogBox({
         throw new Error(response.message || "Failed to create branches");
       }
 
-      // Close dialog and handle next step based on institution type
-      setDialogOpen(false);
+      // Close _Dialog and handle next step based on institution type
+      set_DialogOpen(false);
 
       // For Study Halls and Tution Centers, redirect directly to dashboard
       if (shouldSkipL3) {
@@ -577,10 +577,10 @@ export default function L2DialogBox({
 
   return (
     <>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+      <_Dialog open={_DialogOpen} onOpenChange={set_DialogOpen}>
+        {trigger && <_DialogTrigger asChild>{trigger}</_DialogTrigger>}
 
-        <DialogContent
+        <_DialogContent
           className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
           showCloseButton={false}
           onEscapeKeyDown={(e) => e.preventDefault()}
@@ -605,8 +605,8 @@ export default function L2DialogBox({
             />
           </div>
 
-          <Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
-            <CardContent className="space-y-6">
+          <_Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
+            <_CardContent className="space-y-6">
               {/* Course Form */}
               {(activeTab === "course" ||
                 activeTab === "Study Halls" ||
@@ -1670,16 +1670,16 @@ export default function L2DialogBox({
                   </form>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </DialogContent>
-      </Dialog>
+            </_CardContent>
+          </_Card>
+        </_DialogContent>
+      </_Dialog>
 
-      {/* Course or Branch Selection Dialog */}
-      {/* <CourseOrBranchSelectionDialog
-        open={showSelectionDialog}
-        onOpenChange={setShowSelectionDialog}
-        onSelection={handleSelectionDialogChoice}
+      {/* Course or Branch Selection _Dialog */}
+      {/* <CourseOrBranchSelection_Dialog
+        open={showSelection_Dialog}
+        onOpenChange={setShowSelection_Dialog}
+        onSelection={handleSelection_DialogChoice}
       /> */}
     </>
   );

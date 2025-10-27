@@ -3,7 +3,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
-  ArrowLeft,
   Loader2,
   Smartphone,
   Lock,
@@ -224,7 +223,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
           </button>
         );
       }),
-    [isScriptLoaded, loadingProvider]
+    [isScriptLoaded, loadingProvider, handleGoogleClick]
   );
 
   // 🔹 Final JSX (no early return)
@@ -243,7 +242,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
         {showOtpScreen ? (
           <StudentOtpScreen
             phoneNumber={formData.contactNumber}
-            onVerify={handleVerifyOtp}
+            _onVerify={handleVerifyOtp}
             onResendOtp={handleResendOtp}
             onBack={handleBackFromOtp}
           />

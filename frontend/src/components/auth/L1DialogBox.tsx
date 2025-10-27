@@ -11,20 +11,20 @@ import {
 } from "@/lib/localDb";
 
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/levels_dialog";
+  _Dialog,
+  _DialogContent,
+  _DialogHeader,
+  _DialogTitle,
+  _DialogDescription,
+  _DialogTrigger,
+} from "@/components/ui/dialog";
 import {
-  Card,
-  // CardHeader,
-  // CardTitle,
-  // CardDescription,
-  CardContent,
-  //CardFooter,
+  _Card,
+  _CardHeader,
+  _CardTitle,
+  _CardDescription,
+  _CardContent,
+  _CardFooter,
 } from "@/components/ui/card";
 import InputField from "@/components/ui/InputField";
 // import { institutionAPI, clearInstitutionData } from "@/lib/api";
@@ -95,13 +95,13 @@ export default function L1DialogBox({
   const MAX_LOG_FILE_SIZE = 1 * 1024 * 1024; // 1 MB
 
   // Handle controlled open state
-  const dialogOpen = open !== undefined ? open : isOpen;
+  const DialogOpen = open !== undefined ? open : isOpen;
   const setDialogOpen = onOpenChange || setIsOpen;
   const activeSchema = L1Schema;
 
   // Prefill from IndexedDB if data exists; otherwise keep blanks
   useEffect(() => {
-    if (!dialogOpen) return;
+    if (!DialogOpen) return;
 
     let isMounted = true;
     (async () => {
@@ -153,7 +153,7 @@ export default function L1DialogBox({
     return () => {
       isMounted = false;
     };
-  }, [dialogOpen]);
+  }, [DialogOpen]);
   // L1DialogBox.tsx
 
   const handleChange = (
@@ -492,27 +492,27 @@ export default function L1DialogBox({
   }; */
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+    <_Dialog open={DialogOpen} onOpenChange={setDialogOpen}>
+      {trigger && <_DialogTrigger asChild>{trigger}</_DialogTrigger>}
 
-      <DialogContent
+      <_DialogContent
         className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
         showCloseButton={false}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader className="flex flex-col items-center gap-2">
-          <DialogTitle className="font-montserrat font-bold text-xl sm:text-[28px] leading-tight text-center">
+        <_DialogHeader className="flex flex-col items-center gap-2">
+          <_DialogTitle className="font-montserrat font-bold text-xl sm:text-[28px] leading-tight text-center">
             Institution Details
-          </DialogTitle>
-          <DialogDescription className="font-montserrat font-normal text-sm sm:text-[16px] leading-relaxed text-center text-gray-600">
+          </_DialogTitle>
+          <_DialogDescription className="font-montserrat font-normal text-sm sm:text-[16px] leading-relaxed text-center text-gray-600">
             Provide key information about your institution to get started
-          </DialogDescription>
-        </DialogHeader>
+          </_DialogDescription>
+        </_DialogHeader>
 
-        <Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
+        <_Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
           <form onSubmit={handleSubmit}>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4 md:gap-[30px]">
+            <_CardContent className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 gap-4 md:gap-[30px]">
               <div>
                 <InputField
                   label="Institute Type"
@@ -938,9 +938,9 @@ export default function L1DialogBox({
                   <p className="text-red-500 text-sm mt-1">{errors.logo}</p>
                 )}
               </div>
-            </CardContent>
+            </_CardContent>
 
-            {/* <CardFooter> */}
+            <_CardFooter>
               <Button
                 type="submit"
                 disabled={isLoading}
@@ -952,10 +952,10 @@ export default function L1DialogBox({
               >
                 {isLoading ? "Saving..." : "Save & Next"}
               </Button>
-            {/* </CardFooter> */}
+            </_CardFooter>
           </form>
-        </Card>
-      </DialogContent>
-    </Dialog>
+        </_Card>
+      </_DialogContent>
+    </_Dialog>
   );
 }
