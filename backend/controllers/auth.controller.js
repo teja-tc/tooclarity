@@ -315,7 +315,7 @@ exports.login = async (req, res, next, options = {}) => {
     // ✅ If Google login — keep it completely intact
     if (googleId) {
       user = await InstituteAdmin.findOne({ email, googleId });
-      
+
       if (!user) {
         if (options.returnTokens) {
           const err = new Error("No account found for this Google user.");
@@ -391,9 +391,7 @@ exports.login = async (req, res, next, options = {}) => {
           message: errMsg,
         });
       }
-    }
-
-    else if (type === "student") {
+    } else if (type === "student") {
       user = await InstituteAdmin.findOne({ contactNumber }).select(
         "+password"
       );
@@ -423,9 +421,7 @@ exports.login = async (req, res, next, options = {}) => {
           message: errMsg,
         });
       }
-    }
-
-    else {
+    } else {
       return res.status(400).json({
         status: "fail",
         message: "Invalid user type provided.",
@@ -565,6 +561,34 @@ exports.resetPassword = async (req, res, next) => {
       status: "success",
       message: "Password has been reset successfully. Please log in.",
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.resendOtp = async (req, res, next) => {
+  try {
+    const { email, contactNumber} = req.body;
+    if (!email && !contactNumber) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Either email or contact number must be provided.",
+      });
+    }
+    if(email){
+      await otpService.sendVerificationToken(email);
+      return res.status(200).json({
+        status: "success",
+        message: "OTP resent to email successfully.",
+      });
+    }
+    else if(contactNumber){
+      await otpService.sendVerificationTokenSMS(contactNumber);
+      return res.status(200).json({
+        status: "success",
+        message: "OTP resent to contact number successfully.",
+      });
+    }
   } catch (error) {
     next(error);
   }

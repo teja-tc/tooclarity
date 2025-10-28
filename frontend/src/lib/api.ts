@@ -27,6 +27,11 @@ export interface OTPData {
   otp: string;
 }
 
+export interface resendOtpData {
+  email?: string;
+  contactNumber?: string;
+}
+
 export interface ResetPasswordData {
   password: string;
   passwordConfirm: string;
@@ -266,10 +271,10 @@ export const authAPI = {
   },
 
   // Resend OTP
-  resendOTP: async (email: string): Promise<ApiResponse> => {
+  resendOTP: async (resendOtpData: resendOtpData): Promise<ApiResponse> => {
     return apiRequest("/v1/auth/resend-otp", {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify( resendOtpData),
     });
   },
 

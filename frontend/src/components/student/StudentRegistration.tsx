@@ -19,7 +19,7 @@ import {
   loadGoogleIdentityScript,
   redirectToGoogleOAuth,
 } from "@/lib/google-auth";
-import StudentOtpScreen from "@/components/student/StudentOtpScreen";
+
 
 type OAuthProvider = {
   id: string;
@@ -29,6 +29,7 @@ type OAuthProvider = {
 
 interface StudentRegistrationProps {
   onSuccess?: () => Promise<void>;
+  onOtpRequired?: (phoneNumber: string) => void;
 }
 
 const oauthProviders: OAuthProvider[] = [
@@ -41,6 +42,7 @@ const oauthProviders: OAuthProvider[] = [
 
 const StudentRegistration: React.FC<StudentRegistrationProps> = ({
   onSuccess,
+  onOtpRequired,
 }) => {
   const router = useRouter();
   const { refreshUser } = useAuth();
@@ -53,7 +55,6 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [showOtpScreen, setShowOtpScreen] = useState(false);
 
   const handleRegisterSuccess = async () => {
     await refreshUser();
@@ -155,8 +156,6 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
     }
   };
 
-  const handleBackFromOtp = () => setShowOtpScreen(false);
-
   // 🔹 Form submission
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -183,7 +182,9 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
       if (!response.success)
         return setFormError(response.message || "Registration failed.");
 
-      setShowOtpScreen(true);
+      if (onOtpRequired) {
+        onOtpRequired(sanitizedPhone);
+      }
     } catch (err) {
       console.error("Registration error:", err);
       setFormError("Unexpected error. Please try again.");
@@ -227,7 +228,6 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
     [isScriptLoaded, loadingProvider]
   );
 
-  // 🔹 Final JSX (no early return)
   return (
     <section className="flex min-h-screen flex-col bg-gradient-to-b from-white via-white to-blue-50 px-4 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-16">
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
@@ -240,105 +240,94 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
           </button> */}
         </header>
 
-        {showOtpScreen ? (
-          <StudentOtpScreen
-            phoneNumber={formData.contactNumber}
-            onVerify={handleVerifyOtp}
-            onResendOtp={handleResendOtp}
-            onBack={handleBackFromOtp}
-          />
-        ) : (
-          <>
-            <div className="mb-8 flex flex-col items-center">
-              <div className="grid place-items-center rounded-full p-6">
-                <Image
-                  src="/Too Clarity.png"
-                  alt="Too Clarity Logo"
-                  width={120}
-                  height={60}
-                  priority
-                />
-              </div>
+        <div className="mb-8 flex flex-col items-center">
+          <div className="grid place-items-center rounded-full p-6">
+            <Image
+              src="/Too Clarity.png"
+              alt="Too Clarity Logo"
+              width={120}
+              height={60}
+              priority
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Create your account
+          </h1>
+          <p className="text-sm text-gray-500">
+            Enter your phone number and password to register.
+          </p>
+        </div>
+
+        <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
+          <label className="block">
+            <div className="relative">
+              <Smartphone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <input
+                type="tel"
+                name="contactNumber"
+                value={formData.contactNumber}
+                maxLength={10}
+                onChange={handleInputChange}
+                inputMode="numeric"
+                placeholder="+91 Mobile number"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-12 pr-4 text-base text-gray-900 outline-none transition hover:border-blue-200 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+              />
             </div>
+          </label>
 
-            <div className="space-y-2">
-              <h1 className="text-2xl font-semibold text-gray-900">
-                Create your account
-              </h1>
-              <p className="text-sm text-gray-500">
-                Enter your phone number and password to register.
-              </p>
+          <label className="block">
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Password"
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-12 pr-4 text-base text-gray-900 outline-none transition hover:border-blue-200 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
+              />
             </div>
+          </label>
 
-            <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-              <label className="block">
-                <div className="relative">
-                  <Smartphone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                  <input
-                    type="tel"
-                    name="contactNumber"
-                    value={formData.contactNumber}
-                    maxLength={10}
-                    onChange={handleInputChange}
-                    inputMode="numeric"
-                    placeholder="+91 Mobile number"
-                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-12 pr-4 text-base text-gray-900 outline-none transition hover:border-blue-200 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-              </label>
+          {formError && (
+            <p className="text-sm text-red-500 text-center font-medium">
+              {formError}
+            </p>
+          )}
 
-              <label className="block">
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="Password"
-                    className="w-full rounded-2xl border border-gray-200 bg-gray-50 py-3 pl-12 pr-4 text-base text-gray-900 outline-none transition hover:border-blue-200 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                  />
-                </div>
-              </label>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full rounded-2xl bg-blue-600 py-3 text-base font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {isSubmitting ? (
+              <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+            ) : (
+              "Continue"
+            )}
+          </button>
+        </form>
 
-              {formError && (
-                <p className="text-sm text-red-500 text-center font-medium">
-                  {formError}
-                </p>
-              )}
+        <div className="mt-6 text-center text-sm text-gray-600">
+          Already have an account?{" "}
+          <button
+            onClick={() => router.push("/student/login")}
+            className="font-semibold text-blue-600 hover:underline"
+          >
+            Sign in
+          </button>
+        </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full rounded-2xl bg-blue-600 py-3 text-base font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                ) : (
-                  "Continue"
-                )}
-              </button>
-            </form>
+        <div className="mt-6 flex items-center gap-3 text-xs text-gray-400">
+          <span className="h-px flex-1 bg-gray-200" />
+          <span>OR</span>
+          <span className="h-px flex-1 bg-gray-200" />
+        </div>
 
-            <div className="mt-6 text-center text-sm text-gray-600">
-              Already have an account?{" "}
-              <button
-                onClick={() => router.push("/student/login")}
-                className="font-semibold text-blue-600 hover:underline"
-              >
-                Sign in
-              </button>
-            </div>
-
-            <div className="mt-6 flex items-center gap-3 text-xs text-gray-400">
-              <span className="h-px flex-1 bg-gray-200" />
-              <span>OR</span>
-              <span className="h-px flex-1 bg-gray-200" />
-            </div>
-
-            <div className="mt-6 space-y-3">{renderedProviders}</div>
-          </>
-        )}
+        <div className="mt-6 space-y-3">{renderedProviders}</div>
       </div>
     </section>
   );

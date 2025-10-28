@@ -111,36 +111,46 @@ exports.sendVerificationTokenSMS = async (phoneNumber, name) => {
   try {
     const phoneNumberWithCountryCode = `91${phoneNumber}`;
     const appName = process.env.APP_NAME;
+    const redisKey = `sms:${phoneNumber}`;
+    const expirySeconds = 10 * 60; // 10 minutes
 
     logger.info(
       { event: "otp_sms_start", phoneNumber },
       "🟡 Starting OTP SMS generation process."
     );
 
-    // 1. Generate OTP
-    const otp = this.generateOtp();
-    const expirySeconds = 10 * 60; // 10 minutes
+    // 🔹 1. Check Redis if OTP already exists
+    let otp = await RedisUtil.getOtp(redisKey);
 
-    logger.info(
-      { event: "otp_generated", phoneNumber, otp },
-      "✅ OTP generated successfully."
-    );
+    if (otp) {
+      logger.info(
+        { event: "otp_redis_found", phoneNumber, otp },
+        "🟢 Existing OTP found in Redis. Reusing it."
+      );
+    } else {
+      // 🔹 2. Generate new OTP
+      otp = this.generateOtp();
 
-    // 2. Save OTP into Redis
-    const redisKey = `sms:${phoneNumber}`;
-    logger.info(
-      { event: "otp_redis_save_start", redisKey, otp, expirySeconds },
-      "🟡 Saving OTP into Redis."
-    );
+      logger.info(
+        { event: "otp_generated", phoneNumber, otp },
+        "✅ OTP generated successfully."
+      );
 
-    await RedisUtil.saveOtp(redisKey, otp, expirySeconds);
+      // 🔹 3. Save new OTP into Redis
+      logger.info(
+        { event: "otp_redis_save_start", redisKey, otp, expirySeconds },
+        "🟡 Saving OTP into Redis."
+      );
 
-    logger.info(
-      { event: "otp_redis_save_success", redisKey },
-      "✅ OTP successfully saved into Redis."
-    );
+      await RedisUtil.saveOtp(redisKey, otp, expirySeconds);
 
-    // 3. Prepare variables for SMS
+      logger.info(
+        { event: "otp_redis_save_success", redisKey },
+        "✅ OTP successfully saved into Redis."
+      );
+    }
+
+    // 🔹 4. Prepare variables for SMS
     const variables = {
       OTP: otp,
       // name: name || "User",
@@ -153,7 +163,7 @@ exports.sendVerificationTokenSMS = async (phoneNumber, name) => {
       "🟡 Sending OTP via MSG91 flow."
     );
 
-    // 4. Send SMS using MSG91 flow
+    // 🔹 5. Send SMS using MSG91 flow
     await sendOtpSMSFlow(phoneNumberWithCountryCode, variables);
 
     logger.info(
@@ -175,11 +185,41 @@ exports.sendVerificationToken = async (email, name) => {
   try {
     const templateId = process.env.MSG91_TEMPLATE_ID;
     const appName = process.env.APP_NAME;
-
-    const otp = this.generateOtp();
+    const redisKey = `email:${email}`;
     const expirySeconds = 10 * 60; // 10 minutes
-    await RedisUtil.saveOtp(`email:${email}`, otp, expirySeconds);
 
+    logger.info(
+      { event: "otp_email_start", email },
+      "🟡 Starting OTP email generation process."
+    );
+
+    // 🔹 1. Check Redis for existing OTP
+    let otp = await RedisUtil.getOtp(redisKey);
+
+    if (otp) {
+      logger.info(
+        { event: "otp_redis_found", email, otp },
+        "🟢 Existing OTP found in Redis. Reusing it."
+      );
+    } else {
+      // 🔹 2. Generate new OTP
+      otp = this.generateOtp();
+
+      logger.info(
+        { event: "otp_generated", email, otp },
+        "✅ New OTP generated successfully."
+      );
+
+      // 🔹 3. Save OTP into Redis
+      await RedisUtil.saveOtp(redisKey, otp, expirySeconds);
+
+      logger.info(
+        { event: "otp_redis_save_success", redisKey },
+        "✅ OTP successfully saved into Redis."
+      );
+    }
+
+    // 🔹 4. Prepare variables for email template
     const variables = {
       OTP: otp,
       name,
@@ -188,14 +228,24 @@ exports.sendVerificationToken = async (email, name) => {
       app_name: appName,
     };
 
+    logger.info(
+      { event: "otp_email_send_start", email, variables },
+      "🟡 Sending OTP via MSG91 email flow."
+    );
+
+    // 🔹 5. Send email using MSG91 template
     await sendEmail(email, templateId, variables);
 
-    logger.info({ event: "otp_sent", email }, "✅ OTP sent successfully.");
+    logger.info(
+      { event: "otp_sent", email },
+      "✅ OTP email sent successfully (business layer)."
+    );
+
     return true;
   } catch (error) {
     logger.error(
       { err: error, event: "otp_failed", email },
-      "❌ OTP sending failed."
+      "❌ OTP email sending failed (business layer)."
     );
     throw new AppError("Could not send OTP.", 500);
   }
