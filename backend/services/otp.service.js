@@ -110,7 +110,6 @@ exports.generateOtp = () => {
 exports.sendVerificationTokenSMS = async (phoneNumber, name) => {
   try {
     const phoneNumberWithCountryCode = `91${phoneNumber}`;
-    const appName = process.env.APP_NAME;
     const redisKey = `sms:${phoneNumber}`;
     const expirySeconds = 10 * 60; // 10 minutes
 
@@ -184,7 +183,6 @@ exports.sendVerificationTokenSMS = async (phoneNumber, name) => {
 exports.sendVerificationToken = async (email, name) => {
   try {
     const templateId = process.env.MSG91_TEMPLATE_ID;
-    const appName = process.env.APP_NAME;
     const redisKey = `email:${email}`;
     const expirySeconds = 10 * 60; // 10 minutes
 
@@ -221,11 +219,10 @@ exports.sendVerificationToken = async (email, name) => {
 
     // 🔹 4. Prepare variables for email template
     const variables = {
-      OTP: otp,
+      otp,
       name,
       expiry_minutes: expirySeconds / 60,
       year: new Date().getFullYear(),
-      app_name: appName,
     };
 
     logger.info(
@@ -329,7 +326,6 @@ exports.sendPaymentSuccessEmail = async (options) => {
 exports.sendPasswordChangeToken = async (email, name) => {
   const passwordChangeTemplateId =
     process.env.MSG91_PASSWORD_CHANGE_TEMPLATE_ID;
-  const appName = process.env.APP_NAME;
   try {
     const otp = this.generateOtp();
     const expirySeconds = 10 * 60; // 10 minutes
@@ -337,7 +333,6 @@ exports.sendPasswordChangeToken = async (email, name) => {
 
     const variables = {
       name,
-      app_name: appName,
       otp,
       expiry_minutes: expirySeconds / 60, // 10 minutes
       year: new Date().getFullYear(),
@@ -389,13 +384,11 @@ exports.checkPasswordChangeToken = async (email, otp) => {
 
 exports.sendPasswordResetLink = async (email, name, resetURL) => {
   const passwordResetTemplateId = process.env.MSG91_PASSWORD_RESET_TEMPLATE_ID;
-  const appName = process.env.APP_NAME;
   try {
     const expiryMinutes = 15; // Link valid for 15 minutes
 
     const variables = {
       name,
-      app_name: appName,
       reset_link: resetURL,
       expiry_minutes: expiryMinutes,
       year: new Date().getFullYear(),
@@ -420,11 +413,9 @@ exports.sendPasswordResetLink = async (email, name, resetURL) => {
 exports.sendPasswordChangedConfirmation = async (email, name) => {
   const passwordChangeConfirmTemplateId =
     process.env.MSG91_PASSWORD_CHANGE_CONFIRM_TEMPLATE_ID;
-  const appName = process.env.APP_NAME;
   try {
     const variables = {
       name,
-      app_name: appName,
       year: new Date().getFullYear(),
     };
 
