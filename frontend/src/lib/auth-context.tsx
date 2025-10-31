@@ -34,11 +34,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize user on app start (skip on /test routes)
   useEffect(() => {
-    try {
+    /*try {
       if (typeof window !== 'undefined' && window.location.pathname.startsWith('/test')) {
         return;
       }
-    } catch {}
+    } catch {}*/
     refreshUser();
   }, [refreshUser]);
 

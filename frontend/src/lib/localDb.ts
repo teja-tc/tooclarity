@@ -22,6 +22,8 @@ export type CourseRecord = {
   classSize?: string;
   categoriesType?: string;
   domainType?: string;
+  subDomainType?: string;
+  courseHighlights?: string;
   seatingOption?: string;
   openingTime?: string;
   closingTime?: string;

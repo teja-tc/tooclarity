@@ -12,12 +12,6 @@ export default function NotificationSocketBridge() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Skip on test pages to avoid backend/socket during UI testing
-    try {
-      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/test')) {
-        return;
-      }
-    } catch {}
     let socket: { on: (ev: string, h: (...args: unknown[]) => void) => void; off: (ev: string, h: (...args: unknown[]) => void) => void; emit: (ev: string, ...args: unknown[]) => void } | null;
     (async () => {
       try {

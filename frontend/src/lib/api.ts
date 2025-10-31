@@ -72,6 +72,8 @@ export interface CourseData {
   // Additional fields for Coaching centers
   categoriesType?: string;
   domainType?: string;
+  subDomainType?: string;
+  courseHighlights?: string;
   // Additional fields for Study Hall
   seatingOption?: string;
   openingTime?: string;
@@ -395,6 +397,8 @@ const filterCourseFieldsByInstitutionType = (
         ...commonFields,
         categoriesType: course.categoriesType,
         domainType: course.domainType,
+        subDomainType: course.subDomainType,
+        courseHighlights: course.courseHighlights,
       };
 
     case "Study Halls":
