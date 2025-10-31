@@ -1,9 +1,9 @@
 "use client";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 
-export default function RedirectPage() {
+function RedirectHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -69,5 +69,19 @@ export default function RedirectPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function RedirectPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-center overflow-hidden">
+        <h1 className="text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500">
+          TooClarity
+        </h1>
+      </div>
+    }>
+      <RedirectHandler />
+    </Suspense>
   );
 }

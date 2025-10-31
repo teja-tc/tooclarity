@@ -82,6 +82,38 @@ export const domainTypeRule = Joi.string()
         "any.only": "Please select a valid domain type from the list."
     });
 
+export const subDomainTypeRule = Joi.string()
+    .valid(
+        "Engineering",
+        "Medical",
+        "Management",
+        "Law",
+        "Banking",
+        "Government Jobs",
+        "IT & Software",
+        "Design",
+        "Marketing",
+        "Finance"
+    )
+    .required()
+    .messages({
+        "string.empty": "Please select a subDomain type.",
+        "any.required": "Please select a subDomain type.",
+        "any.only": "Please select a valid subDomain type from the list."
+    });
+
+export const courseHighlightsRule = Joi.string()
+    .min(3)
+    .max(200)
+    .pattern(/^(?=.*[A-Za-z])[A-Za-z0-9\s.&'-,]+$/) // must contain at least one letter
+    .required()
+    .messages({
+      "string.empty": "Course Highlights is required",
+      "string.min": "Course Highlights must be at least 3 characters",
+      "string.max": "Course Highlights must be at most 200 characters",
+      "string.pattern.base":
+        "Course Highlights must contain at least one letter and can only include letters, numbers, spaces, . & ' - ,",
+    });
   // In ValidationRules.ts
 
 export const durationRule = Joi.string()

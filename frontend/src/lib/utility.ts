@@ -19,7 +19,7 @@ export async function exportInstitutionAndCoursesToFile(): Promise<File> {
 
   const sanitizedInstitution = latestInstitution
     ? (() => {
-        const { logoPreviewUrl, ...restInstitution } = latestInstitution;
+        const {...restInstitution } = latestInstitution;
         return restInstitution;
       })()
     : null;
@@ -32,7 +32,7 @@ export async function exportInstitutionAndCoursesToFile(): Promise<File> {
     return {
       ...branchRest,
       courses: branch.courses.map((course: Record<string, unknown>) => {
-        const { id, image, imagePreviewUrl, brochure, brochurePreviewUrl, ...courseRest } = course as Record<string, unknown>;
+        const { id, ...courseRest } = course as Record<string, unknown>;
         return courseRest;
       }),
     };

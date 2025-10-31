@@ -98,6 +98,8 @@ export default function L2DialogBox({
       // Additional fields for Coaching centers
       categoriesType: "",
       domainType: "",
+      subDomainType:"",
+      courseHighlights:"",
       // Additional fields for Study Hall
       seatingOption: "",
       openingTime: "",
@@ -247,6 +249,8 @@ export default function L2DialogBox({
       // Additional fields for Coaching centers
       categoriesType: "",
       domainType: "",
+      subDomainType:"",
+      courseHighlights:"",
       // Additional fields for Study Hall
       seatingOption: "",
       openingTime: "",
@@ -414,6 +418,8 @@ export default function L2DialogBox({
             classSize: "",
             categoriesType: "",
             domainType: "",
+            subDomainType:"",
+            courseHighlights:"",
             seatingOption: "",
             openingTime: "",
             closingTime: "",
@@ -535,6 +541,8 @@ export default function L2DialogBox({
           // Additional fields for Coaching centers
           categoriesType: "",
           domainType: "",
+          subDomainType:"",
+          courseHighlights:"",
           // Additional fields for Study Hall
           seatingOption: "",
           openingTime: "",
@@ -725,6 +733,27 @@ export default function L2DialogBox({
                           placeholder="Select domain type"
                           required
                         />
+                        <InputField
+                          label="Sub-Domain type"
+                          name="subDomainType"
+                          value={currentCourse.subDomainType}
+                          onChange={handleCourseChange}
+                          isSelect={true}
+                          options={[
+                            "Engineering",
+                            "Medical",
+                            "Management",
+                            "Law",
+                            "Banking",
+                            "Government Jobs",
+                            "IT & Software",
+                            "Design",
+                            "Marketing",
+                            "Finance",
+                          ]}
+                          placeholder="Select Sub-domain type"
+                          required
+                        />
 
                         <InputField
                           label="Course name"
@@ -792,6 +821,15 @@ export default function L2DialogBox({
                           onChange={handleCourseChange}
                           placeholder="Enter no of students per class"
                           type="number"
+                        />
+
+                        <InputField
+                          label='Course Highlights'
+                          name="courseHighlights"
+                          value={currentCourse.courseHighlights}
+                          onChange={handleCourseChange}
+                          placeholder="e.g., Weekly Mock Tests, Expert Faculty"
+                          type="text"
                         />
                       </div>
                     ) : isStudyHall ? (

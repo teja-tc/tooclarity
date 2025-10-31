@@ -12,6 +12,8 @@ import {
   selectBranchRule,
   phoneRule,
   domainTypeRule,
+  subDomainTypeRule,
+  courseHighlightsRule,
   durationRule,
 } from "./ValidationRules";
 
@@ -81,6 +83,8 @@ export const CoachingCenterSchema = Joi.object({
   // --- Coaching-specific rules ---
   categoriesType: categoriesTypeRule,
   domainType: domainTypeRule,
+  subDomainType: subDomainTypeRule,
+  courseHighlights: courseHighlightsRule,
   classSize: Joi.number()
     .min(0) // Ensures the number is at least 0
     .required()

@@ -68,6 +68,9 @@ interface L2DialogBoxProps {
   editMode?: boolean;
   existingCourseData?: Partial<Course> & { _id?: string; branch?: string };
   onEditSuccess?: () => void;
+  // Test-only overrides to avoid localStorage dependency
+  overrideInstitutionType?: string; // e.g., "Coaching centers" | "Under Graduation/Post Graduation"
+  overrideSelected?: "course" | "branch";
 }
 export interface Course {
   id: number;
@@ -93,7 +96,8 @@ export interface Course {
   classSize: string;
   categoriesType: string;
   domainType: string;
-  subdomainType: string;
+  subDomainType: string;
+  courseHighlights: string;
   seatingOption: string;
   openingTime: string;
   closingTime: string;
@@ -137,6 +141,8 @@ export default function L2DialogBox({
   editMode = false,
   existingCourseData,
   onEditSuccess,
+  overrideInstitutionType,
+  overrideSelected,
 }: L2DialogBoxProps) {
   const router = useRouter();
   const [isCoursrOrBranch, setIsCourseOrBranch] = useState<string | null>(null);
@@ -145,10 +151,16 @@ export default function L2DialogBox({
   // const institutionType = localStorage.getItem("institutionType");
 
   useEffect(() => {
-    // runs only in browser
-    setIsCourseOrBranch(localStorage.getItem("selected"));
-    setInstitutionType(localStorage.getItem("institutionType"));
-  }, []);
+    // Prefer explicit overrides (used by test page), else read from localStorage in browser
+    if (overrideInstitutionType) setInstitutionType(overrideInstitutionType);
+    if (overrideSelected) setIsCourseOrBranch(overrideSelected);
+    if (!overrideInstitutionType || !overrideSelected) {
+      if (typeof window !== "undefined") {
+        if (!overrideSelected) setIsCourseOrBranch(localStorage.getItem("selected"));
+        if (!overrideInstitutionType) setInstitutionType(localStorage.getItem("institutionType"));
+      }
+    }
+  }, [overrideInstitutionType, overrideSelected]);
   const isUnderPostGraduate =
     institutionType === "Under Graduation/Post Graduation";
   const isCoachingCenter = institutionType === "Coaching centers";
@@ -213,13 +225,15 @@ export default function L2DialogBox({
   
   const isSubscriptionProgram = mode === "subscriptionProgram" || mode === "settingsEdit";
 
-  // Load institution type from localStorage when _Dialog opens
+  // Load institution type from localStorage when _Dialog opens (skip if overrides already provided)
   useEffect(() => {
-    if (DialogOpen) {
+    if (!DialogOpen) return;
+    if (overrideInstitutionType || overrideSelected) return;
+    if (typeof window !== "undefined") {
       setIsCourseOrBranch(localStorage.getItem("selected"));
       setInstitutionType(localStorage.getItem("institutionType"));
     }
-  }, [DialogOpen, institutionId, isSubscriptionProgram]);
+  }, [DialogOpen, institutionId, isSubscriptionProgram, overrideInstitutionType, overrideSelected]);
 
   // Load remote branches for subscription programs
   useEffect(() => {
@@ -274,7 +288,8 @@ export default function L2DialogBox({
         // Additional fields for Coaching centers
         categoriesType: existingCourseData.categoriesType || "",
         domainType: existingCourseData.domainType || "",
-        subdomainType: existingCourseData.subdomainType || "",
+        subDomainType: existingCourseData.subDomainType || "",
+        courseHighlights: existingCourseData.courseHighlights || "",
         // Additional fields for Study Hall
         seatingOption: existingCourseData.seatingOption || "",
         openingTime: existingCourseData.openingTime || "",
@@ -323,7 +338,8 @@ export default function L2DialogBox({
       // Additional fields for Coaching centers
       categoriesType: "",
       domainType: "",
-      subdomainType: "",
+      subDomainType: "",
+      courseHighlights:"",
       // Additional fields for Study Hall
       seatingOption: "",
       openingTime: "",
@@ -369,9 +385,11 @@ export default function L2DialogBox({
 
   // Which section to show: "course" or "branch"; prioritize localStorage 'selected', fallback to prop, then 'course'
   const initialSection: "course" | "branch" =
-    isCoursrOrBranch === "course" || isCoursrOrBranch === "branch"
-      ? (isCoursrOrBranch as "course" | "branch")
-      : initialSectionProp || "course";
+    overrideSelected ?? (
+      (isCoursrOrBranch === "course" || isCoursrOrBranch === "branch")
+        ? (isCoursrOrBranch as "course" | "branch")
+        : (initialSectionProp || "course")
+    );
 
   type UploadField = {
     label: string;
@@ -594,7 +612,8 @@ export default function L2DialogBox({
       categoriesType: "",
       domainType: "",
       eligibilityCriteria: "",
-      subdomainType: "",
+      subDomainType: "",
+      courseHighlights:"",
       // Additional fields for Study Hall
       seatingOption: "",
       openingTime: "",
