@@ -44,4 +44,3 @@ next-env.d.ts
 /src/test
 /src/components/auth/testComponents
 /src/components/test
-/src/app/test

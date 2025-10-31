@@ -69,8 +69,8 @@ interface L2DialogBoxProps {
   existingCourseData?: Partial<Course> & { _id?: string; branch?: string };
   onEditSuccess?: () => void;
   // Test-only overrides to avoid localStorage dependency
-  //overrideInstitutionType?: string; // e.g., "Coaching centers" | "Under Graduation/Post Graduation"
-  //overrideSelected?: "course" | "branch";
+  overrideInstitutionType?: string; // e.g., "Coaching centers" | "Under Graduation/Post Graduation"
+  overrideSelected?: "course" | "branch";
 }
 export interface Course {
   id: number;
@@ -141,8 +141,8 @@ export default function L2DialogBox({
   editMode = false,
   existingCourseData,
   onEditSuccess,
-  //overrideInstitutionType,
-  //overrideSelected,
+  overrideInstitutionType,
+  overrideSelected,
 }: L2DialogBoxProps) {
   const router = useRouter();
   const [isCoursrOrBranch, setIsCourseOrBranch] = useState<string | null>(null);
@@ -151,7 +151,7 @@ export default function L2DialogBox({
   // const institutionType = localStorage.getItem("institutionType");
 
   useEffect(() => {
-    /* Prefer explicit overrides (used by test page), else read from localStorage in browser
+    // Prefer explicit overrides (used by test page), else read from localStorage in browser
     if (overrideInstitutionType) setInstitutionType(overrideInstitutionType);
     if (overrideSelected) setIsCourseOrBranch(overrideSelected);
     if (!overrideInstitutionType || !overrideSelected) {
@@ -160,10 +160,7 @@ export default function L2DialogBox({
         if (!overrideInstitutionType) setInstitutionType(localStorage.getItem("institutionType"));
       }
     }
-  }, [overrideInstitutionType, overrideSelected]);*/
-  setIsCourseOrBranch(localStorage.getItem("selected"));
-    setInstitutionType(localStorage.getItem("institutionType"));
-  }, []);
+  }, [overrideInstitutionType, overrideSelected]);
   const isUnderPostGraduate =
     institutionType === "Under Graduation/Post Graduation";
   const isCoachingCenter = institutionType === "Coaching centers";
@@ -230,19 +227,13 @@ export default function L2DialogBox({
 
   // Load institution type from localStorage when _Dialog opens (skip if overrides already provided)
   useEffect(() => {
-    if (DialogOpen) {
-
-    /*  if (overrideInstitutionType || overrideSelected) return;
+    if (!DialogOpen) return;
+    if (overrideInstitutionType || overrideSelected) return;
     if (typeof window !== "undefined") {
       setIsCourseOrBranch(localStorage.getItem("selected"));
       setInstitutionType(localStorage.getItem("institutionType"));
     }
-  }, [DialogOpen, institutionId, isSubscriptionProgram, overrideInstitutionType, overrideSelected]); */
-      setIsCourseOrBranch(localStorage.getItem("selected"));
-      setInstitutionType(localStorage.getItem("institutionType"));
-    }
-}, [DialogOpen, institutionId, isSubscriptionProgram]);
-
+  }, [DialogOpen, institutionId, isSubscriptionProgram, overrideInstitutionType, overrideSelected]);
 
   // Load remote branches for subscription programs
   useEffect(() => {
@@ -394,14 +385,11 @@ export default function L2DialogBox({
 
   // Which section to show: "course" or "branch"; prioritize localStorage 'selected', fallback to prop, then 'course'
   const initialSection: "course" | "branch" =
-    /*overrideSelected ?? (
+    overrideSelected ?? (
       (isCoursrOrBranch === "course" || isCoursrOrBranch === "branch")
         ? (isCoursrOrBranch as "course" | "branch")
         : (initialSectionProp || "course")
-    );*/
-    isCoursrOrBranch === "course" || isCoursrOrBranch === "branch"
-      ? (isCoursrOrBranch as "course" | "branch")
-      : initialSectionProp || "course";
+    );
 
   type UploadField = {
     label: string;
