@@ -32,9 +32,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfileCompleted,
   } = useUserStore();
 
-  // Initialize user on app start
+  // Initialize user on app start (skip on /test routes)
   useEffect(() => {
-    // Try to get user profile - if backend has valid cookie, it will succeed
+    /*try {
+      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/test')) {
+        return;
+      }
+    } catch {}*/
     refreshUser();
   }, [refreshUser]);
 

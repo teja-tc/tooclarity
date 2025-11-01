@@ -113,9 +113,11 @@ const instituteAdminSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.Mixed,
       },
     },
-  },
-  { timestamps: true }
-);
+    wishlist: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Course',
+    }],
+}, { timestamps: true});
 
 instituteAdminSchema.pre("save", async function (next) {
   if (!this.isModified("password") || !this.password) {

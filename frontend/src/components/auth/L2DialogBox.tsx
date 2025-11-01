@@ -5,21 +5,22 @@ import React from "react";
 import { programsAPI } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/levels_dialog";
+  _Dialog,
+  _DialogContent,
+  _DialogHeader,
+  _DialogTitle,
+  _DialogDescription,
+  _DialogTrigger,
+} from "@/components/ui/dialog";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
+  _Card,
+  _CardHeader,
+  _CardTitle,
+  _CardDescription,
+  _CardContent,
+  _CardFooter,
 } from "@/components/ui/card";
 import InputField from "@/components/ui/InputField";
 import { Upload, Plus, MoreVertical } from "lucide-react";
@@ -41,13 +42,13 @@ import UnderPostGraduateForm from "./L2DialogBoxParts/Course/UnderPostGraduateFo
 import BasicCourseForm from "./L2DialogBoxParts/Course/BasicCourseForm";
 import FallbackCourseForm from "./L2DialogBoxParts/Course/FallbackCourseForm";
 import BranchForm from "./L2DialogBoxParts/Branch/BranchForm";
-import { error } from "console";
+// import { error } from "console";
 import {
   exportAndUploadInstitutionAndCourses,
-  exportInstitutionAndCoursesToFile,
+  // exportInstitutionAndCoursesToFile,
 } from "@/lib/utility";
 import { L2Schemas } from "@/lib/validations/L2Schema";
-import { createdBranchRule } from "@/lib/validations/ValidationRules";
+// import { createdBranchRule } from "@/lib/validations/ValidationRules";
 import { uploadToS3 } from "@/lib/awsUpload";
 import AppSelect from "@/components/ui/AppSelect";
 
@@ -58,15 +59,17 @@ interface L2DialogBoxProps {
   onSuccess?: () => void;
   onPrevious?: () => void;
   initialSection?: "course" | "branch";
-  // New: render inline (non-dialog) for subscription page usage
-  renderMode?: "dialog" | "inline";
+  // New: render inline (non-_Dialog) for subscription page usage
+  renderMode?: "_Dialog" | "inline";
   // New: subscription mode for Program creation flow on Subscription page
   mode?: "default" | "subscriptionProgram" | "settingsEdit";
   institutionId?: string;
   // New: for editing existing programs in settings
   editMode?: boolean;
-  existingCourseData?: any;
+  existingCourseData?: Partial<Course> & { _id?: string; branch?: string };
   onEditSuccess?: () => void;
+  // Test-only overrides to avoid localStorage dependency
+  
 }
 export interface Course {
   id: number;
@@ -92,6 +95,8 @@ export interface Course {
   classSize: string;
   categoriesType: string;
   domainType: string;
+  subDomainType: string;
+  courseHighlights: string;
   seatingOption: string;
   openingTime: string;
   closingTime: string;
@@ -129,7 +134,7 @@ export default function L2DialogBox({
   onPrevious,
 
   initialSection: initialSectionProp,
-  renderMode = "dialog",
+  renderMode = "_Dialog",
   mode = "default",
   institutionId,
   editMode = false,
@@ -143,8 +148,7 @@ export default function L2DialogBox({
   // const institutionType = localStorage.getItem("institutionType");
 
   useEffect(() => {
-    // runs only in browser
-    setIsCourseOrBranch(localStorage.getItem("selected"));
+  setIsCourseOrBranch(localStorage.getItem("selected"));
     setInstitutionType(localStorage.getItem("institutionType"));
   }, []);
   const isUnderPostGraduate =
@@ -171,6 +175,7 @@ export default function L2DialogBox({
   const [remoteBranches, setRemoteBranches] = useState<Array<{ _id: string; branchName: string }>>([]);
   const [selectedBranchIdForProgram, setSelectedBranchIdForProgram] = useState<string>("");
   const [programBranchError, setProgramBranchError] = useState<string>("");
+  
 
   const uniqueRemoteBranches = React.useMemo(() => {
     const seenNames = new Set<string>();
@@ -194,24 +199,50 @@ export default function L2DialogBox({
   >({});
 
   useEffect(() => {
-    if (!dialogOpen) return;
-
     (async () => {
       try {
         const all = await getAllBranchesFromDB();
         setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
-        if (isSubscriptionProgram) {
-          try {
-            const res: any = await programsAPI.listBranchesForInstitutionAdmin(String(institutionId||''));
-            const branches = (res?.data?.branches || []) as Array<any>;
-            setRemoteBranches(branches.map((b:any)=> ({ _id: String(b._id), branchName: b.branchName || "Branch" })));
-          } catch (e) {}
-        }
       } catch (err) {
         console.error("Failed to load branches from IndexedDB", err);
       }
     })();
   }, []);
+
+  // Handle controlled open state
+  const DialogOpen = renderMode === "inline" ? true : (open !== undefined ? open : isOpen);
+  const setDialogOpen = onOpenChange || setIsOpen;
+  
+  const isSubscriptionProgram = mode === "subscriptionProgram" || mode === "settingsEdit";
+
+  // Load institution type from localStorage when _Dialog opens (skip if overrides already provided)
+  useEffect(() => {
+    if (DialogOpen) {
+    setIsCourseOrBranch(localStorage.getItem("selected"));
+    setInstitutionType(localStorage.getItem("institutionType"));
+  }
+}, [DialogOpen, institutionId, isSubscriptionProgram]);
+  // Load remote branches for subscription programs
+  useEffect(() => {
+    if (!DialogOpen || !isSubscriptionProgram) return;
+    
+    (async () => {
+      try {
+        const res = await programsAPI.listBranchesForInstitutionAdmin(String(institutionId||''));
+        const branches = (res as { data?: { branches?: Array<{ _id: string; branchName?: string }> } })?.data?.branches || [];
+        setRemoteBranches(branches.map((b)=> ({ _id: String(b._id), branchName: b.branchName || "Branch" })));
+      } catch (e) { 
+        console.log('Error loading branches:', e);
+      }
+    })();
+  }, [DialogOpen, institutionId, isSubscriptionProgram]);
+
+  // Auto-select branch for edit mode
+  useEffect(() => {
+    if (editMode && existingCourseData && existingCourseData.branch) {
+      setSelectedBranchIdForProgram(String(existingCourseData.branch));
+    }
+  }, [editMode, existingCourseData]);
 
   // Get institution type from localStorage
   const [courses, setCourses] = useState(() => {
@@ -244,6 +275,8 @@ export default function L2DialogBox({
         // Additional fields for Coaching centers
         categoriesType: existingCourseData.categoriesType || "",
         domainType: existingCourseData.domainType || "",
+        subDomainType: existingCourseData.subDomainType || "",
+        courseHighlights: existingCourseData.courseHighlights || "",
         // Additional fields for Study Hall
         seatingOption: existingCourseData.seatingOption || "",
         openingTime: existingCourseData.openingTime || "",
@@ -292,6 +325,8 @@ export default function L2DialogBox({
       // Additional fields for Coaching centers
       categoriesType: "",
       domainType: "",
+      subDomainType: "",
+      courseHighlights:"",
       // Additional fields for Study Hall
       seatingOption: "",
       openingTime: "",
@@ -312,9 +347,7 @@ export default function L2DialogBox({
     }];
   });
 
-  // Handle controlled open state; in inline mode we treat it as always open
-  const dialogOpen = renderMode === "inline" ? true : (open !== undefined ? open : isOpen);
-  const setDialogOpen = onOpenChange || setIsOpen;
+  // DialogOpen and setDialogOpen are declared above with useEffect hooks
 
   // Get current course
   const currentCourse =
@@ -334,14 +367,14 @@ export default function L2DialogBox({
   ]);
 
   // Get current branch
-  const currentBranch =
-    branches.find((b) => b.id === selectedBranchId) || branches[0];
+  // const currentBranch =
+  //   branches.find((b) => b.id === selectedBranchId) || branches[0];
 
   // Which section to show: "course" or "branch"; prioritize localStorage 'selected', fallback to prop, then 'course'
   const initialSection: "course" | "branch" =
-    isCoursrOrBranch === "course" || isCoursrOrBranch === "branch"
-      ? (isCoursrOrBranch as "course" | "branch")
-      : initialSectionProp || "course";
+  isCoursrOrBranch === "course" || isCoursrOrBranch === "branch"
+  ? (isCoursrOrBranch as "course" | "branch")
+  : initialSectionProp || "course";
 
   type UploadField = {
     label: string;
@@ -564,6 +597,8 @@ export default function L2DialogBox({
       categoriesType: "",
       domainType: "",
       eligibilityCriteria: "",
+      subDomainType: "",
+      courseHighlights:"",
       // Additional fields for Study Hall
       seatingOption: "",
       openingTime: "",
@@ -629,7 +664,7 @@ export default function L2DialogBox({
   const [courseErrorsById, setCourseErrorsById] = useState<
     Record<number, Record<string, string>>
   >({}); // ✅ ADD THIS LINE
-  const validateCourses = () => {
+  // const validateCourses = () => {
     const requiredFields = [
       "courseName",
       "courseDuration",
@@ -695,21 +730,8 @@ export default function L2DialogBox({
       // No additional validation needed for these types
     }
 
-    return null;
-  };
-  useEffect(() => {
-    if (dialogOpen) {
-      setIsCourseOrBranch(localStorage.getItem("selected"));
-      setInstitutionType(localStorage.getItem("institutionType"));
-    }
-  }, [dialogOpen]); // Dependency on dialogOpen is the key.
-
-  // Auto-select branch for edit mode
-  useEffect(() => {
-    if (editMode && existingCourseData && existingCourseData.branch) {
-      setSelectedBranchIdForProgram(String(existingCourseData.branch));
-    }
-  }, [editMode, existingCourseData]);
+  //   return null;
+  // };
 
   // Inside L2DialogBox.tsx
 
@@ -928,12 +950,26 @@ export default function L2DialogBox({
         setIsLoading(false);
         return;
       }
-      const toCreate = courses.map((c) => {
+      type ProgramPayload = {
+        institution: string;
+        branch: string | null;
+        type: 'PROGRAM';
+        mode?: string;
+        classSize?: string;
+        location?: string;
+        courseName: string;
+        aboutCourse?: string;
+        courseDuration?: string;
+        startDate?: string;
+        endDate?: string;
+        priceOfCourse?: number;
+        graduationType?: string;
+        streamType?: string;
+        selectBranch?: string;
+      };
+
+      const toCreate: ProgramPayload[] = courses.map((c) => {
         const programName = (c.courseName || "").trim();
-        const programSlug = programName
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "");
         return {
           institution: String(institutionId),
           branch: selectedBranchIdForProgram || null, // Allow null for new users without branches
@@ -942,7 +978,7 @@ export default function L2DialogBox({
           classSize: c.classSize || "",
           location: c.location || "",
           // Unified Course model expectations for type PROGRAM
-          type: 'PROGRAM',
+          type: 'PROGRAM' as const,
           courseName: programName,
           aboutCourse: c.aboutCourse || "",
           courseDuration: c.courseDuration || "",
@@ -954,13 +990,13 @@ export default function L2DialogBox({
           graduationType: c.graduationType || undefined,
           streamType: c.streamType || undefined,
           selectBranch: c.selectBranch || undefined,
-        } as any;
+        };
       }).filter((p) => p.courseName && p.courseName.length > 0);
 
       for (const payload of toCreate) {
         if (editMode && existingCourseData) {
           // Update existing course
-          await programsAPI.update(existingCourseData._id, payload);
+          await programsAPI.update(String(existingCourseData._id || ""), payload);
         } else {
           // Create new course
           await programsAPI.create(payload);
@@ -980,27 +1016,26 @@ export default function L2DialogBox({
       const branchMap = new Map(
         allBranches.map((b) => [
           b.branchName.trim().toLowerCase(),
-          { ...b, courses: [] as typeof uploadedCourses },
+          { ...b, courses: [] as import("@/lib/localDb").CourseRecord[] },
         ])
       );
 
-      const sanitizeBranch = (branch: any) => {
-        const { createdAt, id, ...rest } = branch;
-        return rest;
+      const sanitizeBranch = (branch: import("@/lib/localDb").BranchCoursesRecord): import("@/lib/localDb").BranchCoursesRecord => {
+        return branch;
       };
 
-      const sanitizeCourse = (course: any) =>
+      const sanitizeCourse = (course: Record<string, unknown>): import("@/lib/localDb").CourseRecord =>
         Object.fromEntries(
           Object.entries(course).filter(
-            ([_, value]) =>
+            ([, value]) =>
               value !== null &&
               value !== "" &&
               !(Array.isArray(value) && value.length === 0) &&
               value !== false
           )
-        );
+        ) as import("@/lib/localDb").CourseRecord;
 
-      const unassignedCourses: any[] = [];
+      const unassignedCourses: import("@/lib/localDb").CourseRecord[] = [];
       uploadedCourses.forEach((c) => {
         const key = (c.createdBranch || "").trim().toLowerCase();
         if (!key || !branchMap.has(key)) {
@@ -1009,7 +1044,7 @@ export default function L2DialogBox({
           branchMap
             .get(key)!
             .courses.push(
-              sanitizeCourse(c) as (typeof uploadedCourses)[number]
+              sanitizeCourse(c)
             );
         }
       });
@@ -1021,7 +1056,7 @@ export default function L2DialogBox({
       ];
 
       if (unassignedCourses.length > 0) {
-        sanitizedPayload.push({ courses: unassignedCourses } as any);
+        sanitizedPayload.push({ courses: unassignedCourses } as import("@/lib/localDb").BranchCoursesRecord);
       }
 
       if (!sanitizedPayload.length) {
@@ -1036,7 +1071,7 @@ export default function L2DialogBox({
 
       // --- 5️⃣ Save Courses in DB ---
       for (const entry of sanitizedPayload) {
-        const isUnassigned = !entry.branchName;
+        // const isUnassigned = !entry.branchName;
         const existingGroups = await getCoursesGroupsByBranchName(
           entry.branchName || ""
         );
@@ -1046,14 +1081,14 @@ export default function L2DialogBox({
           const existing = group.courses || [];
           const incoming = entry.courses || [];
 
-          const keyOf = (c: any) =>
+          const keyOf = (c: import("@/lib/localDb").CourseRecord) =>
             `${(c.courseName || "").trim().toLowerCase()}|${(c.subject || "")
               .trim()
               .toLowerCase()}|${(c.mode || "").trim().toLowerCase()}`;
 
           const existingSet = new Set(existing.map(keyOf));
           const uniqueIncoming = incoming.filter(
-            (c: any) => !existingSet.has(keyOf(c))
+            (c: import("@/lib/localDb").CourseRecord) => !existingSet.has(keyOf(c))
           );
           const merged = {
             ...group,
@@ -1103,7 +1138,7 @@ export default function L2DialogBox({
   const validateField = (name: string, value: string) => {
     // Check if the field exists in the branch schema to avoid errors
     const keyExists = L2Schemas.branch.$_terms.keys?.some(
-      (k: any) => k.key === name
+      (k: Record<string, unknown>) => k.key === name
     );
     if (!keyExists) return "";
 
@@ -1182,8 +1217,8 @@ export default function L2DialogBox({
         locationUrl: currentBranch.locationUrl,
       };
 
-    if ((currentBranch as any).dbId) {
-      await updateBranchInDB({ id: (currentBranch as any).dbId, ...payload });
+    if (currentBranch.dbId) {
+      await updateBranchInDB({ id: currentBranch.dbId, ...payload });
     } else {
       const [newId] = await addBranchesToDB([payload]);
       setBranches((prev) =>
@@ -1202,16 +1237,14 @@ export default function L2DialogBox({
   }
 };
 
-  const isSubscriptionProgram = mode === "subscriptionProgram" || mode === "settingsEdit";
-
   const content = (
-    <Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
-      <CardContent className="space-y-6">
+    <_Card className="w-full sm:p-6 rounded-[24px] bg-white dark:bg-gray-900 border-0 shadow-none">
+      <_CardContent className="space-y-6 text-gray-900 dark:text-gray-100">
               {/* Render based on initialSection */}
               {initialSection === "course" ? (
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <h3 className="text-xl md:text-2xl font-bold">
+                    <h3 className="text-xl md:text-2xl font-bold dark:text-gray-50">
                       {isStudyHall
                         ? "Study Hall"
                         : isTutionCenter
@@ -1220,7 +1253,7 @@ export default function L2DialogBox({
                         ? "Program Details"
                         : "Course Details"}
                     </h3>
-                    <p className="text-[#697282] text-sm">
+                    <p className="text-[#697282] dark:text-gray-300 text-sm">
                       {isStudyHall
                         ? "Enter the details of the study hall."
                         : isTutionCenter
@@ -1243,8 +1276,8 @@ export default function L2DialogBox({
                             className={`px-3 py-2 rounded-lg text-sm border transition-colors flex items-center gap-2 ${
                               selectedCourseId === course.id
                                 ? "bg-blue-50 border-blue-200 text-blue-700"
-                                : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
-                            }`}
+                                : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
+                            }`} 
                           >
                             <span>
                               {course.courseName ||
@@ -1290,7 +1323,7 @@ export default function L2DialogBox({
                     {/* Branch Selection - Only show for subscription programs and when branches exist */}
                     {isSubscriptionProgram && uniqueRemoteBranches.length > 0 && (
                       <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Select Branch</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Branch</label>
                         <AppSelect
                           value={selectedBranchIdForProgram}
                           onChange={(val)=> { setSelectedBranchIdForProgram(val); setProgramBranchError(""); }}
@@ -1395,16 +1428,18 @@ export default function L2DialogBox({
                                 const previewUrl = currentCourse[
                                   `${f.type}PreviewUrl`
                                 ] as string;
-                                const uploadedUrl = currentCourse[
-                                  `${f.type}Url`
-                                ] as string;
+                                // const uploadedUrl = currentCourse[
+                                //   `${f.type}Url`
+                                // ] as string;
 
                                 if (previewUrl) {
                                   if (f.type === "image") {
                                     // 🖼️ Show image (preview first, then uploaded)
                                     return (
-                                      <img
+                                      <Image
                                         src={previewUrl}
+                                        width={100}
+                                        height={100}
                                         alt={`${f.label} Preview`}
                                         // className="object-cover w-full h-full rounded-[12px]"
                                         className="w-[100px] h-[100px] object-cover rounded-md"
@@ -1427,9 +1462,9 @@ export default function L2DialogBox({
                                   <>
                                     <Upload
                                       size={24}
-                                      className="text-gray-400 mb-2"
+                                      className="text-gray-400 dark:text-gray-300 mb-2"
                                     />
-                                    <span className="text-sm text-gray-500">
+                                    <span className="text-sm text-gray-500 dark:text-gray-300">
                                       {f.type === "image"
                                         ? (isSubscriptionProgram ? "Upload Program Image (jpg / jpeg)" : "Upload Course Image (jpg / jpeg / png)")
                                         : (isSubscriptionProgram ? "Upload Program Brochure (pdf)" : "Upload Course Brochure (pdf)")}
@@ -1442,7 +1477,7 @@ export default function L2DialogBox({
                               <input
                                 type="file"
                                 accept={f.accept}
-                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                className="absolute inset-0 opacity-0 cursor-pointer dark:bg-gray-800"
                                 onChange={(e) => handleFileChange(e, f.type)}
                               />
                             </label>
@@ -1497,7 +1532,7 @@ export default function L2DialogBox({
                       Branch Details
                     </h3>
                     <p className="text-[#697282] text-sm">
-                      here information about your institution's branches.
+                      here information about your institution&apos;s branches.
                     </p>
                   </div>
 
@@ -1655,7 +1690,7 @@ export default function L2DialogBox({
                         {/* Branch Selection for Subscription Programs - Only show when branches exist */}
                         {isSubscriptionProgram && uniqueRemoteBranches.length > 0 && (
                           <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Select Branch</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Branch</label>
                             <AppSelect
                               value={selectedBranchIdForProgram}
                               onChange={(val)=> { setSelectedBranchIdForProgram(val); setProgramBranchError(""); }}
@@ -1672,7 +1707,7 @@ export default function L2DialogBox({
                         {isSubscriptionProgram && (
                           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                             <p className="text-sm text-blue-700">
-                              <strong>Note:</strong> You don't have any branches yet. You can add a branch first, or the program will be added to your main institution.
+                              <strong>Note:</strong> You don&apos;t have any branches yet. You can add a branch first, or the program will be added to your main institution.
                             </p>
                           </div>
                         )}
@@ -1775,18 +1810,20 @@ export default function L2DialogBox({
                                     const previewUrl = currentCourse[
                                       `${f.type}PreviewUrl`
                                     ] as string;
-                                    const uploadedUrl = currentCourse[
-                                      `${f.type}Url`
-                                    ] as string;
+                                    // const uploadedUrl = currentCourse[
+                                    //   `${f.type}Url`
+                                    // ] as string;
 
-                                    if (previewUrl || uploadedUrl) {
+                                    if (previewUrl) {
                                       if (f.type === "image") {
                                         // 🖼️ Show image (preview first, then uploaded)
                                         return (
-                                          <img
-                                            src={previewUrl || uploadedUrl}
+                                          <Image
+                                            src={previewUrl}
                                             alt={`${f.label} Preview`}
                                             className="object-cover w-full h-full rounded-[12px]"
+                                            width={100}
+                                            height={100}
                                           />
                                         );
                                       } else {
@@ -1809,9 +1846,9 @@ export default function L2DialogBox({
                                       <>
                                         <Upload
                                           size={24}
-                                          className="text-gray-400 mb-2"
+                                          className="text-gray-400 dark:text-gray-300 mb-2"
                                         />
-                                        <span className="text-sm text-gray-500">
+                                        <span className="text-sm text-gray-500 dark:text-gray-300">
                                           {f.type === "image"
                                             ? "Upload Course Image (jpg / jpeg / png)"
                                             : "Upload Course Brochure (pdf)"}
@@ -1824,7 +1861,7 @@ export default function L2DialogBox({
                                   <input
                                     type="file"
                                     accept={f.accept}
-                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    className="absolute inset-0 opacity-0 cursor-pointer dark:bg-gray-800"
                                     onChange={(e) =>
                                       handleFileChange(e, f.type)
                                     }
@@ -1876,8 +1913,8 @@ export default function L2DialogBox({
                   )}
                 </div>
               )}
-      </CardContent>
-    </Card>
+      </_CardContent>
+    </_Card>
   );
 
   if (renderMode === "inline") {
@@ -1886,17 +1923,17 @@ export default function L2DialogBox({
 
   return (
     <>
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-        <DialogContent
+      <_Dialog open={DialogOpen} onOpenChange={setDialogOpen}>
+        {trigger && <_DialogTrigger asChild>{trigger}</_DialogTrigger>}
+        <_DialogContent
           className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
           showCloseButton={false}
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
           {content}
-        </DialogContent>
-      </Dialog>
+        </_DialogContent>
+      </_Dialog>
     </>
   );
 }

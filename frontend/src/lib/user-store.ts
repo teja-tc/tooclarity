@@ -71,26 +71,28 @@ export const useUserStore = create<UserStoreState>((set, get) => ({
       // const response = await authAPI.login({ email, password, type });
       const response = await authAPI.login(loginData);
       if (response.success) {
-        const data = response.data?.user || response.data;
-        if (data && (data.id || data.email)) {
+        const responseData = response.data as Record<string, unknown>;
+        const data = responseData?.user || responseData;
+        if (data && typeof data === 'object' && ((data as Record<string, unknown>).id || (data as Record<string, unknown>).email)) {
           // Normalize to User shape using available fields
+          const userData = data as Record<string, unknown>;
           const user: User = {
-            id: data.id || "",
-            email: data.email,
-            admin: data.admin || "",
-            phone: data.contactNumber,
-            designation: data.designation || "",
-            linkedin: data.linkedin || "",
-            verified: data.verified ?? true,
-            name: data.name,
-            institution: data.institution || ",",
-            isPaymentDone: data.isPaymentDone ?? false,
-            isProfileCompleted: data.isProfileCompleted ?? false,
-            role: data.role || "",
-            googleId: data.googleId,
-            address: data.address || "",
-            birthday: data.birthday || "",
-            profilePicture: data.profilePicture || "",
+            id: (userData.id as string) || "",
+            email: userData.email as string,
+            admin: (userData.admin as string) || "",
+            phone: userData.contactNumber as string,
+            designation: (userData.designation as string) || "",
+            linkedin: (userData.linkedin as string) || "",
+            verified: (userData.verified as boolean) ?? true,
+            name: userData.name as string,
+            institution: (userData.institution as string) || ",",
+            isPaymentDone: (userData.isPaymentDone as boolean) ?? false,
+            isProfileCompleted: (userData.isProfileCompleted as boolean) ?? false,
+            role: (userData.role as string) || "",
+            googleId: userData.googleId as string,
+            address: (userData.address as string) || "",
+            birthday: (userData.birthday as string) || "",
+            profilePicture: (userData.profilePicture as string) || "",
           };
           get().setUser(user);
           return true;
@@ -100,7 +102,7 @@ export const useUserStore = create<UserStoreState>((set, get) => ({
       }
       return false;
     } catch (e) {
-      console.error("Login error:", e);
+      if (process.env.NODE_ENV === 'development') console.error("Login error:", e);
       return false;
     }
   },
@@ -109,7 +111,7 @@ export const useUserStore = create<UserStoreState>((set, get) => ({
     try {
       await authAPI.logout();
     } catch (e) {
-      console.error("Logout error:", e);
+      if (process.env.NODE_ENV === 'development') console.error("Logout error:", e);
     } finally {
       get().setUser(null);
     }
@@ -120,30 +122,31 @@ export const useUserStore = create<UserStoreState>((set, get) => ({
       set({ loading: true });
       const response = await authAPI.getProfile();
       if (response.success && response.data) {
+        const data = response.data as Record<string, unknown>;
         const u: User = {
           id: "",
-          email: response.data.email,
+          email: data.email as string,
           admin: "",
-          phone: response.data.contactNumber,
-          designation: response.data.designation || "",
-          linkedin: response.data.linkedin || "",
+          phone: data.contactNumber as string,
+          designation: (data.designation as string) || "",
+          linkedin: (data.linkedin as string) || "",
           verified: true,
-          name: response.data.name,
-          institution: response.data.institution || "",
-          isPaymentDone: response.data.isPaymentDone || false,
-          isProfileCompleted: response.data.isProfileCompleted || false,
-          role: response.data.role || "",
-          googleId: response.data.googleId,
-          profilePicture: response.data.profilePicture || "",
-          address: response.data.address || "",
-          birthday: response.data.birthday || "",
+          name: data.name as string,
+          institution: (data.institution as string) || ",",
+          isPaymentDone: (data.isPaymentDone as boolean) || false,
+          isProfileCompleted: (data.isProfileCompleted as boolean) || false,
+          role: (data.role as string) || "",
+          googleId: data.googleId as string,
+          profilePicture: (data.profilePicture as string) || "",
+          address: (data.address as string) || "",
+          birthday: (data.birthday as string) || "",
         };
         set({ user: u, isAuthenticated: true });
       } else {
         set({ user: null, isAuthenticated: false });
       }
     } catch (e) {
-      console.error("Refresh user error:", e);
+      if (process.env.NODE_ENV === 'development') console.error("Refresh user error:", e);
       set({ user: null, isAuthenticated: false });
     } finally {
       set({ loading: false });

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { authAPI } from "@/lib/api";
 interface StudentOtpScreenProps {
   phoneNumber?: string;
-  onVerify?: (otp: string) => Promise<void>;
+  _onVerify?: (otp: string) => Promise<void>;
   onResendOtp?: () => Promise<void>;
   onBack?: () => void;
   onSuccess?: () => void;
@@ -14,6 +14,8 @@ interface StudentOtpScreenProps {
 
 const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
   phoneNumber = "",
+  _onVerify,
+  onResendOtp,
   onBack,
   onSuccess,
 }) => {
@@ -166,23 +168,24 @@ const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
             ))}
           </div>
 
-          <div className="text-sm text-gray-600">
-            <span>Didn't get a code? </span>
-            {canResend ? (
-              <button
-                onClick={handleResendOtp}
-                className="text-blue-600 font-medium hover:underline"
-              >
-                Resend OTP
-              </button>
-            ) : (
-              <span className="text-blue-600 font-medium">
-                Resend OTP in 0:{resendTimer.toString().padStart(2, "0")}
-              </span>
-            )}
+            {/* Resend OTP */}
+            <div className="text-sm text-gray-600">
+              <span>Didn&apos;t get a code? </span>
+              {canResend ? (
+                <button
+                  onClick={handleResendOtp}
+                  className="text-blue-600 font-medium hover:underline"
+                >
+                  Resend OTP
+                </button>
+              ) : (
+                <span className="text-blue-600 font-medium">
+                  Resend OTP in 0:{resendTimer.toString().padStart(2, "0")}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
       <div className="mt-8 space-y-4">
         <button

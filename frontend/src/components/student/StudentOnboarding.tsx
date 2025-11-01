@@ -11,22 +11,16 @@ import { useRouter } from "next/navigation";
 import { useUserStore } from "@/lib/user-store";
 import { studentDashboardAPI, studentOnboardingAPI } from "@/lib/students-api";
 import { apiRequest } from "@/lib/api";
-import {
-  DateInput,
-  FormField,
-  RadioGroup,
-  Dropdown,
-  validateDateInstant,
-} from "@/components/ui/InputField";
 import { uploadToS3 } from "@/lib/awsUpload";
-import { profile } from "console";
+import InputField, { DateInput, FormField, Dropdown, validateDateInstant, RadioGroup } from "@/components/ui/InputField";
+import Image from "next/image";
 
-const labelCls = "text-[12px] font-semibold";
+const labelCls = "text-[17px] font-semibold text-gray-900";
 const inputBase =
-  "w-full h-[52px] rounded-[12px] px-4 outline-none border transition-colors";
-const inputIdle = "border-gray-200 bg-white focus:border-[#3B82F6]";
-const inputActive = "border-[#0A46E4] ring-1 ring-[#0A46E4]";
-const inputDisabled = "bg-gray-50 border-gray-200 text-gray-400";
+	"w-full h-[52px] rounded-[12px] px-4 outline-none border transition-colors font-semibold text-gray-900 placeholder:text-gray-500 bg-white dark:text-gray-100 dark:placeholder:text-gray-400";
+const inputIdle = "border-gray-200 bg-white focus:border-[#3B82F6] text-gray-900 placeholder:text-gray-500";
+const _inputActive = "border-[#0A46E4] ring-1 ring-[#0A46E4]";
+const _inputDisabled = "bg-gray-50 border-gray-200 text-gray-400";
 const inputError = "border-red-400 bg-white";
 const buttonCls =
   "w-full h-[48px] rounded-[12px] text-white text-[16px] font-medium bg-[#0A46E4] disabled:bg-gray-200 disabled:text-gray-500";
