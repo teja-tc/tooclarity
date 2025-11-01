@@ -4,13 +4,12 @@ import React, { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { authAPI } from "@/lib/api";
-import StudentOtpSuccess from "./StudentOtpSuccess"; // 👈 Import success screen
-
 interface StudentOtpScreenProps {
   phoneNumber?: string;
   _onVerify?: (otp: string) => Promise<void>;
   onResendOtp?: () => Promise<void>;
   onBack?: () => void;
+  onSuccess?: () => void;
 }
 
 const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
@@ -18,14 +17,14 @@ const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
   _onVerify,
   onResendOtp,
   onBack,
+  onSuccess,
 }) => {
   const router = useRouter();
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resendTimer, setResendTimer] = useState(59);
+  const [resendTimer, setResendTimer] = useState(30);
   const [canResend, setCanResend] = useState(false);
-  const [isVerified, setIsVerified] = useState(false); // ✅ Success state
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Timer for resend OTP
@@ -89,7 +88,9 @@ const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
       });
 
       if (response?.success) {
-        setIsVerified(true);
+        if (onSuccess) {
+          onSuccess();
+        }
       } else {
         throw new Error("Invalid OTP");
       }
@@ -104,15 +105,18 @@ const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
   const handleResendOtp = async () => {
     if (!canResend) return;
     try {
-      if (onResendOtp) {
-        await onResendOtp();
+      const response = await authAPI.resendOTP({
+        contactNumber: phoneNumber,
+      });
+
+      if (response?.success) {
+        setResendTimer(30);
+        setCanResend(false);
+        setOtp(new Array(6).fill(""));
+        inputRefs.current[0]?.focus();
       } else {
-        console.log("Resending OTP...");
+        setError("Failed to resend OTP. Please try again.");
       }
-      setResendTimer(59);
-      setCanResend(false);
-      setOtp(new Array(6).fill(""));
-      inputRefs.current[0]?.focus();
     } catch (error) {
       console.error("Resend OTP error:", error);
       setError("Failed to resend OTP. Please try again.");
@@ -124,28 +128,8 @@ const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
     else router.back();
   };
 
-  if (isVerified) {
-    return (
-      <StudentOtpSuccess
-        title="OTP Verified Successfully!"
-        description="Your mobile number has been verified successfully."
-        continueLabel="Continue"
-        onContinue={() => router.push("/student/dashboard")}
-      />
-    );
-  }
-
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
-      <header className="flex items-center gap-3 text-blue-600">
-        <button
-          onClick={handleBack}
-          className="rounded-full p-1 transition hover:bg-blue-50"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-      </header>
-
       <div className="mt-8 flex-1">
         <div>
           <h1 className="text-xl font-semibold text-gray-900 mb-3">

@@ -53,9 +53,9 @@ class RedisUtil {
    * @param {string} otp
    * @param {number} ttlSeconds
    */
-  static async saveOtp(email, otp, ttlSeconds = 900) {
-    const key = `otp:${email}`;
-    await redis.set(key, otp, "EX", ttlSeconds);
+  static async saveOtp(key, otp, ttlSeconds = 900) {
+    const finalKey = `otp:${key}`;
+    await redis.set(finalKey, otp, "EX", ttlSeconds);
   }
 
   /**
@@ -63,9 +63,9 @@ class RedisUtil {
    * @param {string} email
    * @returns {string|null}
    */
-  static async getOtp(email) {
-    const key = `otp:${email}`;
-    return await redis.get(key);
+  static async getOtp(key) {
+    const finalKey = `otp:${key}`;
+    return await redis.get(finalKey);
   }
 
   /**
