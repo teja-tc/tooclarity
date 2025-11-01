@@ -59,7 +59,7 @@ exports.googleAuthCallback = async (req, res, next) => {
     const payload = JSON.parse(
       Buffer.from(id_token.split(".")[1], "base64").toString()
     );
-    const { email, name, picture, sub } = payload;
+    const { email, name, sub } = payload;
 
     // 3️⃣ Attach normalized body
     req.body = {
@@ -67,7 +67,6 @@ exports.googleAuthCallback = async (req, res, next) => {
       email,
       contactNumber: "",
       address: "",
-      profilePicture: picture || "",
       googleId: sub,
       type: state, // student | institution | admin
     };

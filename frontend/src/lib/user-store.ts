@@ -18,6 +18,9 @@ export interface User {
   isProfileCompleted?: boolean;
   role: string;
   googleId?: string;
+  profilePicture?: string;
+  address?: string;
+  birthday?: string;
 }
 
 interface UserStoreState {
@@ -85,6 +88,9 @@ export const useUserStore = create<UserStoreState>((set, get) => ({
             isProfileCompleted: data.isProfileCompleted ?? false,
             role: data.role || "",
             googleId: data.googleId,
+            address: data.address || "",
+            birthday: data.birthday || "",
+            profilePicture: data.profilePicture || "",
           };
           get().setUser(user);
           return true;
@@ -123,11 +129,14 @@ export const useUserStore = create<UserStoreState>((set, get) => ({
           linkedin: response.data.linkedin || "",
           verified: true,
           name: response.data.name,
-          institution: response.data.institution || ",",
+          institution: response.data.institution || "",
           isPaymentDone: response.data.isPaymentDone || false,
           isProfileCompleted: response.data.isProfileCompleted || false,
           role: response.data.role || "",
           googleId: response.data.googleId,
+          profilePicture: response.data.profilePicture || "",
+          address: response.data.address || "",
+          birthday: response.data.birthday || "",
         };
         set({ user: u, isAuthenticated: true });
       } else {
