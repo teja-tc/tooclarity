@@ -118,7 +118,7 @@ export default function Otp_DialogBox({
     setError("");
 
     try {
-      const response = await authAPI.resendOTP(email);
+      const response = await authAPI.resendOTP({email: email});
       
       if (response.success) {
         setTimer(60);
