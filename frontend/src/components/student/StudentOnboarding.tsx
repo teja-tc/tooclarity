@@ -6,14 +6,15 @@ import { useUserStore } from "@/lib/user-store";
 import { studentDashboardAPI, studentOnboardingAPI } from "@/lib/students-api";
 import { apiRequest } from "@/lib/api";
 import { uploadToS3 } from "@/lib/awsUpload";
-import InputField, { DateInput, FormField, RadioGroup, Dropdown, validateDateInstant } from "@/components/ui/InputField";
+import InputField, { DateInput, FormField, Dropdown, validateDateInstant } from "@/components/ui/InputField";
+import Image from "next/image";
 
 const labelCls = "text-[17px] font-semibold text-gray-900";
 const inputBase =
 	"w-full h-[52px] rounded-[12px] px-4 outline-none border transition-colors font-semibold text-gray-900 placeholder:text-gray-500 bg-white dark:text-gray-100 dark:placeholder:text-gray-400";
 const inputIdle = "border-gray-200 bg-white focus:border-[#3B82F6] text-gray-900 placeholder:text-gray-500";
-const inputActive = "border-[#0A46E4] ring-1 ring-[#0A46E4]";
-const inputDisabled = "bg-gray-50 border-gray-200 text-gray-400";
+const _inputActive = "border-[#0A46E4] ring-1 ring-[#0A46E4]";
+const _inputDisabled = "bg-gray-50 border-gray-200 text-gray-400";
 const inputError = "border-red-400 bg-white";
 const buttonCls =
 	"w-full h-[48px] rounded-[12px] text-white text-[16px] font-medium bg-[#0A46E4] disabled:bg-gray-200 disabled:text-gray-500";
@@ -135,7 +136,7 @@ const StudentonBoarding: React.FC = () => {
 		"Japan","UAE","Finland"
 	];
 
-	const countryToFlag: Record<string,string> = {
+	const _countryToFlag: Record<string,string> = {
 		USA: "🇺🇸",
 		Australia: "🇦🇺",
 		UK: "🇬🇧",
@@ -206,7 +207,7 @@ const StudentonBoarding: React.FC = () => {
 				if (p.profilePicture) setAvatarUrl(p.profilePicture);
 				// If backend returns birthday, format it
 				if (p.birthday && !birthday) setBirthday(formatISOToDDMMYYYY(p.birthday));
-			} catch (e) {
+			} catch (_e) {
 				// fallback to Zustand
 				if (user?.name && !fullName) {
 					setFullName(user.name);
@@ -279,8 +280,8 @@ const StudentonBoarding: React.FC = () => {
                         });
                         setErrors((p) => { const n = { ...p }; delete n.profilePicture; return n; });
                         return { success: true } as const;
-                    } catch (e: any) {
-                        const msg = (e?.message || "Failed to save picture to profile.");
+                    } catch (e: unknown) {
+                        const msg = ((e as Error)?.message || "Failed to save picture to profile.");
                         setErrors((p) => ({ ...p, profilePicture: msg }));
                         return { success: false, message: msg } as const;
                     }
@@ -319,8 +320,8 @@ const StudentonBoarding: React.FC = () => {
                     method: "PUT",
                     body: JSON.stringify({ profilePicture: uploaded.fileUrl })
                 });
-            } catch (e: any) {
-                const msg = (e?.message || "Failed to save picture to profile.");
+            } catch (e: unknown) {
+                const msg = ((e as Error)?.message || "Failed to save picture to profile.");
                 setErrors((p) => ({ ...p, profilePicture: msg }));
                 return { success: false, message: msg } as const;
             }
@@ -328,13 +329,13 @@ const StudentonBoarding: React.FC = () => {
             // Clear picture error on success
             setErrors((p) => { const n = { ...p }; delete n.profilePicture; return n; });
             return { success: true } as const;
-        } catch (e: any) {
+        } catch (e: unknown) {
             // Map common backend 500 from presign route to actionable hint
             let msg = "Could not upload profile picture.";
-            if (typeof e?.message === 'string' && /presigned url|get presigned url|500/i.test(e.message)) {
+            if (typeof (e as { message?: string })?.message === 'string' && (e as { message?: string })?.message && /presigned url|get presigned url|500/i.test((e as { message?: string })?.message as string)) {
                 msg = "Upload service not configured (presign failed). Please contact support.";
             }
-            setErrors((p) => ({ ...p, profilePicture: msg }));
+            setErrors((p) => ({ ...p, profilePicture: msg as string }));
             return { success: false, message: msg } as const;
         }
     }, [avatarFile, avatarUrl, studentId]);
@@ -345,7 +346,7 @@ const StudentonBoarding: React.FC = () => {
 			if (!validatePersonal()) return;
 			setSubmitting(true);
 			try {
-				console.log("User data:", user);
+				if (process.env.NODE_ENV === 'development') console.log("User data:", user);
 				
 				// First get the current user profile to get the user ID
 				const profileRes = await studentDashboardAPI.getProfile();
@@ -361,21 +362,21 @@ const StudentonBoarding: React.FC = () => {
 					contactNumber: user?.phone && /^\d{10}$/.test(user.phone) ? user.phone : undefined,
 					address: location.trim(),
 				};
-				console.log("Sending payload to update user:", payload);
+				if (process.env.NODE_ENV === 'development') console.log("Sending payload to update user:", payload);
 				
 				// Update the existing user using the correct endpoint
 				const res = await apiRequest(`/v1/students/${currentUser.id}`, {
 					method: "PUT",
 					body: JSON.stringify(payload),
 				});
-				console.log("API response:", res);
+				if (process.env.NODE_ENV === 'development') console.log("API response:", res);
 				
 				// Use the current user's ID as the student ID
 				setStudentId(currentUser.id);
 				setStep(5);
-			} catch (e) {
-				console.error("Error updating student profile:", e);
-				setErrors((p) => ({ ...p, submit: e instanceof Error ? e.message : "Failed to save" }));
+			} catch (_e) {
+				console.error("Error updating student profile:", _e);
+				setErrors((p) => ({ ...p, submit: _e instanceof Error ? _e.message : "Failed to save" }));
 			} finally {
 				setSubmitting(false);
 			}
@@ -394,14 +395,15 @@ const StudentonBoarding: React.FC = () => {
 					setSubmitting(true);
 					if (!studentId) {
 						const profileRes = await studentDashboardAPI.getProfile();
-						const sid = (profileRes as any)?.data?._id || (profileRes as any)?._id || (profileRes as any)?.data?.id || (profileRes as any)?.id || null;
-						setStudentId(sid);
+						const profileData = profileRes as unknown as Record<string, unknown>;
+						const sid = (profileData?.data as Record<string, unknown>)?.id || profileData?.id || null;
+						setStudentId(sid as string | null);
 					}
 					setProfileCompleted(true);
 					router.replace('/dashboard');
-				} catch (e) {
-					console.error('Study Halls quick-complete on continue failed', e);
-					setErrors((p) => ({ ...p, submit: e instanceof Error ? e.message : 'Failed to complete onboarding' }));
+				} catch (_e) {
+					console.error('Study Halls quick-complete on continue failed', _e);
+					setErrors((p) => ({ ...p, submit: _e instanceof Error ? _e.message : 'Failed to complete onboarding' }));
 				} finally {
 					setSubmitting(false);
 				}
@@ -499,8 +501,8 @@ const StudentonBoarding: React.FC = () => {
 			setSubmitting(true);
 			try {
 			// Build details object based on selected interest
-			let details: any = {};
-			let profileTypeToSend = selectedInterest;
+			let details: Record<string, unknown> = {};
+			let profileTypeToSend: "KINDERGARTEN" | "SCHOOL" | "INTERMEDIATE" | "GRADUATION" | "COACHING_CENTER" | "STUDY_ABROAD" | "STUDY_HALLS" | "TUITION_CENTER" = selectedInterest as "KINDERGARTEN" | "SCHOOL" | "INTERMEDIATE" | "GRADUATION" | "COACHING_CENTER" | "STUDY_ABROAD" | "STUDY_HALLS" | "TUITION_CENTER";
 
 			switch (selectedInterest) {
 				case "KINDERGARTEN":
@@ -559,14 +561,14 @@ const StudentonBoarding: React.FC = () => {
 					break;
 
 				case "STUDY_HALLS":
-					details = { any: true };
+					details = { studyHalls: true };
 					break;
 			}
 
-			console.log("Sending academic profile:", { profileType: profileTypeToSend, details });
+			if (process.env.NODE_ENV === 'development') console.log("Sending academic profile:", { profileType: profileTypeToSend, details });
 
             await studentOnboardingAPI.updateAcademicProfile(studentId!, {
-				profileType: profileTypeToSend as any,
+				profileType: profileTypeToSend,
 					details,
 				});
                 // Attempt to upload/persist profile picture URL before finishing (mandatory)
@@ -577,9 +579,9 @@ const StudentonBoarding: React.FC = () => {
                 }
                 setProfileCompleted(true);
                 router.replace("/dashboard");
-			} catch (e) {
-			console.error("Error submitting academic profile:", e);
-				setErrors((p) => ({ ...p, submit: e instanceof Error ? e.message : "Failed to save academic profile" }));
+			} catch (_e) {
+			console.error("Error submitting academic profile:", _e);
+				setErrors((p) => ({ ...p, submit: _e instanceof Error ? _e.message : _e as string || "Failed to save academic profile" }));
 			} finally {
 				setSubmitting(false);
 		}
@@ -598,7 +600,7 @@ const StudentonBoarding: React.FC = () => {
 		<div className="flex flex-col items-center gap-4 mt-6">
 			<div className="relative w-[120px] h-[120px] rounded-full bg-gray-200 overflow-hidden shadow-sm">
 				{avatarUrl ? (
-					<img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+					<Image src={avatarUrl} alt="avatar" width={120} height={120} className="w-full h-full object-cover" />
 				) : (
 					<div className="w-full h-full flex items-center justify-center text-white" style={{ background: "linear-gradient(135deg,#4F46E5,#2563EB)" }}>
 						<span className="text-3xl font-semibold select-none">
@@ -619,7 +621,7 @@ const StudentonBoarding: React.FC = () => {
 		</div>
 	);
 
-	const field = (
+	const _field = (
 		name: "fullName" | "birthday" | "location",
 		label: string,
 		placeholder: string,
@@ -699,7 +701,7 @@ const StudentonBoarding: React.FC = () => {
 		</div>
 	);
 
-	const interestsGrid = (
+	const _interestsGrid = (
 		<div className="grid grid-cols-2 gap-4 mt-4">
 			{interests.map((c) => (
 		<button
@@ -1156,7 +1158,7 @@ const StudentonBoarding: React.FC = () => {
 		}
 	};
 
-	const renderAdditionalForm = () => (
+	const _renderAdditionalForm = () => (
 		<div className="flex flex-col gap-4 mt-6">
 			<div className="transition">
 				<span className={labelCls}>Additional Information</span>
@@ -1230,9 +1232,11 @@ const StudentonBoarding: React.FC = () => {
 										}}
 										className={`h-[88px] rounded-[12px] border text-[12px] flex flex-col items-center justify-center bg-white gap-1 ${selected ? "border-[#0A46E4] ring-2 ring-[#0A46E4]/20" : "border-gray-200"}`}
 									>
-										<img
+										<Image
 											src={getCountryImageSrc(country)}
 											alt={`${country} flag`}
+											width={40}
+											height={40}
 											className="w-[40px] h-[40px] rounded-full object-cover"
 											onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/globe.svg"; }}
 										/>
@@ -1261,9 +1265,11 @@ const StudentonBoarding: React.FC = () => {
 										}}
 									className={`h-[80px] rounded-[12px] border text-[12px] flex flex-col items-center justify-center bg-white gap-1 ${selected ? "border-[#0A46E4] ring-2 ring-[#0A46E4]/20" : "border-gray-200"}`}
 									>
-										<img
+										<Image
 											src={getCountryImageSrc(country)}
 											alt={`${country} flag`}
+											width={36}
+											height={36}
 											className="w-[36px] h-[36px] rounded-full object-cover"
 											onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/globe.svg"; }}
 										/>
@@ -1312,9 +1318,11 @@ const StudentonBoarding: React.FC = () => {
 					}}
 					className={`h-[90px] rounded-[14px] border bg-white flex flex-col items-center justify-center gap-1 ${selected ? "border-[#0A46E4] ring-2 ring-[#0A46E4]/20" : "border-gray-200"}`}
 				>
-					<img
+					<Image
 						src={getCountryImageSrc(name)}
 						alt={`${name} flag`}
+						width={46}
+						height={46}
 						className={`w-[46px] h-[46px] rounded-full object-cover ${selected ? "ring-2 ring-[#0A46E4]" : "ring-0"}`}
 						onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/globe.svg"; }}
 					/>
@@ -1415,9 +1423,11 @@ const StudentonBoarding: React.FC = () => {
                                         <div className="whitespace-pre-line text-[13px] font-semibold leading-tight pr-2 text-white [text-shadow:0_1px_1px_rgba(0,0,0,0.25)]">
 											{c.label}
 										</div>
-                                        <img
+                                        <Image
                                             src={interestImageFor(c.key)}
                                             alt={c.label}
+                                            width={82}
+                                            height={82}
                                             className="pointer-events-none absolute bottom-1 right-2 w-[82px] h-[82px] object-contain opacity-95"
                                             onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/globe.svg"; }}
                                         />

@@ -139,7 +139,7 @@ export default function TuitionCenterForm({
 
       {/* Operational Days */}
       <div className="flex flex-col gap-2">
-        <label className="font-medium text-[16px]">Operational Day's<span className="text-red-500 ml-1">*</span></label>
+        <label className="font-medium text-[16px]">Operational Day&apos;s<span className="text-red-500 ml-1">*</span></label>
         <div className="flex flex-wrap gap-2">
           {["Mon", "Tues", "Wed", "Thur", "Fri", "Sat"].map((day) => (
             <button
@@ -184,7 +184,7 @@ export default function TuitionCenterForm({
 
       {/* Operational Times */}
       <div className="flex flex-col gap-2">
-        <label className="font-medium text-[16px]">Operational Time's<span className="text-red-500 ml-1">*</span></label>
+        <label className="font-medium text-[16px]">Operational Time&apos;s<span className="text-red-500 ml-1">*</span></label>
         <div className="grid grid-cols-2 gap-2">
           <div>
             <IconInput icon={<Clock size={18} />}>

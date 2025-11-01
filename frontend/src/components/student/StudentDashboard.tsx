@@ -132,8 +132,9 @@ const StudentDashboard: React.FC = () => {
       // Notify other components in the same window that wishlist changed
       try {
         window.dispatchEvent(new CustomEvent('wishlistUpdated'));
-      } catch (e) {
+      } catch (_e) {
         // ignore if dispatch fails in some environments
+        console.error("Error dispatching wishlistUpdated event:", _e);
       }
     }
   };

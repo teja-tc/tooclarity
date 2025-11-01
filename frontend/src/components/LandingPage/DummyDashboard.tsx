@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import {
   Search,
   Bell,
@@ -37,10 +38,13 @@ const DummyDashboard = () => {
             <Bell className="w-5 h-5 text-gray-600 cursor-pointer" />
             <Moon className="w-5 h-5 text-gray-600 cursor-pointer" />
             <div className="flex items-center space-x-2">
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face&auto=format"
                 alt="Srinivas Chari"
+                width={32}
+                height={32}
                 className="w-8 h-8 rounded-full"
+                unoptimized //Recommended for Unsplash, since they already serve optimized CDN images
               />
               <div className="hidden sm:block">
                 <div className="text-sm font-medium">Srinivas Chari</div>
@@ -127,10 +131,13 @@ const DummyDashboard = () => {
                         <td className="px-4 py-2 text-sm">{student.date}</td>
                         <td className="px-4 py-2">
                           <div className="flex items-center">
-                            <img
+                            <Image
                               src={`https://images.unsplash.com/photo-${1472099645785 + index}-5658abf4ff4e?w=32&h=32&fit=crop&crop=face&auto=format`}
                               alt={student.name}
+                              width={32}
+                              height={32}
                               className="w-8 h-8 rounded-full mr-3"
+                              unoptimized
                             />
                             <div>
                               <div className="text-sm font-medium text-gray-900">

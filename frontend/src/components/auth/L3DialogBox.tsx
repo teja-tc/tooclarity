@@ -2,27 +2,27 @@
 
 import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/levels_dialog";
+  _Dialog,
+  _DialogContent,
+  _DialogHeader,
+  _DialogTitle,
+  _DialogDescription,
+  _DialogTrigger,
+} from "@/components/ui/dialog";
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
+  _Card,
+  _CardHeader,
+  _CardTitle,
+  _CardDescription,
+  _CardContent,
+  _CardFooter,
 } from "@/components/ui/card";
-import InputField from "@/components/ui/InputField";
-import { Clock } from "lucide-react";
-import { institutionDetailsAPI, clearInstitutionData } from "@/lib/api";
-import { validateField, validateForm } from "@/lib/validations/validateField";
+// import InputField from "@/components/ui/InputField";
+// import { Clock } from "lucide-react";
+// import { institutionDetailsAPI, clearInstitutionData } from "@/lib/api";
+// import { validateField, validateForm } from "@/lib/validations/validateField";
 import {
   KindergartenSchema,
   SchoolSchema,
@@ -37,8 +37,9 @@ import {
 } from "@/lib/localDb";
 import {
   exportAndUploadInstitutionAndCourses,
-  exportInstitutionAndCoursesToFile,
+  // exportInstitutionAndCoursesToFile,
 } from "@/lib/utility";
+import { validateField, validateForm } from "@/lib/validations/validateField";
 
 
 // ✅ 1. Import all your specific form components
@@ -48,6 +49,17 @@ import CollegeForm from "./L3DialogBoxParts/CollegeForm";
 import CoachingForm from "./L3DialogBoxParts/CoachingForm";
 import UndergraduateForm from "./L3DialogBoxParts/UndergraduateForm";
 
+interface KindergartenFormData extends Record<string, unknown> {
+  schoolType: string;
+  curriculumType: string;
+  openingTime: string;
+  closingTime: string;
+  operationalDays: string[];
+  extendedCare: string;
+  mealsProvided: string;
+  outdoorPlayArea: string;
+}
+
 interface L3DialogBoxProps {
   trigger?: React.ReactNode;
   open: boolean;
@@ -56,7 +68,7 @@ interface L3DialogBoxProps {
   onPrevious?: () => void; // 👈 add this
 }
 
-interface InputFieldProps {
+interface _InputFieldProps {
   label: string;
   name: string;
   value: string;
@@ -73,7 +85,7 @@ interface InputFieldProps {
   className?: string;
   error?: string;
 }
-interface InputFieldProps {
+interface _InputFieldProps {
   label: string;
   name: string;
   value: string;
@@ -162,6 +174,11 @@ export default function L3DialogBox({
 
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Handle controlled open state
+  const DialogOpen = open !== undefined ? open : isOpen;
+  const setDialogOpen = onOpenChange || setIsOpen;
+  
   let institutionType: string | null = null;
   // const institutionType = localStorage.getItem("institutionType");
   if (typeof window !== "undefined") {
@@ -178,7 +195,7 @@ export default function L3DialogBox({
     institutionType === "Under Graduation/Post Graduation";
 
   useEffect(() => {
-    if (!dialogOpen) return;
+    if (!DialogOpen) return;
 
     let isMounted = true;
     (async () => {
@@ -221,9 +238,9 @@ export default function L3DialogBox({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [DialogOpen]);
 
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<KindergartenFormData>({
     schoolType: "",
     curriculumType: "",
     openingTime: "",
@@ -299,60 +316,56 @@ export default function L3DialogBox({
     Partial<Record<keyof UndergraduateFormData, string>>
   >({});
 
-  // Handle controlled open state
-  const dialogOpen = open !== undefined ? open : isOpen;
-  const setDialogOpen = onOpenChange || setIsOpen;
-
   // ---------- Handlers ----------
 
-  const handleRadioChangeField = (name: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    const error = validateField(KindergartenSchema, name, value);
-    setFormErrors((prev) => ({ ...prev, [name]: error }));
-  };
+  // const handleRadioChangeField = (name: keyof FormData, value: string) => {
+  //   setFormData((prev) => ({ ...prev, [name]: value }));
+  //   const error = validateField(KindergartenSchema, name, value);
+  //   setFormErrors((prev) => ({ ...prev, [name]: error }));
+  // };
 
-  const handleOperationalDayToggle = (day: string) => {
-    setFormData((prev) => {
-      const updatedDays = prev.operationalDays.includes(day)
-        ? prev.operationalDays.filter((d) => d !== day)
-        : [...prev.operationalDays, day];
+  // const handleOperationalDayToggle = (day: string) => {
+  //   setFormData((prev) => {
+  //     const updatedDays = prev.operationalDays.includes(day)
+  //       ? prev.operationalDays.filter((d) => d !== day)
+  //       : [...prev.operationalDays, day];
 
-      const error = validateField(
-        KindergartenSchema,
-        "operationalDays",
-        updatedDays
-      );
-      setFormErrors((prevErrors) => ({
-        ...prevErrors,
-        operationalDays: error,
-      }));
+  //     const error = validateField(
+  //       KindergartenSchema,
+  //       "operationalDays",
+  //       updatedDays
+  //     );
+  //     setFormErrors((prevErrors) => ({
+  //       ...prevErrors,
+  //       operationalDays: error,
+  //     }));
 
-      return { ...prev, operationalDays: updatedDays };
-    });
-  };
+  //     return { ...prev, operationalDays: updatedDays };
+  //   });
+  // };
 
   // --- ONCHANGE HANDLERS ---
 
   // Time fields (opening/closing) handler
-  const handleTimeChange = (
-    name: "openingTime" | "closingTime",
-    value: string
-  ) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  // const handleTimeChange = (
+  //   name: "openingTime" | "closingTime",
+  //   value: string
+  // ) => {
+  //   setFormData((prev) => ({ ...prev, [name]: value }));
 
-    const error = validateField(KindergartenSchema, name, value); // Joi schema handles HH:MM + required
-    setFormErrors((prev) => ({ ...prev, [name]: error }));
-  };
+  //   const error = validateField(KindergartenSchema, name, value); // Joi schema handles HH:MM + required
+  //   setFormErrors((prev) => ({ ...prev, [name]: error }));
+  // };
 
-  const handleFieldChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  // const handleFieldChange = (
+  //   e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  // ) => {
+  //   const { name, value } = e.target;
+  //   setFormData((prev) => ({ ...prev, [name]: value }));
 
-    const error = validateField(KindergartenSchema, name, value);
-    setFormErrors((prev) => ({ ...prev, [name]: error }));
-  };
+  //   const error = validateField(KindergartenSchema, name, value);
+  //   setFormErrors((prev) => ({ ...prev, [name]: error }));
+  // };
 
   const handleSchoolFieldChange = (
     e: React.ChangeEvent<
@@ -399,7 +412,7 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
   e.preventDefault();
 
   // Validate with Joi
-  const errors = validateForm(SchoolSchema, schoolFormData);
+  const errors = validateForm(SchoolSchema, schoolFormData as unknown as Record<string, unknown>);
   setSchoolFormErrors(errors);
   if (Object.keys(errors).length > 0) return;
 
@@ -415,7 +428,7 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
 
     const schools = await getAllInstitutionsFromDB?.();
 
-    const normalize = (x: any) => ({
+    const normalize = (x: import("@/lib/localDb").InstitutionRecord | Record<string, unknown>) => ({
       schoolType: x.schoolType || "",
       schoolCategory: x.schoolCategory || "",
       curriculumType: x.curriculumType || "",
@@ -429,9 +442,9 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
     const latest =
       schools && schools.length > 0
         ? schools.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
-        : null;
+        : undefined;
 
-    const current = normalize(schoolFormDataWithBooleans);
+    const current = normalize(schoolFormDataWithBooleans) as import("@/lib/localDb").InstitutionRecord;
     let effectiveId: number | null = null;
 
     if (latest) {
@@ -443,14 +456,14 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
         effectiveId = latest.id || null;
       } else {
         await updateInstitutionInDB({
-          ...(latest as any),
-          ...current,
+          ...(latest as import("@/lib/localDb").InstitutionRecord),
+          ...(current as import("@/lib/localDb").InstitutionRecord),
           id: latest.id,
         });
         effectiveId = latest.id || null;
       }
     } else {
-      const id = await addInstitutionToDB(current);
+      const id = await addInstitutionToDB(current as import("@/lib/localDb").InstitutionRecord);
       effectiveId = id;
       console.log("School saved locally with id:", id);
     }
@@ -473,29 +486,29 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
     setIsLoading(false);
   }
 };
-  const handleSchoolChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setSchoolFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  // const handleSchoolChange = (
+  //   e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  // ) => {
+  //   const { name, value } = e.target;
+  //   setSchoolFormData((prev) => ({ ...prev, [name]: value }));
+  // };
 
-  const handleSchoolOperationalDayChange = (day: string) => {
-    setSchoolFormData((prev) => ({
-      ...prev,
-      operationalDays: prev.operationalDays.includes(day)
-        ? prev.operationalDays.filter((d) => d !== day)
-        : [...prev.operationalDays, day],
-    }));
-  };
+  // const handleSchoolOperationalDayChange = (day: string) => {
+  //   setSchoolFormData((prev) => ({
+  //     ...prev,
+  //     operationalDays: prev.operationalDays.includes(day)
+  //       ? prev.operationalDays.filter((d) => d !== day)
+  //       : [...prev.operationalDays, day],
+  //   }));
+  // };
 
-  const handleSchoolRadioChange = (name: string, value: string) => {
-    setSchoolFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  // const handleSchoolRadioChange = (name: string, value: string) => {
+  //   setSchoolFormData((prev) => ({ ...prev, [name]: value }));
+  // };
 
-  const handleCoachingRadioChange = (name: string, value: string) => {
-    setCoachingFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  // const handleCoachingRadioChange = (name: string, value: string) => {
+  //   setCoachingFormData((prev) => ({ ...prev, [name]: value }));
+  // };
   const handleCollegeFieldChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
@@ -544,7 +557,7 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
     // setSubmitted(true);
 
     // ✅ Validate form
-    const errors = validateForm(CollegeSchema, collegeFormData);
+    const errors = validateForm(CollegeSchema, collegeFormData as unknown as Record<string, unknown>);
     setCollegeFormErrors(errors);
 
     if (Object.keys(errors).length > 0) return;
@@ -563,7 +576,7 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
       const colleges = await getAllInstitutionsFromDB?.(); // 🔑 need to implement in localDb.ts
 
       // Normalize for comparison
-      const normalize = (x: any) => ({
+      const normalize = (x: import("@/lib/localDb").InstitutionRecord | Record<string, unknown>) => ({
         collegeType: x.collegeType || "",
         collegeCategory: x.collegeCategory || "",
         curriculumType: x.curriculumType || "",
@@ -577,7 +590,7 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
       const latest =
         colleges && colleges.length > 0
           ? colleges.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
-          : null;
+          : undefined;
 
       const current = normalize(collegeFormDataWithBooleans);
       let effectiveId: number | null = null;
@@ -593,15 +606,14 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
         } else {
           // ✅ update existing
           await updateInstitutionInDB({
-            ...(latest as any),
-            ...current,
             id: latest.id,
+            ...(current as import("@/lib/localDb").InstitutionRecord),
           });
           effectiveId = latest.id || null;
         }
       } else {
         // ✅ insert new
-        const id = await addInstitutionToDB(current);
+        const id = await addInstitutionToDB(current as import("@/lib/localDb").InstitutionRecord);
         effectiveId = id;
         console.log("College saved locally with id:", id);
       }
@@ -648,30 +660,30 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
     }
   };
 
-  const handleCollegeChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setCollegeFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  // const handleCollegeChange = (
+  //   e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  // ) => {
+  //   const { name, value } = e.target;
+  //   setCollegeFormData((prev) => ({ ...prev, [name]: value }));
+  // };
 
-  const handleCollegeOperationalDayChange = (day: string) => {
-    setCollegeFormData((prev) => ({
-      ...prev,
-      operationalDays: prev.operationalDays.includes(day)
-        ? prev.operationalDays.filter((d) => d !== day)
-        : [...prev.operationalDays, day],
-    }));
-  };
+  // const handleCollegeOperationalDayChange = (day: string) => {
+  //   setCollegeFormData((prev) => ({
+  //     ...prev,
+  //     operationalDays: prev.operationalDays.includes(day)
+  //       ? prev.operationalDays.filter((d) => d !== day)
+  //       : [...prev.operationalDays, day],
+  //   }));
+  // };
 
-  const handleCollegeRadioChange = (name: string, value: string) => {
-    setCollegeFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  // const handleCollegeRadioChange = (name: string, value: string) => {
+  //   setCollegeFormData((prev) => ({ ...prev, [name]: value }));
+  // };
 
   const handleCoachingSubmit = async (e: FormEvent<HTMLFormElement>) => {
   e.preventDefault();
 
-  const errors = validateForm(CoachingSchema, coachingFormData);
+    const errors = validateForm(CoachingSchema, coachingFormData as unknown as Record<string, unknown>);
   setCoachingFormErrors(errors);
 
   if (errors && Object.keys(errors).length > 0) return;
@@ -691,7 +703,7 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
 
     const coachings = await getAllInstitutionsFromDB?.();
 
-    const normalize = (x: any) => ({
+    const normalize = (x: import("@/lib/localDb").InstitutionRecord | Record<string, unknown>) => ({
       placementDrives: !!x.placementDrives,
       mockInterviews: !!x.mockInterviews,
       resumeBuilding: !!x.resumeBuilding,
@@ -703,7 +715,7 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
     const latest =
       coachings && coachings.length > 0
         ? coachings.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
-        : null;
+        : undefined;
 
     const current = normalize(coachingFormDataWithBooleans);
     let effectiveId: number | null = null;
@@ -717,14 +729,13 @@ const handleSchoolSubmit = async (e: FormEvent<HTMLFormElement>) => {
         effectiveId = latest.id || null;
       } else {
         await updateInstitutionInDB({
-          ...(latest as any),
-          ...current,
           id: latest.id,
+          ...(current as import("@/lib/localDb").InstitutionRecord),
         });
         effectiveId = latest.id || null;
       }
     } else {
-      const id = await addInstitutionToDB(current);
+      const id = await addInstitutionToDB(current as import("@/lib/localDb").InstitutionRecord);
       effectiveId = id;
       console.log("Coaching center saved locally with id:", id);
     }
@@ -933,7 +944,7 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
     };
     
     // 3. Prepare a function to normalize data for DB comparison
-    const normalize = (data: any) => ({
+    const normalize = (data: import("@/lib/localDb").InstitutionRecord | Record<string, unknown>) => ({
       ownershipType: data.ownershipType || "",
       collegeCategory: data.collegeCategory || "",
       affiliationType: data.affiliationType || "",
@@ -950,12 +961,14 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
       busService: !!data.busService,
     });
     
-    const currentData = normalize(formDataWithBooleans);
+    const currentData = normalize(formDataWithBooleans) as import("@/lib/localDb").InstitutionRecord;
     let effectiveId: number | null = null;
     
     // 4. Load existing data and decide whether to update or add a new entry
     const institutions = await getAllInstitutionsFromDB();
-    const latestInstitution = institutions?.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0] || null;
+    const latestInstitution = (institutions && institutions.length > 0)
+      ? institutions.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0]
+      : undefined;
 
     if (latestInstitution) {
       const latestNormalized = normalize(latestInstitution);
@@ -965,17 +978,15 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
         effectiveId = latestInstitution.id || null;
       } else {
         await updateInstitutionInDB({
-          ...(latestInstitution as any),
-          ...currentData,
           id: latestInstitution.id,
           createdAt: latestInstitution.createdAt,
-          updatedAt: Date.now(),
+          ...(currentData as import("@/lib/localDb").InstitutionRecord),
         });
         effectiveId = latestInstitution.id || null;
       }
     } else {
       const newId = await addInstitutionToDB({
-        ...currentData,
+        ...(currentData as import("@/lib/localDb").InstitutionRecord),
         createdAt: Date.now(),
       });
       effectiveId = newId;
@@ -1102,7 +1113,7 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
     e.preventDefault();
 
     // Validate with Joi
-    const errors = validateForm(KindergartenSchema, formData);
+    const errors = validateForm(KindergartenSchema, formData as unknown as Record<string, unknown>);
     setFormErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
@@ -1127,18 +1138,18 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
           : null;
 
       // Normalize for comparison
-      const normalize = (x: any) => ({
-        schoolType: x.schoolType || "",
-        curriculumType: x.curriculumType || "",
-        openingTime: x.openingTime || "",
-        closingTime: x.closingTime || "",
-        operationalDays: x.operationalDays || [],
-        extendedCare: !!x.extendedCare,
-        mealsProvided: !!x.mealsProvided,
-        outdoorPlayArea: !!x.outdoorPlayArea,
+      const normalize = (x: import("@/lib/localDb").InstitutionRecord | Record<string, unknown>): import("@/lib/localDb").InstitutionRecord => ({
+        schoolType: (x.schoolType as string) || "",
+        curriculumType: (x.curriculumType as string) || "",
+        openingTime: (x.openingTime as string) || "",
+        closingTime: (x.closingTime as string) || "",
+        operationalDays: (x.operationalDays as string[]) || [],
+        extendedCare: (x.extendedCare as string) || "",
+        mealsProvided: (x.mealsProvided as string) || "",
+        outdoorPlayArea: (x.outdoorPlayArea as string) || "",
       });
 
-      const current = normalize(formDataWithBooleans);
+      const current = normalize(formDataWithBooleans) as import("@/lib/localDb").InstitutionRecord ;
       let effectiveId: number | null = null;
 
       if (latest) {
@@ -1151,19 +1162,15 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
         } else {
           // ✅ update existing
           await updateInstitutionInDB({
-            ...(latest as any),
-            ...current,
             id: latest.id,
-            createdAt: latest.createdAt, // preserve createdAt
-            updatedAt: Date.now(),
+            ...(current as import("@/lib/localDb").InstitutionRecord),
           });
           effectiveId = latest.id || null;
         }
       } else {
         // ✅ insert new
         const id = await addInstitutionToDB({
-          ...(latest as any),
-          ...current,
+          ...(current as import("@/lib/localDb").InstitutionRecord),
           createdAt: Date.now(),
         });
         effectiveId = id;
@@ -1208,17 +1215,17 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
   };
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+    <_Dialog open={DialogOpen} onOpenChange={setDialogOpen}>
+      {trigger && <_DialogTrigger asChild>{trigger}</_DialogTrigger>}
 
-      <DialogContent
+      <_DialogContent
         className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
         showCloseButton={false}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
-          <CardContent className="space-y-6">
+        <_Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
+          <_CardContent className="space-y-6">
 
             {/* ✅ 2. Conditionally render the correct imported form component */}
 
@@ -1230,9 +1237,9 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                 handleRadioChange={handleRadioChange}
                 handleOperationalDayChange={handleOperationalDayChange}
                 operationalDaysOptions={operationalDaysOptions}
-                handleSubmit={handleSubmit}
+                handleSubmit={handleSubmit as unknown as (e: React.FormEvent<Element>) => void}
                 isLoading={isLoading}
-                onPrevious={onPrevious}
+                onPrevious={onPrevious || (() => {})}
               />
             )}
 
@@ -1246,7 +1253,7 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                 operationalDaysOptions={operationalDaysOptions}
                 handleSchoolSubmit={handleSchoolSubmit}
                 isLoading={isLoading}
-                onPrevious={onPrevious}
+                onPrevious={onPrevious || (() => {})}
               />
             )}
             
@@ -1257,7 +1264,7 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                 handleCoachingFieldChange={handleCoachingFieldChange}
                 handleCoachingSubmit={handleCoachingSubmit}
                 isLoading={isLoading}
-                onPrevious={onPrevious}
+                onPrevious={onPrevious || (() => {})}
               />
             )}
 
@@ -1271,7 +1278,7 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                 operationalDaysOptions={operationalDaysOptions}
                 handleCollegeSubmit={handleCollegeSubmit}
                 isLoading={isLoading}
-                onPrevious={onPrevious}
+                onPrevious={onPrevious || (() => {})}
               />
             )}
 
@@ -1283,26 +1290,26 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
                 handleUndergraduateRadioChange={handleUndergraduateRadioChange}
                 handleUndergraduateSubmit={handleUndergraduateSubmit}
                 isLoading={isLoading}
-                onPrevious={onPrevious}
+                onPrevious={onPrevious || (() => {})}
               />
             )}
             
-          </CardContent>
-        </Card>
-      </DialogContent>
-    </Dialog>
+          </_CardContent>
+        </_Card>
+      </_DialogContent>
+    </_Dialog>
   );
-//     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-//       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
+//     <_Dialog open={DialogOpen} onOpenChange={setDialogOpen}>
+//       {trigger && <_DialogTrigger asChild>{trigger}</_DialogTrigger>}
 
-//       <DialogContent
+//       <_DialogContent
 //         className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
 //         showCloseButton={false}
-//         onEscapeKeyDown={(e) => e.preventDefault()}
-//         onInteractOutside={(e) => e.preventDefault()}
+//         onEscapeKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => e.preventDefault()}
+//         onInteractOutside={(e: React.MouseEvent<HTMLDivElement>) => e.preventDefault()}
 //       >
-//         <Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
-//           <CardContent className="space-y-6">
+//         <_Card className="w-full sm:p-6 rounded-[24px] bg-white border-0 shadow-none">
+//           <_CardContent className="space-y-6">
 //             {isKindergarten && (
 //               <>
 //                 <div className="space-y-2">
@@ -2279,9 +2286,9 @@ const handleUndergraduateSubmit = async (e: React.FormEvent<HTMLFormElement>) =>
 //   </form>
 // </>
 //             )}
-//           </CardContent>
-//         </Card>
-//       </DialogContent>
-//     </Dialog>
+//           </_CardContent>
+//         </_Card>
+//       </_DialogContent>
+//     </_Dialog>
 //   );
 }

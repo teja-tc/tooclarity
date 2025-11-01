@@ -1,5 +1,5 @@
 ﻿"use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,7 +9,7 @@ import {
   faMoon, 
   faUser
 } from "@fortawesome/free-regular-svg-icons";
-import { faSun,faSearch, faTimes, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faSun,faSearch, faTimes } from "@fortawesome/free-solid-svg-icons";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -20,6 +20,7 @@ import { toast } from "react-toastify";
 import { cacheSet, CACHE_DURATION } from "@/lib/localDb";
 import { useProfile } from "@/lib/hooks/user-hooks";
 import { useSearch } from "@/lib/search-context";
+
 
 interface TopbarProps {
   userName?: string;
@@ -35,7 +36,7 @@ type NotificationItem = {
   time: number; // epoch
   read: boolean;
   category?: "system" | "billing" | "user" | "security" | "other";
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 };
 
 const STORAGE_KEY = "app_notifications_v1";
@@ -45,12 +46,12 @@ const CACHE_KEY = 'notifications:list:v1';
 const Topbar: React.FC<TopbarProps> = ({ 
   userName, 
   onSearch, 
-  onNotificationClick,
+  //onNotificationClick,
   onProfileClick 
 }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { searchQuery, setSearchQuery, searchInPage, clearSearch, isSearchActive } = useSearch();
+  const { searchQuery, setSearchQuery, searchInPage, clearSearch, /*_isSearchActive */ } = useSearch();
   const { theme, setTheme, systemTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -63,10 +64,15 @@ const Topbar: React.FC<TopbarProps> = ({
   const [platformAdminId, setPlatformAdminId] = useState<string | null>(null);
   const [roleLabel, setRoleLabel] = useState<string>('');
 
-  const [allNotifications, setAllNotifications] = useState<NotificationItem[]>([]);
-  const [unreadTop, setUnreadTop] = useState<NotificationItem[]>([]);
-
+  const allNotificationsRef = useRef<NotificationItem[]>([]);
   const hideTimerRef = useRef<number | null>(null);
+  const [allNotifications, setAllNotifications] = useState<NotificationItem[]>([]);
+  // Update ref whenever allNotifications changes
+  useEffect(() => {
+    allNotificationsRef.current = allNotifications;
+  }, [allNotifications]);
+
+  const [unreadTop, setUnreadTop] = useState<NotificationItem[]>([]);
   const timeAgo = (ts: number): string => {
     const diff = Date.now() - ts;
     const m = Math.floor(diff / 60000);
@@ -93,7 +99,7 @@ const Topbar: React.FC<TopbarProps> = ({
         localStorage.setItem(STORAGE_KEY, JSON.stringify(seed));
       }
     } catch (err) {
-      console.error('Topbar: seedIfEmpty failed', err);
+      if (process.env.NODE_ENV === 'development') if (process.env.NODE_ENV === 'development') console.error('Topbar: seedIfEmpty failed', err);
     }
   };
 
@@ -107,7 +113,7 @@ const Topbar: React.FC<TopbarProps> = ({
       setNotificationCount(unread.length);
       setUnreadTop(unread.slice(0, 3));
     } catch (err) {
-      console.error('Topbar: loadFromStorage failed', err);
+      if (process.env.NODE_ENV === 'development') if (process.env.NODE_ENV === 'development') console.error('Topbar: loadFromStorage failed', err);
     }
   };
 
@@ -120,10 +126,10 @@ const Topbar: React.FC<TopbarProps> = ({
 
   const { data: userProfile } = useProfile();
 
-  const loadFromBackend = async () => {
+  const loadFromBackend = React.useCallback(async () => {
     try {
       // Default admin scope if available
-      let scopeParams: any = {};
+      const scopeParams: { scope?: "student" | "institute_admin" | "branch" | "admin"; studentId?: string; institutionId?: string; branchId?: string; institutionAdminId?: string } = {};
       try {
         const prof = userProfile;
         const role = prof?.role;
@@ -151,17 +157,17 @@ const Topbar: React.FC<TopbarProps> = ({
           setPlatformAdminId(null);
         }
       } catch (err) {
-        console.error('Topbar: failed to read profile for notifications scope', err);
+        if (process.env.NODE_ENV === 'development') if (process.env.NODE_ENV === 'development') console.error('Topbar: failed to read profile for notifications scope', err);
       }
-      const res = await notificationsAPI.list({ ...scopeParams, page: 1, limit: 10 });
-      if ((res as any)?.success) {
-        const items = ((res as any).data?.items || []).map((n: any) => ({
-          id: n._id,
-          title: n.title,
-          description: n.description,
-          time: n.createdAt ? new Date(n.createdAt).getTime() : Date.now(),
+      const res = await notificationsAPI.list(scopeParams as { scope?: "student" | "institution" | "branch" | "admin"; studentId?: string; institutionId?: string; branchId?: string; institutionAdminId?: string; page?: number; limit?: number; cursor?: string | null; unread?: boolean; category?: string; });
+      if ((res as { success?: boolean; data?: { items?: Array<Record<string, unknown>> } }).success) {
+        const items = ((res as { data?: { items?: Array<Record<string, unknown>> } }).data?.items || []).map((n: Record<string, unknown>) => ({
+          id: String(n._id || n.id || ''),
+          title: String(n.title || ''),
+          description: String(n.description || ''),
+          time: n.createdAt ? new Date(n.createdAt as string).getTime() : Date.now(),
           read: !!n.read,
-          category: n.category,
+          category: String(n.category || '')  ,
           metadata: n.metadata,
         })) as NotificationItem[];
         const sorted = items.sort((a, b) => b.time - a.time);
@@ -174,17 +180,97 @@ const Topbar: React.FC<TopbarProps> = ({
           await cacheSet(CACHE_KEY, sorted, CACHE_DURATION.INSTITUTION);
           queryClient.setQueryData(QUERY_KEY, sorted);
         } catch (err) {
-          console.error('Topbar: cacheSet/queryCache update failed', err);
+          if (process.env.NODE_ENV === 'development') if (process.env.NODE_ENV === 'development') console.error('Topbar: cacheSet/queryCache update failed', err);
         }
       }
     } catch (err) {
-      console.error('Topbar: loadFromBackend failed', err);
+      if (process.env.NODE_ENV === 'development') if (process.env.NODE_ENV === 'development') console.error('Topbar: loadFromBackend failed', err);
     }
-  };
+  }, [queryClient, userProfile]);
+
+  // Socket event handlers
+  const handleNotificationCreated = useCallback(async (data: unknown) => {
+    const notification = data as { notification: Record<string, unknown> };
+    const newNotification: NotificationItem = {
+      id: String(notification.notification._id || notification.notification.id || ''),
+      title: String(notification.notification.title || ''),
+      description: String(notification.notification.description || ''),
+      time: notification.notification.createdAt ? new Date(notification.notification.createdAt as string).getTime() : Date.now(),
+      read: false,
+      category: String(notification.notification.category || '') as NotificationItem['category'],
+      metadata: notification.notification.metadata as Record<string, unknown> | undefined,
+    };
+    // Toast popup per role/category
+    try {
+      const cat = (newNotification.category || 'other').toString().toLowerCase();
+      const message = `${newNotification.title}${newNotification.description ? ` — ${newNotification.description}` : ''}`;
+      if (cat === 'system') toast.info(message);
+      else if (cat === 'billing') toast.warning(message);
+      else if (cat === 'security') toast.error(message);
+      else toast.success(message);
+    } catch {}
+    // Update local UI list
+    setAllNotifications(prev => {
+      const updated = [newNotification, ...prev].sort((a, b) => b.time - a.time);
+      return updated;
+    });
+    setNotificationCount(prev => prev + 1);
+    setUnreadTop(prev => {
+      const updated = [newNotification, ...prev].slice(0, 3);
+      return updated;
+    });
+    // Persist and update Query cache for notifications page
+    try {
+      const current = (queryClient.getQueryData(QUERY_KEY) as NotificationItem[] | undefined) || [];
+      const next = [newNotification, ...current].sort((a, b) => b.time - a.time);
+      await cacheSet(CACHE_KEY, next, CACHE_DURATION.INSTITUTION);
+      queryClient.setQueryData(QUERY_KEY, next);
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Topbar: cacheSet/queryCache update on socket create failed', err);
+    }
+  }, [queryClient]);
+
+  const handleNotificationUpdated = useCallback(async (data: unknown) => {
+    const notification = data as { notificationId: string, read: boolean };
+    setAllNotifications(prev => 
+      prev.map(n => n.id === notification.notificationId ? { ...n, read: notification.read } : n)
+    );
+    if (notification.read) {
+      setNotificationCount(prev => Math.max(0, prev - 1));
+      setUnreadTop(prev => prev.filter(n => n.id !== notification.notificationId));
+    }
+    // Persist and update Query cache
+    try {
+      const current = (queryClient.getQueryData(QUERY_KEY) as NotificationItem[] | undefined) || [];
+      const next = current.map(n => n.id === notification.notificationId ? { ...n, read: notification.read } : n);
+      await cacheSet(CACHE_KEY, next, CACHE_DURATION.STUDENTS);
+      queryClient.setQueryData(QUERY_KEY, next);
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Topbar: cacheSet/queryCache update on socket update failed', err);
+    }
+  }, [queryClient]);
+
+  const handleNotificationRemoved = useCallback(async (data: unknown) => {
+    const notification = data as { notificationId: string };
+    setAllNotifications(prev => prev.filter(n => n.id !== notification.notificationId));
+    setUnreadTop(prev => prev.filter(n => n.id !== notification.notificationId));
+    setNotificationCount(prev => {
+      const wasUnread = allNotificationsRef.current.some(n => n.id === notification.notificationId && !n.read);
+      return wasUnread ? Math.max(0, prev - 1) : prev;
+    });
+    try {
+      const current = (queryClient.getQueryData(QUERY_KEY) as NotificationItem[] | undefined) || [];
+      const next = current.filter(n => n.id !== notification.notificationId);
+      await cacheSet(CACHE_KEY, next, CACHE_DURATION.INSTITUTION);
+      queryClient.setQueryData(QUERY_KEY, next);
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Topbar: cacheSet/queryCache update on socket removal failed', err);
+    }
+  }, [queryClient]);
 
   // Setup Socket.IO for real-time notifications
   useEffect(() => {
-    let socket: any;
+    let socket: { on: (ev: string, h: (...args: unknown[]) => void) => void; off: (ev: string, h: (...args: unknown[]) => void) => void; emit: (ev: string, ...args: unknown[]) => void } | null;
     
     const setupSocket = async () => {
       try {
@@ -194,30 +280,31 @@ const Topbar: React.FC<TopbarProps> = ({
         
         socket = await getSocket(origin);
         
-        socket.on('connect', async () => {
+        socket?.on('connect', async () => {
           // Join appropriate room based on role
           const prof = userProfile;
           const role = (prof?.role || '').toString().toUpperCase();
           const id = prof?.id || prof?._id;
           if (role === 'INSTITUTE_ADMIN' && id) {
-            socket.emit('joinInstitutionAdmin', id);
+            socket?.emit('joinInstitutionAdmin', id);
           } else if (role === 'ADMIN' && id) {
-            socket.emit('joinAdmin', id);
+            socket?.emit('joinAdmin', id);
           } else if (role === 'STUDENT' && id) {
-            socket.emit('joinStudent', id);
+            socket?.emit('joinStudent', id);
           }
         });
 
         // Listen for new notifications
-        socket.on('notificationCreated', async (data: { notification: any }) => {
+        socket?.on('notificationCreated', async (data: unknown) => {
+          const notification = data as { notification: Record<string, unknown> };
           const newNotification: NotificationItem = {
-            id: data.notification._id,
-            title: data.notification.title,
-            description: data.notification.description,
-            time: data.notification.createdAt ? new Date(data.notification.createdAt).getTime() : Date.now(),
+            id: String(notification.notification._id || notification.notification.id || ''),
+            title: String(notification.notification.title || ''),
+            description: String(notification.notification.description || ''),
+            time: notification.notification.createdAt ? new Date(notification.notification.createdAt as string).getTime() : Date.now(),
             read: false,
-            category: data.notification.category,
-            metadata: data.notification.metadata,
+            category: String(notification.notification.category || '') as NotificationItem['category'],
+            metadata: notification.notification.metadata as Record<string, unknown> | undefined,
           };
           // Toast popup per role/category
           try {
@@ -245,50 +332,52 @@ const Topbar: React.FC<TopbarProps> = ({
             await cacheSet(CACHE_KEY, next, CACHE_DURATION.INSTITUTION);
             queryClient.setQueryData(QUERY_KEY, next);
           } catch (err) {
-            console.error('Topbar: cacheSet/queryCache update on socket create failed', err);
+            if (process.env.NODE_ENV === 'development') console.error('Topbar: cacheSet/queryCache update on socket create failed', err);
           }
         });
 
         // Listen for notification updates (mark as read)
-        socket.on('notificationUpdated', async (data: { notificationId: string, read: boolean }) => {
+        socket?.on('notificationUpdated', async (data: unknown) => {
+          const notification = data as { notificationId: string, read: boolean };
           setAllNotifications(prev => 
-            prev.map(n => n.id === data.notificationId ? { ...n, read: data.read } : n)
+            prev.map(n => n.id === notification.notificationId ? { ...n, read: notification.read } : n)
           );
-          if (data.read) {
+          if (notification.read) {
             setNotificationCount(prev => Math.max(0, prev - 1));
-            setUnreadTop(prev => prev.filter(n => n.id !== data.notificationId));
+            setUnreadTop(prev => prev.filter(n => n.id !== notification.notificationId));
           }
           // Persist and update Query cache
           try {
             const current = (queryClient.getQueryData(QUERY_KEY) as NotificationItem[] | undefined) || [];
-            const next = current.map(n => n.id === data.notificationId ? { ...n, read: data.read } : n);
+            const next = current.map(n => n.id === notification.notificationId ? { ...n, read: notification.read } : n);
             await cacheSet(CACHE_KEY, next, CACHE_DURATION.STUDENTS);
             queryClient.setQueryData(QUERY_KEY, next);
           } catch (err) {
-            console.error('Topbar: cacheSet/queryCache update on socket update failed', err);
+            if (process.env.NODE_ENV === 'development') console.error('Topbar: cacheSet/queryCache update on socket update failed', err);
           }
         });
 
         // Listen for notification deletions
-        socket.on('notificationRemoved', async (data: { notificationId: string }) => {
-          setAllNotifications(prev => prev.filter(n => n.id !== data.notificationId));
-          setUnreadTop(prev => prev.filter(n => n.id !== data.notificationId));
+        socket?.on('notificationRemoved', async (data: unknown) => {
+          const notification = data as { notificationId: string };
+          setAllNotifications(prev => prev.filter(n => n.id !== notification.notificationId));
+          setUnreadTop(prev => prev.filter(n => n.id !== notification.notificationId));
           setNotificationCount(prev => {
-            const wasUnread = allNotifications.some(n => n.id === data.notificationId && !n.read);
+            const wasUnread = allNotificationsRef.current.some(n => n.id === notification.notificationId && !n.read);
             return wasUnread ? Math.max(0, prev - 1) : prev;
           });
           try {
             const current = (queryClient.getQueryData(QUERY_KEY) as NotificationItem[] | undefined) || [];
-            const next = current.filter(n => n.id !== data.notificationId);
+            const next = current.filter(n => n.id !== notification.notificationId);
             await cacheSet(CACHE_KEY, next, CACHE_DURATION.INSTITUTION);
             queryClient.setQueryData(QUERY_KEY, next);
           } catch (err) {
-            console.error('Topbar: cacheSet/queryCache update on socket removal failed', err);
+            if (process.env.NODE_ENV === 'development') console.error('Topbar: cacheSet/queryCache update on socket removal failed', err);
           }
         });
 
       } catch (error) {
-        console.error('Topbar: socket setup error', error);
+        if (process.env.NODE_ENV === 'development') console.error('Topbar: socket setup error', error);
       }
     };
 
@@ -296,16 +385,14 @@ const Topbar: React.FC<TopbarProps> = ({
 
     return () => {
       try {
-        if (socket) {
-          socket.off('notificationCreated');
-          socket.off('notificationUpdated');
-          socket.off('notificationRemoved');
-        }
+        socket?.off('notificationCreated', handleNotificationCreated as (d: unknown) => void);
+        socket?.off('notificationUpdated', handleNotificationUpdated as (d: unknown) => void);
+        socket?.off('notificationRemoved', handleNotificationRemoved);
       } catch (err) {
-        console.error('Topbar: socket cleanup error', err);
+        if (process.env.NODE_ENV === 'development') console.error('Topbar: socket cleanup error', err);
       }
     };
-  }, [institutionAdminId, studentId, platformAdminId, queryClient, userProfile]);
+  }, [institutionAdminId, studentId, platformAdminId, queryClient, userProfile, handleNotificationCreated, handleNotificationUpdated, handleNotificationRemoved]);
 
   const openDropdown = () => {
     clearHideTimer();
@@ -332,7 +419,7 @@ const Topbar: React.FC<TopbarProps> = ({
     seedIfEmpty();
     loadFromStorage();
     loadFromBackend();
-  }, []);
+  }, [loadFromBackend]);
 
   const topbarVariants = {
     hidden: { y: -50, opacity: 0 },
@@ -362,7 +449,7 @@ const Topbar: React.FC<TopbarProps> = ({
     }
   };
 
-  const cycleTheme = () => {
+  const _cycleTheme = () => {
     // Cycle order: system -> light -> dark -> system
     const current = theme || 'system';
     if (current === 'system') setTheme('light');
@@ -381,7 +468,7 @@ const Topbar: React.FC<TopbarProps> = ({
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [showThemeMenu]);
 
-  const markOneUnreadAsRead = (id: string) => {
+  const _markOneUnreadAsRead = (id: string) => {
     const updated = allNotifications.map(n => n.id === id ? { ...n, read: true } : n);
     setAllNotifications(updated);
     // saveToStorage(updated); // Socket.IO handles updates
@@ -392,7 +479,7 @@ const Topbar: React.FC<TopbarProps> = ({
 
   const badge = notificationCount > 99 ? "99+" : String(notificationCount);
 
-  const { data: profileData } = useProfile();
+  const { data: _profileData } = useProfile();
 
   return (
     <>

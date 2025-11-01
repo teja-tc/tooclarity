@@ -271,7 +271,7 @@ export const DateInput: React.FC<DateInputProps> = ({
 	onChange,
 	placeholder = "DD/MM/YYYY",
 	error,
-	isBirthday = false,
+	//isBirthday = false,
 	className = "",
 	maxLength = 10,
 	floating = false
@@ -341,7 +341,7 @@ interface FormFieldProps {
 	maxLength?: number;
 	type?: string;
 	autoComplete?: string;
-	onValidate?: (value: string) => string | undefined;
+	//onValidate?: (value: string) => string | undefined;
 	floating?: boolean;
 }
 
@@ -355,7 +355,7 @@ export const FormField: React.FC<FormFieldProps> = ({
 	maxLength,
 	type = "text",
 	autoComplete,
-	onValidate,
+	//onValidate,
 	floating = false
 }) => {
 	const [focused, setFocused] = useState(false);

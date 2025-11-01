@@ -38,9 +38,9 @@ export default function StudyHallForm({
   handleCourseChange,
   handleOperationalDayChange,
   handleFileChange,
-  setCourses,
-  courses,
-  selectedCourseId,
+  // setCourses,
+  // courses,
+  // selectedCourseId,
   courseErrors = {},
   labelVariant = 'course',
 }: StudyHallFormProps) {

@@ -1,18 +1,18 @@
 import React from "react";
-import { Card, CardContent } from "../ui/card";
+import { _Card, _CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import { motion } from "framer-motion";
 
-interface AdCardProps {
-  onShare?: (platform: string) => void;
+interface Ad_CardProps {
+ _onShare?: (platform: string) => void;
 }
 
 import { WhatsAppLogo, XLogo, LinkedInLogo } from "../ui/BrandLogos";
-const AdCard: React.FC<AdCardProps> = ({ onShare }) => {
+const Ad_Card: React.FC<Ad_CardProps> = ({ _onShare }) => {
   return (
     <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
-      <Card className="relative overflow-visible md:overflow-hidden border-none rounded-2xl shadow-sm bg-gradient-to-br from-[#F2F6FF] via-[#E8EEFF] to-[#E3E9FF] dark:from-gray-800 dark:via-gray-800 dark:to-gray-800">
-        <CardContent className="p-4 md:p-6">
+      <_Card className="relative overflow-visible md:overflow-hidden border-none rounded-2xl shadow-sm bg-gradient-to-br from-[#F2F6FF] via-[#E8EEFF] to-[#E3E9FF] dark:from-gray-800 dark:via-gray-800 dark:to-gray-800">
+        <_CardContent className="p-4 md:p-6">
           <div className="relative grid grid-cols-12 items-center min-h-[200px] gap-x-6 md:gap-x-8">
             {/* Left social icons (images only) */}
             <div className="col-span-12 md:col-span-3 relative h-[160px] md:h-[180px] mb-4 md:mb-0 overflow-visible w-full">
@@ -54,10 +54,10 @@ const AdCard: React.FC<AdCardProps> = ({ onShare }) => {
               </svg>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </_CardContent>
+      </_Card>
     </motion.div>
   );
 };
 
-export default AdCard;
+export default Ad_Card;
