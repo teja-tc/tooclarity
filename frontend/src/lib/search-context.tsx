@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode, useMemo, useRef, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import React, { createContext, useContext, useState, useCallback, ReactNode, useRef } from 'react';
+//import { usePathname } from 'next/navigation';
 
 interface SearchContextType {
   searchQuery: string;
@@ -28,9 +28,16 @@ interface SearchProviderProps {
 export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchActive, setIsSearchActive] = useState(false);
-  const pathname = usePathname();
+  //const pathname = usePathname();
   const lastRunRef = useRef<number>(0);
   const pendingRef = useRef<number | null>(null);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setIsSearchActive(false);
+    clearHighlights();
+    hideSearchResults();
+  }, []);
 
   // Debounced, animation-frame scheduled search to avoid jank
   const runSearch = useCallback((q: string) => {
@@ -122,10 +129,10 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
     } else {
       showNoResults();
     }
-  }, []);
+  }, [clearSearch]);
 
   const searchInPage = useCallback((query: string) => {
-    const now = performance.now();
+    const _now = performance.now();
     // 120ms debounce window
     if (pendingRef.current) cancelAnimationFrame(pendingRef.current);
     pendingRef.current = requestAnimationFrame(() => {
@@ -133,14 +140,9 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
       lastRunRef.current = performance.now();
       runSearch(query);
     });
-  }, [runSearch]);
+  }, [runSearch, lastRunRef, pendingRef]);
 
-  const clearSearch = useCallback(() => {
-    setSearchQuery('');
-    setIsSearchActive(false);
-    clearHighlights();
-    hideSearchResults();
-  }, []);
+  
 
   return (
     <SearchContext.Provider value={{
@@ -157,7 +159,7 @@ export const SearchProvider: React.FC<SearchProviderProps> = ({ children }) => {
 
 // Helper functions
 // Deprecated helper retained for backward compat (unused by new flow)
-function highlightText(_element: Element, _searchTerm: string) {}
+//function highlightText(_element: Element, _searchTerm: string) {}
 
 function clearHighlights() {
   const highlights = document.querySelectorAll('.search-highlight');

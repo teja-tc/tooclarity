@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import {
-  ArrowLeft,
   Loader2,
   Smartphone,
   Lock,
@@ -55,7 +54,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [showOtpScreen, setShowOtpScreen] = useState(false);
 
-  const handleRegisterSuccess = async () => {
+  const handleRegisterSuccess = useCallback(async () => {
     await refreshUser();
     if (onSuccess) await onSuccess();
 
@@ -68,7 +67,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
         isProfileCompleted ? "/dashboard" : "/student/onboarding"
       );
     }
-  };
+  }, [refreshUser, onSuccess, router]);
 
   // 🔹 Google Identity
   useEffect(() => {
@@ -108,10 +107,10 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [handleRegisterSuccess]);
 
   // 🔹 Google click handler
-  const handleGoogleClick = () => {
+  const handleGoogleClick = useCallback(() => {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
     const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ?? "";
     const state = JSON.stringify({
@@ -126,7 +125,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
       state,
       type: "register",
     });
-  };
+  }, []);
 
   // 🔹 Input change handler
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,7 +223,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
           </button>
         );
       }),
-    [isScriptLoaded, loadingProvider]
+    [isScriptLoaded, loadingProvider, handleGoogleClick]
   );
 
   // 🔹 Final JSX (no early return)
@@ -243,7 +242,7 @@ const StudentRegistration: React.FC<StudentRegistrationProps> = ({
         {showOtpScreen ? (
           <StudentOtpScreen
             phoneNumber={formData.contactNumber}
-            onVerify={handleVerifyOtp}
+            _onVerify={handleVerifyOtp}
             onResendOtp={handleResendOtp}
             onBack={handleBackFromOtp}
           />
