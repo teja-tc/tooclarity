@@ -58,6 +58,8 @@ const courseSchema = new mongoose.Schema(
     // Additional fields for Coaching Centers
     categoriesType: { type: String },
     domainType: { type: String },
+    courseHighlights: { type: String },
+    subDomainType: { type: String },
 
     // Additional fields for Study Hall
     // --- ✅ UPDATED Study Hall Section ---

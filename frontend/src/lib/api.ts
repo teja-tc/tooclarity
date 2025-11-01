@@ -5,23 +5,25 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost
 // Types for API requests and responses
 
 export interface SignUpData {
-  name: string;
-  email: string;
+  name?: string;
+  email?: string;
   contactNumber: string;
-  designation: string;
-  linkedin: string;
+  designation?: string;
+  linkedin?: string;
   password: string;
-  type?: "admin" | "institution";
+  type?: "admin" | "institution" | "student";
 }
 
 export interface LoginData {
-  email: string;
-  password: string;
-  type?: "admin" | "institution";
+  email?: string;
+  contactNumber?: string;
+  password?: string;
+  type?: "admin" | "institution" | "student";
 }
 
 export interface OTPData {
-  email: string;
+  email?: string;
+  contactNumber?: string;
   otp: string;
 }
 
@@ -30,7 +32,7 @@ export interface ResetPasswordData {
   passwordConfirm: string;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
   data?: T;
@@ -70,6 +72,8 @@ export interface CourseData {
   // Additional fields for Coaching centers
   categoriesType?: string;
   domainType?: string;
+  subDomainType?: string;
+  courseHighlights?: string;
   // Additional fields for Study Hall
   seatingOption?: string;
   openingTime?: string;
@@ -195,7 +199,7 @@ export async function apiRequest<T>(
 
     // Safely parse JSON; if non-JSON (e.g., HTML from 404), fallback to text
     const raw = await response.text();
-    let data: any;
+    let data: unknown;
     try {
       data = raw ? JSON.parse(raw) : {};
     } catch {
@@ -203,32 +207,32 @@ export async function apiRequest<T>(
     }
 
     if (!response.ok) {
-      throw new Error(data.message || "Something went wrong");
+      throw new Error((data as { message?: string }).message || "Something went wrong");
     }
 
     // Ensure the response always has a success field
     // Handle different response formats from backend
-    if (typeof data.success === "undefined") {
+    if (typeof (data as { success?: boolean }).success === "undefined") {
       // Check if backend uses 'status' field instead of 'success'
-      if (data.status === "success") {
+      if ((data as { status?: string }).status === "success") {
         return {
           success: true,
-          message: data.message || "Operation successful",
+          message: (data as { message?: string }).message || "Operation successful",
           data: data,
-        };
+        } as ApiResponse<T>;
       }
 
       // If no success or status field but response is ok, assume success
       return {
         success: true,
-        message: data.message || "Operation successful",
+        message: (data as { message?: string }).message || "Operation successful",
         data: data,
-      };
+      } as ApiResponse<T>;
     }
 
-    return data;
+    return data as ApiResponse<T>;
   } catch (error) {
-    console.error("API Error:", error);
+    if (process.env.NODE_ENV === 'development') console.error("API Error:", error);
     return {
       success: false,
       message:
@@ -359,7 +363,7 @@ export const clearInstitutionData = (): void => {
 
 // Filter course fields based on institution type
 const filterCourseFieldsByInstitutionType = (
-  course: any,
+  course: Record<string, unknown>,
   institutionType: string | null
 ) => {
   // Common fields for all institution types
@@ -393,6 +397,8 @@ const filterCourseFieldsByInstitutionType = (
         ...commonFields,
         categoriesType: course.categoriesType,
         domainType: course.domainType,
+        subDomainType: course.subDomainType,
+        courseHighlights: course.courseHighlights,
       };
 
     case "Study Halls":
@@ -469,7 +475,7 @@ export const courseAPI = {
 
     // Filter fields (remove invalid ones based on institution type)
     const filteredCourses = coursesArray.map((course) =>
-      filterCourseFieldsByInstitutionType(course, institutionType)
+      filterCourseFieldsByInstitutionType(course as unknown as Record<string, unknown>, institutionType)
     );
 
     // Create request payload
@@ -656,19 +662,19 @@ export const institutionDetailsAPI = {
 
 // Dashboard data helpers (non-destructive additions)
 // Cached loader for /v1/institutions/me to avoid repeated calls across dashboard
-let __myInstitutionCache: any | null = null;
+let __myInstitutionCache: unknown | null = null;
 let __myInstitutionCacheAt = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-export const getMyInstitution = async (forceRefresh = false): Promise<any> => {
+export const getMyInstitution = async (forceRefresh = false): Promise<unknown> => {
   try {
     // Check if cache is still valid (not expired)
     if (!forceRefresh && __myInstitutionCache && (Date.now() - __myInstitutionCacheAt) < CACHE_DURATION) {
       return __myInstitutionCache;
     }
     
-    const res = await apiRequest<any>("/v1/institutions/me", { method: "GET" });
-    const payload: any = res as any;
+    const res = await apiRequest<unknown>("/v1/institutions/me", { method: "GET" });
+    const payload = res as { data?: unknown };
     const data = payload?.data || payload;
     __myInstitutionCache = data;
     __myInstitutionCacheAt = Date.now();
@@ -680,7 +686,7 @@ export const getMyInstitution = async (forceRefresh = false): Promise<any> => {
   }
 };
 
-export const refreshMyInstitution = async (): Promise<any> => {
+export const refreshMyInstitution = async (): Promise<unknown> => {
   __myInstitutionCache = null;
   __myInstitutionCacheAt = 0;
   return getMyInstitution(true);
@@ -721,7 +727,7 @@ export const analyticsAPI = {
 };
 
 // Unified metrics (views or comparisons) with caching
-const metricsCache = new Map<string, { data: any; timestamp: number }>();
+const metricsCache = new Map<string, { data: unknown; timestamp: number }>();
 const METRICS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
 
 export const metricsAPI = {
@@ -732,7 +738,12 @@ export const metricsAPI = {
   getInstitutionAdminSummary: async (metric: 'views'|'comparisons', institutionId?: string): Promise<ApiResponse> => {
     let iid = institutionId;
     if (!iid) {
-      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch (err) { console.error('metricsAPI.getInstitutionAdminSummary: resolve institution failed', err); }
+      try { 
+        const inst = await getMyInstitution() as { _id?: string; data?: { _id?: string } };
+        iid = inst?._id || inst?.data?._id; 
+      } catch (err) { 
+        if (process.env.NODE_ENV === 'development') console.error('metricsAPI.getInstitutionAdminSummary: resolve institution failed', err); 
+      }
     }
     if (!iid) throw new Error('institutionId not available');
     return apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/institution-admin?metric=${metric}`, { method: "GET" });
@@ -744,7 +755,12 @@ export const metricsAPI = {
   ): Promise<ApiResponse> => {
     let iid = institutionId as string | undefined;
     if (!iid) {
-      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch (err) { console.error('metricsAPI.getInstitutionAdminByRange: resolve institution failed', err); }
+      try { 
+        const inst = await getMyInstitution() as { _id?: string; data?: { _id?: string } };
+        iid = inst?._id || inst?.data?._id; 
+      } catch (err) { 
+        if (process.env.NODE_ENV === 'development') console.error('metricsAPI.getInstitutionAdminByRange: resolve institution failed', err); 
+      }
     }
     if (!iid) throw new Error('institutionId not available');
     
@@ -752,7 +768,7 @@ export const metricsAPI = {
     const cacheKey = `range_${iid}_${metric}_${range}`;
     const cached = metricsCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < METRICS_CACHE_DURATION) {
-      return cached.data;
+      return cached.data as ApiResponse<unknown>;
     }
     
     const response = await apiRequest(`/v1/institutions/${iid}/courses/summary/metrics/institution-admin/range?metric=${metric}&range=${range}`, { method: "GET" });
@@ -770,7 +786,12 @@ export const metricsAPI = {
     const currentYear = year || new Date().getFullYear();
     let iid = institutionId;
     if (!iid) {
-      try { const inst = await getMyInstitution() as any; iid = inst?._id || inst?.data?._id; } catch (err) { console.error('metricsAPI.getInstitutionAdminSeries: resolve institution failed', err); }
+      try { 
+        const inst = await getMyInstitution() as { _id?: string; data?: { _id?: string } };
+        iid = inst?._id || inst?.data?._id; 
+      } catch (err) { 
+        if (process.env.NODE_ENV === 'development') console.error('metricsAPI.getInstitutionAdminSeries: resolve institution failed', err); 
+      }
     }
     if (!iid) throw new Error('institutionId not available');
     
@@ -778,7 +799,7 @@ export const metricsAPI = {
     const cacheKey = `series_${iid}_${metric}_${currentYear}`;
     const cached = metricsCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < METRICS_CACHE_DURATION) {
-      return cached.data;
+      return cached.data as ApiResponse<unknown>;
     }
     
     const q = [`metric=${metric}`, `year=${currentYear}`];
@@ -792,7 +813,7 @@ export const metricsAPI = {
 };
 
 // Enquiries API helpers with caching
-const enquiriesCache = new Map<string, { data: any; timestamp: number }>();
+const enquiriesCache = new Map<string, { data: ApiResponse; timestamp: number }>();
 const ENQUIRIES_CACHE_DURATION = 1 * 60 * 1000; // 1 minute
 
 export const enquiriesAPI = {
@@ -892,11 +913,11 @@ export const enquiriesAPI = {
 };
 
 // Programs API
-const programsCache = new Map<string, { data: any; timestamp: number }>();
+const programsCache = new Map<string, { data: unknown; timestamp: number }>();
 const PROGRAMS_CACHE_DURATION = 60 * 1000; // 1 min
 
 export const programsAPI = {
-  create: async (payload: any): Promise<ApiResponse> => {
+  create: async (payload: Record<string, unknown>): Promise<ApiResponse> => {
     const institutionId = String(payload.institution || '');
     if (!institutionId) throw new Error('institution required');
     const normalized = { ...payload, type: payload?.type || 'PROGRAM' };
@@ -906,13 +927,13 @@ export const programsAPI = {
   list: async (institutionId: string): Promise<ApiResponse> => {
     const cacheKey = `programs_${institutionId}`;
     const cached = programsCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < PROGRAMS_CACHE_DURATION) return cached.data;
+    if (cached && (Date.now() - cached.timestamp) < PROGRAMS_CACHE_DURATION) return cached.data as ApiResponse<unknown>;
     const res = await apiRequest(`/v1/institutions/${encodeURIComponent(institutionId)}/courses?type=PROGRAM`, { method: 'GET' });
-    const payload: any = res as any;
+    const payload = res as { data?: unknown; courses?: unknown };
     const raw = payload?.data || payload?.courses || [];
-    const arr = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
-    const programs = arr.map((c: any) => ({ ...c, programName: c.programName || c.courseName }));
-    const shaped = { success: true, data: { programs } } as any;
+    const arr = Array.isArray(raw) ? raw : Array.isArray((raw as { data?: unknown })?.data) ? (raw as { data: unknown[] }).data : [];
+    const programs = arr.map((c: Record<string, unknown>) => ({ ...c, programName: c.programName || c.courseName }));
+    const shaped = { success: true, data: { programs } } as ApiResponse;
     programsCache.set(cacheKey, { data: shaped, timestamp: Date.now() });
     return shaped;
   },
@@ -921,23 +942,23 @@ export const programsAPI = {
   },
   listForInstitutionAdminWithMetrics: async (institutionId: string): Promise<ApiResponse> => {
     // Use list() and attach placeholder metrics if none
-    const res = await programsAPI.list(institutionId) as any;
-    const programs = (res?.data?.programs || []).map((p: any) => ({
+    const res = await programsAPI.list(institutionId) as { data?: { programs?: Record<string, unknown>[] } };
+    const programs = (res?.data?.programs || []).map((p: Record<string, unknown>) => ({
       ...p,
       leadsGenerated: typeof p.leadsGenerated === 'number' ? p.leadsGenerated : 0,
       status: p.status || 'Live',
       startDate: p.startDate || p.createdAt,
       endDate: p.endDate || p.updatedAt,
     }));
-    return { success: true, data: { programs } } as any;
+    return { success: true, data: { programs } } as ApiResponse;
   },
   listBranchesForInstitutionAdmin: async (institutionId: string): Promise<ApiResponse> => {
     const res = await apiRequest(`/v1/institutions/${encodeURIComponent(institutionId)}/branches`, { method: 'GET' });
-    const payload: any = res as any;
-    const branches = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
-    return { success: true, data: { branches } } as any;
+    const payload = res as { data?: unknown } | unknown[];
+    const branches = Array.isArray((payload as { data?: unknown })?.data) ? (payload as { data: unknown[] }).data : (Array.isArray(payload) ? payload : []);
+    return { success: true, data: { branches } } as ApiResponse;
   },
-  update: async (programId: string, payload: any & { institution?: string }): Promise<ApiResponse> => {
+  update: async (programId: string, payload: Record<string, unknown> & { institution?: string }): Promise<ApiResponse> => {
     const institutionId = String(payload?.institution || '');
     if (!institutionId) throw new Error('institution required');
     return apiRequest(`/v1/institutions/${encodeURIComponent(institutionId)}/courses/${encodeURIComponent(programId)}`, { method: 'PUT', body: JSON.stringify(payload) });
@@ -952,7 +973,7 @@ export const programsAPI = {
   summaryViews: async (institutionId: string, range: 'weekly'|'monthly'|'yearly'): Promise<ApiResponse> => {
     const cacheKey = `program_summary_${institutionId}_${range}`;
     const cached = programsCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < PROGRAMS_CACHE_DURATION) return cached.data;
+    if (cached && (Date.now() - cached.timestamp) < PROGRAMS_CACHE_DURATION) return cached.data as ApiResponse<unknown>;
     const qs = new URLSearchParams({ metric: 'views', range }).toString();
     const res = await apiRequest(`/v1/institutions/${encodeURIComponent(institutionId)}/courses/summary/metrics/institution-admin?${qs}`, { method: 'GET' });
     programsCache.set(cacheKey, { data: res, timestamp: Date.now() });
@@ -961,7 +982,7 @@ export const programsAPI = {
   summaryComparisons: async (institutionId: string, range: 'weekly'|'monthly'|'yearly'): Promise<ApiResponse> => {
     const cacheKey = `program_cmp_${institutionId}_${range}`;
     const cached = programsCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < PROGRAMS_CACHE_DURATION) return cached.data;
+    if (cached && (Date.now() - cached.timestamp) < PROGRAMS_CACHE_DURATION) return cached.data as ApiResponse<unknown>;
     const qs = new URLSearchParams({ metric: 'comparisons', range }).toString();
     const res = await apiRequest(`/v1/institutions/${encodeURIComponent(institutionId)}/courses/summary/metrics/institution-admin?${qs}`, { method: 'GET' });
     programsCache.set(cacheKey, { data: res, timestamp: Date.now() });
@@ -971,7 +992,7 @@ export const programsAPI = {
     const y = year || new Date().getFullYear();
     const cacheKey = `program_series_${institutionId}_${y}`;
     const cached = programsCache.get(cacheKey);
-    if (cached && (Date.now() - cached.timestamp) < PROGRAMS_CACHE_DURATION) return cached.data;
+    if (cached && (Date.now() - cached.timestamp) < PROGRAMS_CACHE_DURATION) return cached.data as ApiResponse<unknown>;
     const qs = new URLSearchParams({ metric: 'views', year: String(y) }).toString();
     const res = await apiRequest(`/v1/institutions/${encodeURIComponent(institutionId)}/courses/summary/metrics/institution-admin/series?${qs}`, { method: 'GET' });
     programsCache.set(cacheKey, { data: res, timestamp: Date.now() });
@@ -981,14 +1002,14 @@ export const programsAPI = {
     // Use unified institutions scope with single controller/routes; fallback safe
     try {
       return await apiRequest(`/v1/institutions/${encodeURIComponent(institutionId)}/subscriptions/history`, { method: 'GET' });
-    } catch (_) {
-      return { success: true, data: { items: [] } } as any;
+    } catch {
+      return { success: true, data: { items: [] } } as ApiResponse;
     }
   },
   downloadInvoicePdf: async (subscriptionId: string): Promise<Blob> => {
     // Placeholder: hook to your backend PDF endpoint if implemented
-    const res: any = await apiRequest(`/v1/payment/invoice/${encodeURIComponent(subscriptionId)}`, { method: 'GET' });
-    return res as Blob;
+    const res = await apiRequest(`/v1/payment/invoice/${encodeURIComponent(subscriptionId)}`, { method: 'GET' });
+    return res as unknown as Blob;
   }
 };
 
@@ -1040,7 +1061,7 @@ export const notificationsAPI = {
     institution?: string;
     branch?: string;
     institutionAdmin?: string;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
   }): Promise<ApiResponse> => {
     return apiRequest(`/v1/notifications`, { method: 'POST', body: JSON.stringify(payload) });
   },
@@ -1054,26 +1075,26 @@ export const notificationsAPI = {
 
 export const getInstitutionBranches = async (
   institutionId: string
-): Promise<any[]> => {
-  const res = await apiRequest<any>(
+): Promise<unknown[]> => {
+  const res = await apiRequest<unknown>(
     `/v1/institutions/${institutionId}/branches`,
     { method: "GET" }
   );
-  const payload = res as any;
-  if (payload && Array.isArray(payload.data)) return payload.data;
+  const payload = res as { data?: unknown[] } | unknown[];
+  if (payload && Array.isArray((payload as { data?: unknown[] }).data)) return (payload as { data: unknown[] }).data;
   if (Array.isArray(payload)) return payload;
   return [];
 };
 
 export const getInstitutionCourses = async (
   institutionId: string
-): Promise<any[]> => {
-  const res = await apiRequest<any>(
+): Promise<unknown[]> => {
+  const res = await apiRequest<unknown>(
     `/v1/institutions/${institutionId}/courses`,
     { method: "GET" }
   );
-  const payload = res as any;
-  if (payload && Array.isArray(payload.data)) return payload.data;
+  const payload = res as { data?: unknown[] } | unknown[];
+  if (payload && Array.isArray((payload as { data?: unknown[] }).data)) return (payload as { data: unknown[] }).data;
   if (Array.isArray(payload)) return payload;
   return [];
 };
