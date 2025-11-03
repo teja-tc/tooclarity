@@ -496,7 +496,7 @@ export default function L1DialogBox({
       {trigger && <_DialogTrigger asChild>{trigger}</_DialogTrigger>}
 
       <_DialogContent
-        className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
+        className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide top-[65%]"
         showCloseButton={false}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}

@@ -31,6 +31,7 @@ const eslintConfig = [
   {
     ignores: [
       "src/app/test/**",
+      "src/test/**",
       "src/components/auth/testComponents/**",
       "src/components/test/**",
       ".next/**",

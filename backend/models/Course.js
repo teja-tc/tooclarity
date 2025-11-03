@@ -2,8 +2,6 @@ const mongoose = require("mongoose");
 
 const courseSchema = new mongoose.Schema(
   {
-    // Unified model type and hierarchy
-    type: { type: String, enum: ["PROGRAM","COURSE"], required: true, index: true },
     parentProgram: { type: mongoose.Schema.Types.ObjectId, ref: "Course", index: true },
     courseName: {
       type: String,

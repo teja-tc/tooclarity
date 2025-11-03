@@ -27,6 +27,7 @@ export interface StudentProfile {
   phoneNumber?: string;
   profilePicture?: string;
   birthday?: string; // ISO or raw string if backend provides
+  address?: string;
 }
 
 export interface StudentCourse {
@@ -160,10 +161,9 @@ export const studentOnboardingAPI = {
   },
 
   updateAcademicProfile: async (
-    studentId: string,
     payload: UpdateAcademicProfilePayload
   ): Promise<StudentApiResponse<unknown>> => {
-    return studentApiRequest(`/v1/students/${encodeURIComponent(studentId)}/academic-profile`, {
+    return studentApiRequest(`/v1/students/academic-profile`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });
