@@ -64,7 +64,7 @@ function _DialogContent({
         className={cn(
           "fixed z-50 left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]",
           "w-[95vw] sm:w-[90vw]",
-          "max-h-[95vh] sm:max-h-[90vh]",
+          "max-h-[60vh] sm:max-h-[80vh]",
           "rounded-[24px] p-4 sm:p-6 bg-white",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
