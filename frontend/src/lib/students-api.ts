@@ -52,6 +52,39 @@ export interface CreateStudentPayload {
   googleId?: string;
 }
 
+// Define specific types for different academic profile details
+export interface KindergartenDetails {
+  ageGroup?: string;
+  programType?: string;
+  // Add other kindergarten-specific fields
+}
+
+export interface SchoolDetails {
+  grade?: string;
+  board?: string;
+  // Add other school-specific fields
+}
+
+export interface GraduationDetails {
+  degree?: string;
+  major?: string;
+  university?: string;
+  // Add other graduation-specific fields
+}
+
+export interface CoachingCenterDetails {
+  course?: string;
+  examType?: string;
+  // Add other coaching-specific fields
+}
+
+export type AcademicProfileDetails = 
+  | KindergartenDetails 
+  | SchoolDetails 
+  | GraduationDetails 
+  | CoachingCenterDetails
+  | Record<string, unknown>;
+
 export interface UpdateAcademicProfilePayload {
   profileType:
     | "KINDERGARTEN"
@@ -62,7 +95,7 @@ export interface UpdateAcademicProfilePayload {
     | "STUDY_HALLS"
     | "TUITION_CENTER"
     | "STUDY_ABROAD";
-  details: any;
+  details: AcademicProfileDetails;
 }
 
 // ===== Course Types for Student Dashboard =====
@@ -82,26 +115,41 @@ export interface CourseForStudent {
   institution?: {
     _id: string;
     instituteName: string;
+    instituteLogo?: string;
   };
   rating?: number;
   reviews?: number;
   studentsEnrolled?: number;
+  // Additional fields for Study Hall
+  operationalDays?: string[];
+  openingTime?: string;
+  closingTime?: string;
+  hasWifi?: string;
+  hasChargingPoints?: string;
+  hasAC?: string;
+  hasPersonalLocker?: string;
+  seatingOption?: string;
+  // Additional fields
+  eligibilityCriteria?: string;
+  type?: "PROGRAM" | "COURSE";
 }
 
 // ===== Student Dashboard API (stubs) =====
 export const studentDashboardAPI = {
   // Fetch the current user's profile (shared profile endpoint)
   getProfile: async (): Promise<StudentApiResponse<StudentProfile>> => {
-    const res = await studentApiRequest<any>("/v1/profile", { method: "GET" });
+    const res = await studentApiRequest<StudentProfile>("/v1/profile", { method: "GET" });
     // Normalize shape to StudentProfile best-effort
-    const data: any = (res as any)?.data || res?.data || res;
+    const rawData = res.data || res;
+    const data = typeof rawData === 'object' && rawData !== null ? rawData : {};
+    
     const normalized: StudentProfile = {
-      id: data?.id || data?._id || "",
-      name: data?.name || "",
-      email: data?.email || "",
-      phoneNumber: data?.contactNumber,
-      profilePicture: data?.profilePicture || data?.ProfilePicutre, // backend may use ProfilePicutre
-      birthday: data?.birthday, // if backend provides
+      id: (data as Record<string, unknown>)?.id as string || (data as Record<string, unknown>)?._id as string || "",
+      name: (data as Record<string, unknown>)?.name as string || "",
+      email: (data as Record<string, unknown>)?.email as string || "",
+      phoneNumber: (data as Record<string, unknown>)?.contactNumber as string | undefined,
+      profilePicture: (data as Record<string, unknown>)?.profilePicture as string || (data as Record<string, unknown>)?.ProfilePicutre as string, // backend may use ProfilePicutre
+      birthday: (data as Record<string, unknown>)?.birthday as string | undefined, // if backend provides
     };
     return { success: true, message: "ok", data: normalized } as StudentApiResponse<StudentProfile>;
   },
