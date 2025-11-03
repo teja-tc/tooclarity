@@ -661,74 +661,201 @@ export default function L2DialogBox({
   };
 
   // const [selectedCourseId, setSelectedCourseId] = useState(1);
+  // const [courseErrorsById, setCourseErrorsById] = useState<
+  //   Record<number, Record<string, string>>
+  // >({}); // ✅ ADD THIS LINE
+  // // const validateCourses = () => {
+  //   const requiredFields = [
+  //     "courseName",
+  //     "courseDuration",
+  //     "priceOfCourse",
+  //     "location",
+  //   ];
+
+  //   for (const course of courses) {
+  //     for (const field of requiredFields) {
+  //       if (
+  //         !course[field as keyof typeof course] ||
+  //         String(course[field as keyof typeof course]).trim() === ""
+  //       ) {
+  //         return `Please fill in the ${field} field for course: ${
+  //           course.courseName || "Unnamed course"
+  //         }`;
+  //       }
+  //     }
+
+  //     // Additional validation for specific institution types
+  //     if (isUnderPostGraduate) {
+  //       if (
+  //         !course.graduationType ||
+  //         !course.streamType ||
+  //         !course.selectBranch
+  //       ) {
+  //         return; //Please fill in all graduation details for course: ${course.courseName};
+  //       }
+  //     }
+
+  //     if (isCoachingCenter) {
+  //       if (!course.categoriesType || !course.domainType) {
+  //         return; //Please fill in all coaching details for course: ${course.courseName};
+  //       }
+  //     }
+
+  //     if (isStudyHall) {
+  //       if (
+  //         !course.openingTime ||
+  //         !course.closingTime ||
+  //         !course.totalSeats ||
+  //         !course.availableSeats
+  //       ) {
+  //         return; // Please fill in all study hall details for: ${course.courseName};
+  //       }
+  //     }
+
+  //     if (isTutionCenter) {
+  //       if (
+  //         !course.tuitionType ||
+  //         !course.instructorProfile ||
+  //         !course.subject ||
+  //         !course.openingTime ||
+  //         !course.closingTime ||
+  //         !course.totalSeats ||
+  //         !course.availableSeats
+  //       ) {
+  //         return; // Please fill in all tuition center details for: ${course.courseName};
+  //       }
+  //     }
+
+  //     // Basic course form types (Kindergarten, School, Intermediate college) only need common fields
+  //     // No additional validation needed for these types
+  //   }
+
   const [courseErrorsById, setCourseErrorsById] = useState<
-    Record<number, Record<string, string>>
-  >({}); // ✅ ADD THIS LINE
-  // const validateCourses = () => {
-    const requiredFields = [
-      "courseName",
-      "courseDuration",
-      "priceOfCourse",
-      "location",
-    ];
+  Record<number, Record<string, string>>
+>({});
 
-    for (const course of courses) {
-      for (const field of requiredFields) {
-        if (
-          !course[field as keyof typeof course] ||
-          String(course[field as keyof typeof course]).trim() === ""
-        ) {
-          return `Please fill in the ${field} field for course: ${
-            course.courseName || "Unnamed course"
-          }`;
-        }
+// const getRequiredFields = () =>{
+//   switch (institutionType) {
+//     case "Under Graduation/Post Graduation":
+//       return ["courseName", "courseDuration", "priceOfCourse", "location", "graduationType", "streamType", "selectBranch"];
+//     case "Coaching centers":
+//       return ["courseName", "courseDuration", "priceOfCourse", "location", "categoriesType", "domainType"];
+//     case "Study Halls":
+//       return ["courseName", "courseDuration", "priceOfCourse", "location", "openingTime", "closingTime", "totalSeats", "availableSeats"];
+//     case "Tution Center's":
+//       return ["courseName", "courseDuration", "priceOfCourse", "location", "tuitionType", "instructorProfile", "subject", "openingTime", "closingTime", "totalSeats", "availableSeats"];
+//     default:
+//       return ["courseName", "courseDuration", "priceOfCourse", "location"];
+// }};
+
+const getRequiredFields = () => {
+  switch (true) {
+    case isBasicCourseForm:
+      return ["courseName","aboutCourse","courseDuration", "priceOfCourse", "location", "startDate", "endDate",];
+
+    case isUnderPostGraduate:
+      return [
+        "graduationType",
+        "streamType",
+        "selectBranch",
+        "aboutBranch",
+        "courseDuration",
+        "startDate",
+        "endDate",
+        "priceOfCourse",
+        "classSize",
+        "eligibilityCriteria",
+      ];
+
+    case isCoachingCenter:
+      return [
+        "categoriesType",
+        "domainType",
+        "subDomainType",
+        "startDate",
+        "endDate",
+        "courseName",
+        "courseDuration",
+        "priceOfCourse",
+        "classSize",
+        "location",
+      ];
+
+    case isTutionCenter:
+      return [
+        "courseName",
+        "courseDuration",
+        "priceOfCourse",
+        "classSize",
+        "location",
+      ];
+
+    case isStudyHall:
+      return ["courseName", "courseDuration", "priceOfCourse", "location"];
+
+    default:
+      return ["courseName", "courseDuration", "priceOfCourse", "location"];
+  }
+};
+
+
+// ✅ Move your validation inside a function
+const validateCourses = () => {
+  // const requiredFields = ["courseName", "courseDuration", "priceOfCourse", "location"];
+  const requiredFields = getRequiredFields();
+
+  for (const course of courses) {
+    for (const field of requiredFields) {
+      if (
+        !course[field as keyof typeof course] ||
+        String(course[field as keyof typeof course]).trim() === ""
+      ) {
+        return `Please fill in the ${field} field for course: ${
+          course.courseName || "Unnamed course"
+        }`;
       }
-
-      // Additional validation for specific institution types
-      if (isUnderPostGraduate) {
-        if (
-          !course.graduationType ||
-          !course.streamType ||
-          !course.selectBranch
-        ) {
-          return; //Please fill in all graduation details for course: ${course.courseName};
-        }
-      }
-
-      if (isCoachingCenter) {
-        if (!course.categoriesType || !course.domainType) {
-          return; //Please fill in all coaching details for course: ${course.courseName};
-        }
-      }
-
-      if (isStudyHall) {
-        if (
-          !course.openingTime ||
-          !course.closingTime ||
-          !course.totalSeats ||
-          !course.availableSeats
-        ) {
-          return; // Please fill in all study hall details for: ${course.courseName};
-        }
-      }
-
-      if (isTutionCenter) {
-        if (
-          !course.tuitionType ||
-          !course.instructorProfile ||
-          !course.subject ||
-          !course.openingTime ||
-          !course.closingTime ||
-          !course.totalSeats ||
-          !course.availableSeats
-        ) {
-          return; // Please fill in all tuition center details for: ${course.courseName};
-        }
-      }
-
-      // Basic course form types (Kindergarten, School, Intermediate college) only need common fields
-      // No additional validation needed for these types
     }
+
+    if (isUnderPostGraduate) {
+      if (!course.graduationType || !course.streamType || !course.selectBranch) {
+        return `Please fill in all graduation details for course: ${course.courseName || "Unnamed course"}`;
+      }
+    }
+
+    if (isCoachingCenter) {
+      if (!course.categoriesType || !course.domainType) {
+        return `Please fill in all coaching details for course: ${course.courseName || "Unnamed course"}`;
+      }
+    }
+
+    if (isStudyHall) {
+      if (
+        !course.openingTime ||
+        !course.closingTime ||
+        !course.totalSeats ||
+        !course.availableSeats
+      ) {
+        return `Please fill in all study hall details for: ${course.courseName || "Unnamed course"}`;
+      }
+    }
+
+    if (isTutionCenter) {
+      if (
+        !course.tuitionType ||
+        !course.instructorProfile ||
+        !course.subject ||
+        !course.openingTime ||
+        !course.closingTime ||
+        !course.totalSeats ||
+        !course.availableSeats
+      ) {
+        return `Please fill in all tuition center details for: ${course.courseName || "Unnamed course"}`;
+      }
+    }
+  }
+
+  return null; // ✅ No validation errors
+};
 
   //   return null;
   // };
@@ -755,6 +882,12 @@ export default function L2DialogBox({
   const handleCourseSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+
+    const validationMessage = validateCourses();
+  if (validationMessage) {
+    alert(validationMessage);
+    return;
+  }
 
     try {
       console.log("🚀 Starting course submission...");
@@ -1926,7 +2059,9 @@ export default function L2DialogBox({
       <_Dialog open={DialogOpen} onOpenChange={setDialogOpen}>
         {trigger && <_DialogTrigger asChild>{trigger}</_DialogTrigger>}
         <_DialogContent
-          className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide"
+          className="w-[95vw] sm:w-[90vw] md:w-[800px] lg:w-[900px] xl:max-w-4xl scrollbar-hide top-[65%]"
+          // className="max-w-4xl w-full p-0 overflow-y-auto bg-white dark:bg-gray-900 border-0 rounded-2xl shadow-xl 
+          //      top-[60%] -translate-y-1/2 left-1/2 -translate-x-1/2 fixed scrollbar-hide"
           showCloseButton={false}
           onEscapeKeyDown={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}

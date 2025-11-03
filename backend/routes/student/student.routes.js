@@ -16,18 +16,6 @@ router.get(
   getStudentById
 );
 
-// router.put(
-//   '/',
-//   [
-//     body('name').optional().isString().trim(),
-//     body('birthday').optional().isDate(),
-//     body("profilePictureUrl").optional(),
-//     body('address').optional().isString().trim(),
-//   ],
-//   handleValidationErrors,
-//   updateStudentDetails
-// );
-
 router.put(
   "/",
   [

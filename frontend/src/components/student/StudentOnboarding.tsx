@@ -12,15 +12,19 @@ import { useUserStore } from "@/lib/user-store";
 import { studentDashboardAPI, studentOnboardingAPI } from "@/lib/students-api";
 import { apiRequest } from "@/lib/api";
 import { uploadToS3 } from "@/lib/awsUpload";
-import InputField, { DateInput, FormField, Dropdown, validateDateInstant, RadioGroup } from "@/components/ui/InputField";
-import Image from "next/image";
+import {
+  DateInput,
+  FormField,
+  Dropdown,
+  validateDateInstant,
+  RadioGroup,
+} from "@/components/ui/InputField";
 
 const labelCls = "text-[17px] font-semibold text-gray-900";
 const inputBase =
-	"w-full h-[52px] rounded-[12px] px-4 outline-none border transition-colors font-semibold text-gray-900 placeholder:text-gray-500 bg-white dark:text-gray-100 dark:placeholder:text-gray-400";
-const inputIdle = "border-gray-200 bg-white focus:border-[#3B82F6] text-gray-900 placeholder:text-gray-500";
-const _inputActive = "border-[#0A46E4] ring-1 ring-[#0A46E4]";
-const _inputDisabled = "bg-gray-50 border-gray-200 text-gray-400";
+  "w-full h-[52px] rounded-[12px] px-4 outline-none border transition-colors font-semibold text-gray-900 placeholder:text-gray-500 bg-white dark:text-gray-100 dark:placeholder:text-gray-400";
+const inputIdle =
+  "border-gray-200 bg-white focus:border-[#3B82F6] text-gray-900 placeholder:text-gray-500";
 const inputError = "border-red-400 bg-white";
 const buttonCls =
   "w-full h-[48px] rounded-[12px] text-white text-[16px] font-medium bg-[#0A46E4] disabled:bg-gray-200 disabled:text-gray-500";
@@ -423,27 +427,62 @@ const StudentonBoarding: React.FC = () => {
         return;
       }
       // If Study Halls selected, complete onboarding on Continue
+      //   if (selectedInterest === "study_halls") {
+      //     try {
+      //       setSubmitting(true);
+      //       if (!studentId) {
+      //         const profileRes = await studentDashboardAPI.getProfile();
+      //         const sid =
+      //           (profileRes as any)?.data?._id ||
+      //           (profileRes as any)?._id ||
+      //           (profileRes as any)?.data?.id ||
+      //           (profileRes as any)?.id ||
+      //           null;
+      //         setStudentId(sid);
+      //       }
+      //       setProfileCompleted(true);
+      //       router.replace("/dashboard");
+      //     } catch (e) {
+      //       console.error("Study Halls quick-complete on continue failed", e);
+      //       setErrors((p) => ({
+      //         ...p,
+      //         submit:
+      //           e instanceof Error ? e.message : "Failed to complete onboarding",
+      //       }));
+      //     } finally {
+      //       setSubmitting(false);
+      //     }
+      //     return;
+      //   }
+      //   setStep(6);
+      //   return;
+      // }
+
       if (selectedInterest === "study_halls") {
         try {
           setSubmitting(true);
           if (!studentId) {
             const profileRes = await studentDashboardAPI.getProfile();
+            const profileData = profileRes as unknown as Record<
+              string,
+              unknown
+            >;
             const sid =
-              (profileRes as any)?.data?._id ||
-              (profileRes as any)?._id ||
-              (profileRes as any)?.data?.id ||
-              (profileRes as any)?.id ||
+              (profileData?.data as Record<string, unknown>)?.id ||
+              profileData?.id ||
               null;
-            setStudentId(sid);
+            setStudentId(sid as string | null);
           }
           setProfileCompleted(true);
           router.replace("/dashboard");
-        } catch (e) {
-          console.error("Study Halls quick-complete on continue failed", e);
+        } catch (_e) {
+          console.error("Study Halls quick-complete on continue failed", _e);
           setErrors((p) => ({
             ...p,
             submit:
-              e instanceof Error ? e.message : "Failed to complete onboarding",
+              _e instanceof Error
+                ? _e.message
+                : "Failed to complete onboarding",
           }));
         } finally {
           setSubmitting(false);
@@ -539,8 +578,11 @@ const StudentonBoarding: React.FC = () => {
     setSubmitting(true);
     try {
       // Build details object based on selected interest
-      let details: any = {};
-      let profileTypeToSend = selectedInterest;
+      let details: Record<string, unknown> = {};
+      // let profileTypeToSend = selectedInterest;
+
+      let profileTypeToSend: "KINDERGARTEN" | "SCHOOL" | "INTERMEDIATE" | "GRADUATION" | "COACHING_CENTER" | "STUDY_ABROAD" | "STUDY_HALLS" | "TUITION_CENTER" = selectedInterest as "KINDERGARTEN" | "SCHOOL" | "INTERMEDIATE" | "GRADUATION" | "COACHING_CENTER" | "STUDY_ABROAD" | "STUDY_HALLS" | "TUITION_CENTER";
+
 
       switch (selectedInterest) {
         case "KINDERGARTEN":
@@ -615,7 +657,28 @@ const StudentonBoarding: React.FC = () => {
           break;
 
         case "STUDY_HALLS":
-          details = { any: true };
+          details = {
+            highestEducation,
+            hasBacklogs,
+            englishTestStatus,
+            ...(englishTestStatus === "Already have my exam score" && {
+              testType,
+              overallScore,
+              examDate,
+            }),
+            studyGoals: studyGoals || "Not specified",
+            budgetPerYear: budgetPerYear || "Not specified",
+            preferredCountries:
+              preferredCountries.length > 0
+                ? preferredCountries
+                : ["Not specified"],
+            passportStatus:
+              passportStatus === "Yes"
+                ? "YES"
+                : passportStatus === "No"
+                ? "NO"
+                : "APPLIED",
+          };
           break;
       }
 
@@ -624,8 +687,8 @@ const StudentonBoarding: React.FC = () => {
         details,
       });
 
-      await studentOnboardingAPI.updateAcademicProfile(studentId!, {
-        profileType: profileTypeToSend as any,
+      await studentOnboardingAPI.updateAcademicProfile({
+        profileType: profileTypeToSend,
         details,
       });
       setProfileCompleted(true);

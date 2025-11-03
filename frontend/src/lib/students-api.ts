@@ -161,9 +161,8 @@ export const studentOnboardingAPI = {
   },
 
   updateAcademicProfile: async (
-    studentId: string,
     payload: UpdateAcademicProfilePayload
-  ): Promise<StudentApiResponse<any>> => {
+  ): Promise<StudentApiResponse<unknown>> => {
     return studentApiRequest(`/v1/students/academic-profile`, {
       method: "PUT",
       body: JSON.stringify(payload),
