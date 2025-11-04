@@ -25,7 +25,6 @@ exports.register = async (req, res, next, options = {}) => {
       linkedin,
       type,
       googleId,
-      profilePicture,
     } = req.body;
 
     // ---- Helper functions ----
@@ -88,7 +87,7 @@ exports.register = async (req, res, next, options = {}) => {
       designation: designation || null,
       linkedinUrl: linkedin || null,
       googleId: googleId || undefined,
-      profilePicture: profilePicture || null,
+      ProfilePicture: null,
       isEmailVerified: !!googleId,
       isPhoneVerified: false,
       isProfileCompleted: false,
@@ -100,6 +99,7 @@ exports.register = async (req, res, next, options = {}) => {
           role: "INSTITUTE_ADMIN",
           isPaymentDone: false,
           address: undefined,
+          birthday: undefined,
         });
         break;
 
@@ -108,12 +108,14 @@ exports.register = async (req, res, next, options = {}) => {
           role: "STUDENT",
           isPaymentDone: undefined,
           address: null,
+          birthday: null,
         });
         break;
 
       case "admin":
         Object.assign(userPayload, {
           role: "ADMIN",
+          birthday: undefined,
         });
         break;
     }

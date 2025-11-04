@@ -11,8 +11,8 @@ interface Course {
   reviews: number;
   students: number;
   price: number;
-  level: string;
-  mode: string;
+  level?: string;
+  mode?: string;
   wishlisted: boolean;
 }
 
