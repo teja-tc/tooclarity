@@ -9,50 +9,61 @@ import FooterNav from "../home/FooterNav";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 
+// Define user metrics type for strong typing
+interface UserMetrics {
+  programsVisited?: number;
+  wishlistCount?: number;
+  requestsRaised?: number;
+}
+
+interface User {
+  name?: string;
+  email?: string;
+  metrics?: UserMetrics;
+}
+
 const ProfilePage: React.FC = () => {
-  const { user } = useAuth();
+  const { user } = useAuth() as { user: User | null };
   const router = useRouter();
 
   // Wishlist count comes from localStorage key 'wishlistedCourses'
   const [wishlistCount, setWishlistCount] = useState<number | string>(() => {
-  if (typeof window === 'undefined') return (user as any)?.metrics?.wishlistCount ?? "--";
+    if (typeof window === "undefined") return user?.metrics?.wishlistCount ?? "--";
     try {
-      const saved = localStorage.getItem('wishlistedCourses');
+      const saved = localStorage.getItem("wishlistedCourses");
       return saved ? JSON.parse(saved).length : 0;
-    } catch (e) {
-  return (user as any)?.metrics?.wishlistCount ?? "--";
+    } catch {
+      return user?.metrics?.wishlistCount ?? "--";
     }
   });
 
   useEffect(() => {
     const read = () => {
       try {
-        const saved = localStorage.getItem('wishlistedCourses');
+        const saved = localStorage.getItem("wishlistedCourses");
         setWishlistCount(saved ? JSON.parse(saved).length : 0);
-      } catch (e) {
-  setWishlistCount((user as any)?.metrics?.wishlistCount ?? "--");
+      } catch {
+        setWishlistCount(user?.metrics?.wishlistCount ?? "--");
       }
     };
 
-    // Listen for cross-tab storage changes
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'wishlistedCourses') read();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "wishlistedCourses") read();
     };
 
-    // Listen for same-tab custom events dispatched by components
-    const onCustom = () => read();
+    const handleCustomEvent = () => read();
 
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('wishlistUpdated', onCustom as EventListener);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("wishlistUpdated", handleCustomEvent as EventListener);
 
-    // initial read in case something changed
+    // initial read
     read();
 
     return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('wishlistUpdated', onCustom as EventListener);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("wishlistUpdated", handleCustomEvent as EventListener);
     };
-  }, [(user as any)?.metrics?.wishlistCount]);
+  }, [user]); // cleaned dependency list
 
   const stats = useMemo(
     () => [

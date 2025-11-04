@@ -1,6 +1,6 @@
 // Student-specific API configuration placeholder
 
-import { API_BASE_URL, apiRequest, type ApiResponse } from "./api";
+import { apiRequest, type ApiResponse } from "./api";
 
 export type StudentApiResponse<T = unknown> = ApiResponse<T>;
 
@@ -27,6 +27,7 @@ export interface StudentProfile {
   phoneNumber?: string;
   profilePicture?: string;
   birthday?: string; // ISO or raw string if backend provides
+  address?: string;
 }
 
 export interface StudentCourse {
@@ -151,7 +152,8 @@ export const studentDashboardAPI = {
       profilePicture: (data as Record<string, unknown>)?.profilePicture as string || (data as Record<string, unknown>)?.ProfilePicutre as string, // backend may use ProfilePicutre
       birthday: (data as Record<string, unknown>)?.birthday as string | undefined, // if backend provides
     };
-    return { success: true, message: "ok", data: normalized } as StudentApiResponse<StudentProfile>;
+    
+    return { success: true, message: "ok", data: normalized };
   },
 
   // Fetch all visible courses (public endpoint - no auth required)
@@ -191,7 +193,7 @@ export const studentDashboardAPI = {
 export const studentOnboardingAPI = {
   createStudent: async (
     payload: CreateStudentPayload
-  ): Promise<StudentApiResponse<any>> => {
+  ): Promise<StudentApiResponse<unknown>> => {
     return studentApiRequest("/v1/students", {
       method: "POST",
       body: JSON.stringify(payload),
@@ -199,10 +201,9 @@ export const studentOnboardingAPI = {
   },
 
   updateAcademicProfile: async (
-    studentId: string,
     payload: UpdateAcademicProfilePayload
-  ): Promise<StudentApiResponse<any>> => {
-    return studentApiRequest(`/v1/students/${encodeURIComponent(studentId)}/academic-profile`, {
+  ): Promise<StudentApiResponse<unknown>> => {
+    return studentApiRequest(`/v1/students/academic-profile`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });

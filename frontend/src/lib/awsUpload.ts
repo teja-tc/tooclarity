@@ -67,8 +67,9 @@ export async function uploadToS3(file: File): Promise<UploadResult> {
       success: true,
       fileUrl,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("S3 upload failed:", error);
-    return { success: false, error: error.message };
+    const message = (error && typeof error === 'object' && 'message' in error) ? String((error as { message: unknown }).message) : 'Upload failed';
+    return { success: false, error: message };
   }
 }
