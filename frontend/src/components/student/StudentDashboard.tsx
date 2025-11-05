@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import HomeHeader from "./home/HomeHeader";
 import CourseCard from "./home/CourseCard";
 import FilterSidebar from "./home/FilterSidebar";
+import CoursePage from "./home/CoursePage";
+import FooterNav from "./home/FooterNav";
 import styles from "./StudentDashboard.module.css";
 import { studentDashboardAPI, type CourseForStudent } from "@/lib/students-api";
 import { useAuth } from "@/lib/auth-context";
@@ -32,6 +34,8 @@ interface Course {
   graduationType?: string; // e.g., "Under Graduation", "Post Graduation"
   streamType?: string; // e.g., "Engineering and Technology (B.E./B.Tech.)"
   educationType?: string; // e.g., "Full time", "Part time", "Distance learning"
+  // Store original API data for detailed view
+  apiData?: CourseForStudent;
 }
 
 /**
@@ -52,6 +56,7 @@ const transformApiCourse = (apiCourse: CourseForStudent, wishlisted: boolean): C
   const modeMap: Record<string, string> = {
     "Offline": "Offline",
     "Online": "Online",
+    "Hybrid": "Hybrid",
   };
 
   const price = apiCourse.priceOfCourse || 0;
@@ -78,6 +83,8 @@ const transformApiCourse = (apiCourse: CourseForStudent, wishlisted: boolean): C
     graduationType: "Under Graduation", // Default graduation type
     streamType: "Engineering and Technology (B.E./B.Tech.)", // Default stream
     educationType: "Full time", // Default education type
+    // Store original API data for course details page
+    apiData: apiCourse,
   };
 };
 
@@ -86,9 +93,14 @@ const StudentDashboard: React.FC = () => {
   const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
+  const [displayedCourses, setDisplayedCourses] = useState<Course[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const COURSES_PER_PAGE = 9;
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState({
     instituteType: "" as string, // Mutually exclusive - only one can be selected
     kindergartenLevels: [] as string[],
@@ -113,6 +125,7 @@ const StudentDashboard: React.FC = () => {
     educationType: [] as string[],
   });
   const [activePane, setActivePane] = useState<"notifications" | "wishlist" | null>(null);
+  const [isFilterBottomSheetOpen, setIsFilterBottomSheetOpen] = useState(false);
 
   const notificationsQuery = useNotifications();
   const notifications = notificationsQuery.data ?? [];
@@ -162,12 +175,16 @@ const StudentDashboard: React.FC = () => {
 
         setCourses(transformedCourses);
         setFilteredCourses(transformedCourses);
+        // Initialize with first page
+        setDisplayedCourses(transformedCourses.slice(0, COURSES_PER_PAGE));
+        setCurrentPage(1);
       } catch (err) {
         console.error("Error fetching courses:", err);
         setError(err instanceof Error ? err.message : "Failed to load courses");
         // Keep the component functional even if API fails
         setCourses([]);
         setFilteredCourses([]);
+        setDisplayedCourses([]);
       } finally {
         setLoading(false);
       }
@@ -175,6 +192,64 @@ const StudentDashboard: React.FC = () => {
 
     fetchCourses();
   }, []);
+
+  // Update displayed courses when filters change - reset to first page
+  useEffect(() => {
+    setDisplayedCourses(filteredCourses.slice(0, COURSES_PER_PAGE));
+    setCurrentPage(1);
+    setIsLoadingMore(false);
+  }, [filteredCourses]);
+
+  // Load more courses function
+  const loadMoreCourses = () => {
+    if (isLoadingMore || displayedCourses.length >= filteredCourses.length) return;
+
+    setIsLoadingMore(true);
+    
+    // Load next batch immediately without delay
+    const nextPage = currentPage + 1;
+    const startIndex = 0;
+    const endIndex = nextPage * COURSES_PER_PAGE;
+    const newDisplayedCourses = filteredCourses.slice(startIndex, endIndex);
+    
+    setDisplayedCourses(newDisplayedCourses);
+    setCurrentPage(nextPage);
+    setIsLoadingMore(false);
+  };
+
+  // Infinite scroll handler
+  useEffect(() => {
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          // Check if we're near the bottom of the page
+          const scrollPosition = window.innerHeight + window.scrollY;
+          const pageHeight = document.documentElement.scrollHeight;
+          const threshold = 500; // Load more when 500px from bottom
+          
+          const shouldLoadMore = scrollPosition >= pageHeight - threshold &&
+            !isLoadingMore &&
+            displayedCourses.length < filteredCourses.length;
+
+          if (shouldLoadMore) {
+            loadMoreCourses();
+          }
+          
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Also check on mount in case content doesn't fill screen
+    handleScroll();
+    
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [displayedCourses.length, filteredCourses.length, isLoadingMore, currentPage]);
 
   const formatNotificationTime = (timestamp?: number) => {
     if (!timestamp) return "";
@@ -186,7 +261,7 @@ const StudentDashboard: React.FC = () => {
   };
 
   const handleNotificationPaneToggle = () => {
-    setActivePane((prev) => (prev === "notifications" ? null : "notifications"));
+    router.push("/student/notifications");
   };
 
   const handleWishlistPaneToggle = () => {
@@ -195,6 +270,26 @@ const StudentDashboard: React.FC = () => {
 
   const closePane = () => {
     setActivePane(null);
+  };
+
+  const handleViewCourseDetails = (courseId: string) => {
+    setSelectedCourseId(courseId);
+  };
+
+  const handleBackFromDetails = () => {
+    setSelectedCourseId(null);
+  };
+
+  const handleRequestCall = () => {
+    // Handle request call action
+    console.log('Request call clicked');
+    // You can add API call here
+  };
+
+  const handleBookDemo = () => {
+    // Handle book demo action
+    console.log('Book demo clicked');
+    // You can add API call here
   };
 
   const handleSearch = (query: string) => {
@@ -390,12 +485,48 @@ const StudentDashboard: React.FC = () => {
 
   const wishlistCourses = courses.filter((course) => course.wishlisted);
 
+  const handleFilterToggle = () => {
+    setIsFilterBottomSheetOpen(!isFilterBottomSheetOpen);
+  };
+
+  const clearAllFilters = () => {
+    const clearedFilters = {
+      instituteType: "" as string,
+      kindergartenLevels: [] as string[],
+      schoolLevels: [] as string[],
+      modes: [] as string[],
+      ageGroup: [] as string[],
+      programDuration: [] as string[],
+      priceRange: [] as string[],
+      boardType: [] as string[],
+      graduationType: [] as string[],
+      streamType: [] as string[],
+      levels: [] as string[],
+      classSize: [] as string[],
+      seatingType: [] as string[],
+      operatingHours: [] as string[],
+      duration: [] as string[],
+      subjects: [] as string[],
+      educationType: [] as string[],
+    };
+    setActiveFilters(clearedFilters);
+    filterCourses(searchQuery, clearedFilters, courses);
+  };
+
+  const handleExploreClick = () => {
+    router.push('/student/explore');
+  };
+
+  // Determine if footer should be shown
+  const shouldShowFooter = !isFilterBottomSheetOpen;
+
   return (
     <div className={styles.dashboardContainer}>
       <HomeHeader
         userName={user?.name || "Student"}
         searchValue={searchQuery}
         onSearchChange={handleSearch}
+        onFilterClick={handleFilterToggle}
         onNotificationClick={handleNotificationPaneToggle}
         onWishlistClick={handleWishlistPaneToggle}
         onProfileClick={() => router.push("/student/profile")}
@@ -477,6 +608,51 @@ const StudentDashboard: React.FC = () => {
           <p className={styles.errorText}>⚠️ {error}</p>
           <p className={styles.errorSubtext}>Please refresh the page or try again later.</p>
         </div>
+      ) : selectedCourseId ? (
+        (() => {
+          const selectedCourse = courses.find((c) => c.id === selectedCourseId);
+          if (!selectedCourse) return null;
+
+          const apiData = selectedCourse.apiData;
+
+          return (
+            <CoursePage
+              course={{
+                id: selectedCourseId,
+                title: selectedCourse.title,
+                institution: selectedCourse.institution,
+                location: apiData?.location || selectedCourse.institution,
+                description: apiData?.aboutCourse || 'Discover quality education with comprehensive learning programs',
+                aboutCourse: apiData?.aboutCourse || 'Our institution provides world-class education with experienced faculty and modern facilities.',
+                eligibility: apiData?.eligibilityCriteria || 'All students meeting basic requirements',
+                price: selectedCourse.price,
+                duration: apiData?.courseDuration || selectedCourse.mode || '1 year',
+                mode: apiData?.mode || 'Classroom',
+                timings: apiData?.openingTime && apiData?.closingTime 
+                  ? `${apiData.openingTime} - ${apiData.closingTime}`
+                  : '9:00 AM - 5:00 PM',
+                brandLogo: apiData?.institution?.instituteLogo || '',
+                startDate: apiData?.startDate 
+                  ? new Date(apiData.startDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                  : 'July 2024',
+                operationalDays: apiData?.operationalDays && apiData.operationalDays.length > 0
+                  ? apiData.operationalDays
+                  : ['Mon', 'Tues', 'Wed', 'Thu', 'Fri'],
+                features: {
+                  recognized: true,
+                  activities: true,
+                  transport: true,
+                  extraCare: true,
+                  mealsProvided: apiData?.hasWifi === 'Yes',
+                  playground: apiData?.hasAC === 'Yes',
+                },
+              }}
+              onBack={handleBackFromDetails}
+              onRequestCall={handleRequestCall}
+              onBookDemo={handleBookDemo}
+            />
+          );
+        })()
       ) : (
         <div className={styles.contentWrapper}>
           <FilterSidebar
@@ -486,33 +662,43 @@ const StudentDashboard: React.FC = () => {
 
           <main className={styles.mainContent}>
             <section className={styles.coursesSection}>
-              <div className={styles.sectionHeader}>
-                <h2 className={styles.sectionTitle}>
-                  Courses ({filteredCourses.length})
-                </h2>
-              </div>
+              
 
-              {filteredCourses.length > 0 ? (
-                <div className={styles.coursesGrid}>
-                  {filteredCourses.map((course) => (
-                    <CourseCard
-                      key={course.id}
-                      course={{
-                        id: course.id,
-                        title: course.title,
-                        institution: course.institution,
-                        rating: course.rating,
-                        reviews: course.reviews,
-                        students: course.students,
-                        price: course.price,
-                        level: course.level,
-                        mode: course.mode,
-                        wishlisted: course.wishlisted,
-                      }}
-                      onWishlistToggle={handleWishlistToggle}
-                    />
-                  ))}
-                </div>
+              {displayedCourses.length > 0 ? (
+                <>
+                  <div className={styles.coursesGrid}>
+                    {displayedCourses.map((course) => (
+                      <CourseCard
+                        key={course.id}
+                        course={{
+                          id: course.id,
+                          title: course.title,
+                          institution: course.institution,
+                          rating: course.rating,
+                          reviews: course.reviews,
+                          students: course.students,
+                          price: course.price,
+                          level: course.level,
+                          mode: course.mode,
+                          wishlisted: course.wishlisted,
+                          location: course.apiData?.location || course.institution,
+                          description: course.apiData?.aboutCourse || 'Quality education program',
+                          duration: course.apiData?.courseDuration || '1 year',
+                          brandLogo: course.apiData?.institution?.instituteLogo || '',
+                        }}
+                        onWishlistToggle={handleWishlistToggle}
+                        onViewDetails={handleViewCourseDetails}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Loading spinner for infinite scroll */}
+                  {isLoadingMore && (
+                    <div className={styles.loadingMore}>
+                      <div className={styles.spinner}></div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className={styles.emptyState}>
                   <p className={styles.emptyStateText}>
@@ -525,6 +711,58 @@ const StudentDashboard: React.FC = () => {
           </main>
         </div>
       )}
+
+      {/* Mobile Filter Bottom Sheet */}
+      {isFilterBottomSheetOpen && (
+        <>
+          <div 
+            className={styles.filterOverlay} 
+            onClick={() => setIsFilterBottomSheetOpen(false)}
+          />
+          <div className={`${styles.filterBottomSheet} ${isFilterBottomSheetOpen ? styles.filterBottomSheetOpen : ''}`}>
+            <div className={styles.filterBottomSheetDragHandle}>
+              <svg width="134" height="5" viewBox="0 0 134 5" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="134" height="5" rx="2.5" fill="#B0B1B3"/>
+              </svg>
+            </div>
+            <div className={styles.filterBottomSheetHeader}>
+              <button
+                className={styles.filterCloseBtn}
+                onClick={() => setIsFilterBottomSheetOpen(false)}
+                aria-label="Close filters"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6.96939 12.531L14.4694 20.031C14.5391 20.1007 14.6218 20.156 14.7128 20.1937C14.8039 20.2314 14.9015 20.2508 15 20.2508C15.0986 20.2508 15.1961 20.2314 15.2872 20.1937C15.3782 20.156 15.461 20.1007 15.5306 20.031C15.6003 19.9614 15.6556 19.8786 15.6933 19.7876C15.731 19.6965 15.7504 19.599 15.7504 19.5004C15.7504 19.4019 15.731 19.3043 15.6933 19.2132C15.6556 19.1222 15.6003 19.0395 15.5306 18.9698L8.56032 12.0004L15.5306 5.03104C15.6714 4.89031 15.7504 4.69944 15.7504 4.50042C15.7504 4.30139 15.6714 4.11052 15.5306 3.96979C15.3899 3.82906 15.199 3.75 15 3.75C14.801 3.75 14.6101 3.82906 14.4694 3.96979L6.96939 11.4698C6.89965 11.5394 6.84433 11.6222 6.80659 11.7132C6.76885 11.8043 6.74942 11.9019 6.74942 12.0004C6.74942 12.099 6.76885 12.1966 6.80659 12.2876C6.84433 12.3787 6.89965 12.4614 6.96939 12.531Z" fill="#060B13"/>
+                </svg>
+              </button>
+              <h2 className={styles.filterBottomSheetTitle}>Filter&apos;s</h2>
+            </div>
+            <div className={styles.filterBottomSheetContent}>
+              <FilterSidebar
+                activeFilters={activeFilters}
+                onFilterChange={handleFilterChange}
+              />
+            </div>
+            <div className={styles.filterBottomSheetFooter}>
+              <button 
+                className={styles.clearFilterBtn}
+                onClick={clearAllFilters}
+              >
+                Clear Filter
+              </button>
+              <button 
+                className={styles.showResultsBtn}
+                onClick={() => setIsFilterBottomSheetOpen(false)}
+              >
+                Show {filteredCourses.length} Results
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Footer Navigation - shown on course cards and course page, hidden on notifications and when filter is open */}
+      {shouldShowFooter && <FooterNav onExploreClick={handleExploreClick} />}
     </div>
   );
 };
