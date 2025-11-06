@@ -50,6 +50,9 @@ export default function DashboardLayout({
   }
 
   if(user?.role === "STUDENT"){
+    if(!user.isProfileCompleted){
+      router.push("/student/onboarding");
+    }
     return <StudentDashboard/>;
   }
 
