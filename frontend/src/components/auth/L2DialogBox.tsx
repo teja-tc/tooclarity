@@ -31,6 +31,7 @@ import {
   addCoursesGroupToDB,
   getCoursesGroupsByBranchName,
   updateCoursesGroupInDB,
+  CourseRecord,
 } from "@/lib/localDb";
 //import CoachingCourseForm from "./L2DialogBoxParts/Course/CoachingCourseForm";
 
@@ -200,16 +201,201 @@ export default function L2DialogBox({
     Record<number, Record<string, string>>
   >({});
 
+  // ✅ Load whatever data exists in IndexedDB (branches + courses)
+  // useEffect(() => {
+  //   (async () => {
+  //     try {
+  //       // --- Load saved branches ---
+  //       const savedBranches = await getAllBranchesFromDB();
+  //       if (savedBranches?.length) {
+  //         setBranches(
+  //           savedBranches.map((b, i) => ({
+  //             id: i + 1,
+  //             branchName: b.branchName || "",
+  //             branchAddress: b.branchAddress || "",
+  //             contactInfo: b.contactInfo || "",
+  //             locationUrl: b.locationUrl || "",
+  //             dbId: b.id,
+  //           }))
+  //         );
+  //       }
+
+  //       // --- Load saved course groups ---
+  //       const allGroups = await getCoursesGroupsByBranchName();
+  //       const loadedCourses: Course[] = [];
+
+  //       allGroups.forEach((group) => {
+  //         (group.courses || []).forEach((c: CourseRecord) => {
+  //           const loadedCourse: Course = {
+  //             id: loadedCourses.length + 1,
+  //             courseName: c.courseName ?? "",
+  //             aboutCourse: c.aboutCourse ?? "",
+  //             courseDuration: c.courseDuration ?? "",
+  //             startDate: c.startDate ?? "",
+  //             endDate: c.endDate ?? "",
+  //             mode: c.mode ?? "Offline",
+  //             priceOfCourse: c.priceOfCourse ?? "",
+  //             location: c.location ?? "",
+  //             image: null,
+  //             imageUrl: c.imageUrl ?? "",
+  //             imagePreviewUrl: c.imagePreviewUrl ?? c.imageUrl ?? "",
+  //             brochureUrl: c.brochureUrl ?? "",
+  //             brochurePreviewUrl: c.brochurePreviewUrl ?? c.brochureUrl ?? "",
+  //             brochure: null,
+  //             graduationType: c.graduationType ?? "",
+  //             streamType: c.streamType ?? "",
+  //             selectBranch: c.selectBranch ?? "",
+  //             aboutBranch: c.aboutBranch ?? "",
+  //             educationType: c.educationType ?? "",
+  //             classSize: c.classSize ?? "",
+  //             categoriesType: c.categoriesType ?? "",
+  //             domainType: c.domainType ?? "",
+  //             subDomainType: c.subDomainType ?? "",
+  //             courseHighlights: c.courseHighlights ?? "",
+  //             seatingOption: c.seatingOption ?? "",
+  //             openingTime: c.openingTime ?? "",
+  //             closingTime: c.closingTime ?? "",
+  //             hallName: c.hallName ?? "",
+  //             operationalDays: c.operationalDays ?? [],
+  //             totalSeats: c.totalSeats ?? "",
+  //             availableSeats: c.availableSeats ?? "",
+  //             pricePerSeat: c.pricePerSeat ?? "",
+  //             hasWifi: c.hasWifi ? "Yes" : "No",
+  //             hasChargingPoints: c.hasChargingPoints ? "Yes" : "No",
+  //             hasAC: c.hasAC ? "Yes" : "No",
+  //             hasPersonalLocker: c.hasPersonalLocker ? "Yes" : "No",
+  //             eligibilityCriteria: c.eligibilityCriteria ?? "",
+  //             tuitionType: c.tuitionType ?? "",
+  //             instructorProfile: c.instructorProfile ?? "",
+  //             subject: c.subject ?? "",
+  //             createdBranch: group.branchName ?? "",
+  //           };
+
+  //           loadedCourses.push(loadedCourse);
+  //         });
+  //       });
+
+  //       if (loadedCourses.length > 0) {
+  //         setCourses(loadedCourses);
+  //         setSelectedCourseId(loadedCourses[0].id);
+  //       }
+
+  //       console.log(
+  //         `📦 IndexedDB loaded → ${savedBranches.length} branches, ${loadedCourses.length} courses`
+  //       );
+  //     } catch (err) {
+  //       console.error("❌ Failed to load IndexedDB data:", err);
+  //     }
+  //   })();
+  // }, []);
+
+
   useEffect(() => {
-    (async () => {
-      try {
-        const all = await getAllBranchesFromDB();
-        setBranchOptions(all.map((b) => b.branchName).filter(Boolean));
-      } catch (err) {
-        console.error("Failed to load branches from IndexedDB", err);
+  let isMounted = true;
+
+  const loadData = async () => {
+    try {
+      // --- Load saved branches ---
+      const savedBranches = await getAllBranchesFromDB();
+      if (isMounted && savedBranches?.length) {
+        setBranches(
+          savedBranches.map((b, i) => ({
+            id: i + 1,
+            branchName: b.branchName || "",
+            branchAddress: b.branchAddress || "",
+            contactInfo: b.contactInfo || "",
+            locationUrl: b.locationUrl || "",
+            dbId: b.id,
+          }))
+        );
       }
-    })();
-  }, []);
+
+      // --- Load saved course groups ---
+      const allGroups = await getCoursesGroupsByBranchName();
+      const loadedCourses: Course[] = [];
+
+      allGroups.forEach((group) => {
+        (group.courses || []).forEach((c: CourseRecord) => {
+          const loadedCourse: Course = {
+            id: loadedCourses.length + 1,
+            courseName: c.courseName ?? "",
+            aboutCourse: c.aboutCourse ?? "",
+            courseDuration: c.courseDuration ?? "",
+            startDate: c.startDate ?? "",
+            endDate: c.endDate ?? "",
+            mode: c.mode ?? "Offline",
+            priceOfCourse: c.priceOfCourse ?? "",
+            location: c.location ?? "",
+            image: null,
+            imageUrl: c.imageUrl ?? "",
+            imagePreviewUrl: c.imagePreviewUrl ?? c.imageUrl ?? "",
+            brochureUrl: c.brochureUrl ?? "",
+            brochurePreviewUrl:
+              c.brochurePreviewUrl ?? c.brochureUrl ?? "",
+            brochure: null,
+            graduationType: c.graduationType ?? "",
+            streamType: c.streamType ?? "",
+            selectBranch: c.selectBranch ?? "",
+            aboutBranch: c.aboutBranch ?? "",
+            educationType: c.educationType ?? "",
+            classSize: c.classSize ?? "",
+            categoriesType: c.categoriesType ?? "",
+            domainType: c.domainType ?? "",
+            subDomainType: c.subDomainType ?? "",
+            courseHighlights: c.courseHighlights ?? "",
+            seatingOption: c.seatingOption ?? "",
+            openingTime: c.openingTime ?? "",
+            closingTime: c.closingTime ?? "",
+            hallName: c.hallName ?? "",
+            operationalDays: c.operationalDays ?? [],
+            totalSeats: c.totalSeats ?? "",
+            availableSeats: c.availableSeats ?? "",
+            pricePerSeat: c.pricePerSeat ?? "",
+            hasWifi: c.hasWifi ? "Yes" : "No",
+            hasChargingPoints: c.hasChargingPoints ? "Yes" : "No",
+            hasAC: c.hasAC ? "Yes" : "No",
+            hasPersonalLocker: c.hasPersonalLocker ? "Yes" : "No",
+            eligibilityCriteria: c.eligibilityCriteria ?? "",
+            tuitionType: c.tuitionType ?? "",
+            instructorProfile: c.instructorProfile ?? "",
+            subject: c.subject ?? "",
+            createdBranch: group.branchName ?? "",
+          };
+
+          loadedCourses.push(loadedCourse);
+        });
+      });
+
+      if (isMounted && loadedCourses.length > 0) {
+        setCourses(loadedCourses);
+        setSelectedCourseId(loadedCourses[0].id);
+      }
+
+      console.log(
+        `📦 IndexedDB loaded → ${savedBranches.length} branches, ${loadedCourses.length} courses`
+      );
+    } catch (err) {
+      console.error("❌ Failed to load IndexedDB data:", err);
+    }
+  };
+
+  // 🔹 Initial data load
+  loadData();
+
+  // 🔁 Re-run when IndexedDB updates
+  const handleDBUpdate = (e: CustomEvent) => {
+    console.log(`♻️ IndexedDB updated in store: ${e.detail.storeName}`);
+    loadData();
+  };
+
+  window.addEventListener("indexeddb-updated", handleDBUpdate as EventListener);
+
+  return () => {
+    isMounted = false;
+    window.removeEventListener("indexeddb-updated", handleDBUpdate as EventListener);
+  };
+}, []);
+
 
   // Handle controlled open state
   const DialogOpen =
@@ -266,7 +452,7 @@ export default function L2DialogBox({
       // Convert existing course data to the expected format
       return [
         {
-          id: 1,
+          id: existingCourseData.id || 1,
           courseName: existingCourseData.courseName || "",
           aboutCourse: existingCourseData.aboutCourse || "",
           courseDuration: existingCourseData.courseDuration || "",
@@ -465,7 +651,8 @@ export default function L2DialogBox({
     e: ChangeEvent<HTMLInputElement>,
     type: "image" | "brochure"
   ) => {
-    const files = e.target.files;
+    const fileInput = e.target;
+    const files = fileInput.files;
     if (!files || !files[0]) return;
 
     const selectedFile = files[0];
@@ -527,6 +714,8 @@ export default function L2DialogBox({
           : course
       )
     );
+
+    fileInput.value = "";
   };
 
   // L2DialogBox.tsx
@@ -681,6 +870,8 @@ export default function L2DialogBox({
           "location",
           "startDate",
           "endDate",
+          "image",
+          "brochure",
         ];
 
       case isUnderPostGraduate:
@@ -695,6 +886,8 @@ export default function L2DialogBox({
           "priceOfCourse",
           "classSize",
           "eligibilityCriteria",
+          "image",
+          "brochure",
         ];
 
       case isCoachingCenter:
@@ -709,6 +902,8 @@ export default function L2DialogBox({
           "priceOfCourse",
           "classSize",
           "location",
+          "image",
+          "brochure",
         ];
 
       case isTutionCenter:
@@ -724,33 +919,67 @@ export default function L2DialogBox({
           "startDate",
           "endDate",
           "pricePerSeat",
+          "image",
         ];
 
       case isStudyHall:
-        return ["hallName", "seatingOption", "openingTime", "closingTime", "operationalDays", "startDate", "endDate", "totalSeats", "availableSeats", "pricePerSeat", "hasPersonalLocker", "hasWifi", "hasChargingPoints", "hasAC"];
+        return [
+          "hallName",
+          "seatingOption",
+          "openingTime",
+          "closingTime",
+          "operationalDays",
+          "startDate",
+          "endDate",
+          "totalSeats",
+          "availableSeats",
+          "pricePerSeat",
+          "hasPersonalLocker",
+          "hasWifi",
+          "hasChargingPoints",
+          "hasAC",
+        ];
 
       default:
         return ["courseName", "courseDuration", "priceOfCourse", "location"];
     }
   };
 
-  // ✅ Move your validation inside a function
   const validateCourses = () => {
-    // const requiredFields = ["courseName", "courseDuration", "priceOfCourse", "location"];
     const requiredFields = getRequiredFields();
 
+    // ✅ Helper: Check if a field is actually valid
+    const hasValidField = (course: Course, field: string) => {
+      const value = course[field as keyof Course];
+
+      // 1️⃣ Handle file-type fields (image/brochure)
+      if (field === "image") {
+        return value instanceof File || !!course.imageUrl;
+      }
+      if (field === "brochure") {
+        return value instanceof File || !!course.brochureUrl;
+      }
+
+      // 2️⃣ Handle normal string/number/array fields
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === "object" && value !== null)
+        return Object.keys(value).length > 0;
+      if (typeof value === "string") return value.trim() !== "";
+
+      return !!value;
+    };
+
+    // ✅ Main validation loop
     for (const course of courses) {
       for (const field of requiredFields) {
-        if (
-          !course[field as keyof typeof course] ||
-          String(course[field as keyof typeof course]).trim() === ""
-        ) {
+        if (!hasValidField(course, field)) {
           return `Please fill in the ${field} field for course: ${
             course.courseName || "Unnamed course"
           }`;
         }
       }
 
+      // 🧩 Type-specific validations
       if (isUnderPostGraduate) {
         if (
           !course.graduationType ||
@@ -803,6 +1032,7 @@ export default function L2DialogBox({
 
     return null; // ✅ No validation errors
   };
+
   // Inside L2DialogBox.tsx
 
   const getSchemaKey = (): keyof typeof L2Schemas => {
@@ -836,29 +1066,49 @@ export default function L2DialogBox({
     try {
       console.log("🚀 Starting course submission...");
 
+      const imageUploadCache = new Map<string, string>();
+      const brochureUploadCache = new Map<string, string>();
+
       const uploadedCourses = await Promise.all(
         courses.map(async (course) => {
           const updated = { ...course };
 
           // --- 🖼️ Image Upload ---
+
           if (course.image instanceof File) {
             const isNewLocalFile =
               !course.imageUrl || course.imageUrl.startsWith("blob:");
             if (isNewLocalFile) {
-              console.log(`🪣 Uploading new image for: ${course.courseName}`);
-              try {
-                const uploadImage = await uploadToS3(course.image);
-                if (uploadImage.success && uploadImage.fileUrl) {
-                  updated.imageUrl = uploadImage.fileUrl;
-                  updated.imagePreviewUrl = URL.createObjectURL(course.image);
-                  console.log(`✅ Image uploaded for: ${course.courseName}`);
-                }
-              } catch (err) {
-                console.error(
-                  `❌ Failed to upload image for ${course.courseName}:`,
-                  err
+              const imageKey = `${course.image.name}|${course.image.size}|${course.image.lastModified}`;
+
+              if (imageUploadCache.has(imageKey)) {
+                // ✅ Reuse the already uploaded file URL
+                updated.imageUrl = imageUploadCache.get(imageKey)!;
+                updated.imagePreviewUrl = URL.createObjectURL(course.image);
+                console.log(
+                  `♻️ Reused uploaded image for: ${course.courseName}`
                 );
-                setIsLoading(false);
+              } else {
+                console.log(`🪣 Uploading new image for: ${course.courseName}`);
+                try {
+                  const uploadImage = await uploadToS3(course.image);
+                  if (uploadImage.success && uploadImage.fileUrl) {
+                    updated.imageUrl = uploadImage.fileUrl;
+                    updated.imagePreviewUrl = URL.createObjectURL(course.image);
+                    imageUploadCache.set(imageKey, uploadImage.fileUrl); // ✅ Cache URL
+                    console.log(`✅ Image uploaded for: ${course.courseName}`);
+                  } else {
+                    throw new Error(
+                      uploadImage.error || "Unknown upload error"
+                    );
+                  }
+                } catch (err) {
+                  console.error(
+                    `❌ Failed to upload image for ${course.courseName}:`,
+                    err
+                  );
+                  setIsLoading(false);
+                }
               }
             } else {
               console.log(
@@ -872,24 +1122,47 @@ export default function L2DialogBox({
             const isNewLocalFile =
               !course.brochureUrl || course.brochureUrl.startsWith("blob:");
             if (isNewLocalFile) {
-              console.log(
-                `🪣 Uploading new brochure for: ${course.courseName}`
-              );
-              try {
-                const uploadBrochure = await uploadToS3(course.brochure);
-                if (uploadBrochure.success && uploadBrochure.fileUrl) {
-                  updated.brochureUrl = uploadBrochure.fileUrl;
-                  updated.brochurePreviewUrl = URL.createObjectURL(
-                    course.brochure
-                  );
-                  console.log(`✅ Brochure uploaded for: ${course.courseName}`);
-                }
-              } catch (err) {
-                console.error(
-                  `❌ Failed to upload brochure for ${course.courseName}:`,
-                  err
+              const brochureKey = `${course.brochure.name}|${course.brochure.size}|${course.brochure.lastModified}`;
+
+              if (brochureUploadCache.has(brochureKey)) {
+                // ✅ Reuse uploaded brochure
+                updated.brochureUrl = brochureUploadCache.get(brochureKey)!;
+                updated.brochurePreviewUrl = URL.createObjectURL(
+                  course.brochure
                 );
-                setIsLoading(false);
+                console.log(
+                  `♻️ Reused uploaded brochure for: ${course.courseName}`
+                );
+              } else {
+                console.log(
+                  `🪣 Uploading new brochure for: ${course.courseName}`
+                );
+                try {
+                  const uploadBrochure = await uploadToS3(course.brochure);
+                  if (uploadBrochure.success && uploadBrochure.fileUrl) {
+                    updated.brochureUrl = uploadBrochure.fileUrl;
+                    updated.brochurePreviewUrl = URL.createObjectURL(
+                      course.brochure
+                    );
+                    brochureUploadCache.set(
+                      brochureKey,
+                      uploadBrochure.fileUrl
+                    ); // ✅ Cache URL
+                    console.log(
+                      `✅ Brochure uploaded for: ${course.courseName}`
+                    );
+                  } else {
+                    throw new Error(
+                      uploadBrochure.error || "Unknown upload error"
+                    );
+                  }
+                } catch (err) {
+                  console.error(
+                    `❌ Failed to upload brochure for ${course.courseName}:`,
+                    err
+                  );
+                  setIsLoading(false);
+                }
               }
             } else {
               console.log(
@@ -1158,49 +1431,133 @@ export default function L2DialogBox({
         return;
       }
 
-      console.log("🧾 Final Payload Ready:", sanitizedPayload);
-
       // --- 5️⃣ Save Courses in DB ---
       for (const entry of sanitizedPayload) {
-        // const isUnassigned = !entry.branchName;
+        const safeEntry = JSON.parse(JSON.stringify(entry));
+
+        // 🔍 Correct lookup (undefined means "unassigned" group)
         const existingGroups = await getCoursesGroupsByBranchName(
-          entry.branchName || ""
+          safeEntry.branchName?.trim() ? safeEntry.branchName.trim() : undefined
         );
 
-        if (existingGroups.length) {
-          const group = existingGroups[0];
-          const existing = group.courses || [];
-          const incoming = entry.courses || [];
+        // 🔍 Find correct existing group (branch or unassigned)
+        const existingGroup = safeEntry.branchName?.trim()
+          ? existingGroups[0]
+          : existingGroups.find((g) => (g.branchName || "").trim() === "");
 
-          const keyOf = (c: import("@/lib/localDb").CourseRecord) =>
-            `${(c.courseName || "").trim().toLowerCase()}|${(c.subject || "")
-              .trim()
-              .toLowerCase()}|${(c.mode || "").trim().toLowerCase()}`;
+        if (existingGroup) {
+          const existing = existingGroup.courses || [];
+          const incoming = safeEntry.courses || [];
 
-          const existingSet = new Set(existing.map(keyOf));
-          const uniqueIncoming = incoming.filter(
-            (c: import("@/lib/localDb").CourseRecord) =>
-              !existingSet.has(keyOf(c))
-          );
-          const merged = {
-            ...group,
-            branchName: entry.branchName || "",
-            branchAddress: entry.branchAddress || "",
-            contactInfo: entry.contactInfo || "",
-            locationUrl: entry.locationUrl || "",
-            courses: [...existing, ...uniqueIncoming],
+          // --- Helper: Compare two courses (ignoring files) ---
+          const isCourseChanged = (
+            oldCourse: import("@/lib/localDb").CourseRecord,
+            newCourse: import("@/lib/localDb").CourseRecord
+          ): boolean => {
+            const ignored = [
+              "image",
+              "imageUrl",
+              "imagePreviewUrl",
+              "brochure",
+              "brochureUrl",
+              "brochurePreviewUrl",
+            ];
+            for (const key in newCourse) {
+              if (ignored.includes(key)) continue;
+              const oldVal = oldCourse[key as keyof typeof oldCourse];
+              const newVal = newCourse[key as keyof typeof newCourse];
+
+              // Normalize values for comparison
+              const normalizedOld =
+                oldVal === null || oldVal === undefined ? "" : oldVal;
+              const normalizedNew =
+                newVal === null || newVal === undefined ? "" : newVal;
+
+              if (
+                Array.isArray(normalizedOld) &&
+                Array.isArray(normalizedNew)
+              ) {
+                if (
+                  JSON.stringify(normalizedOld) !==
+                  JSON.stringify(normalizedNew)
+                )
+                  return true;
+              } else if (normalizedOld !== normalizedNew) {
+                return true;
+              }
+            }
+            return false;
           };
-          await updateCoursesGroupInDB(merged);
-        } else {
-          await addCoursesGroupToDB({
-            branchName: entry.branchName || "",
-            branchAddress: entry.branchAddress || "",
-            contactInfo: entry.contactInfo || "",
-            locationUrl: entry.locationUrl || "",
-            courses: entry.courses || [],
+
+          // ✅ Build merged course list (update changed, keep unchanged)
+          const mergedCourses = existing.map((oldCourse) => {
+            const updatedCourse = incoming.find(
+              (newCourse: import("@/lib/localDb").CourseRecord) =>
+                newCourse.id === oldCourse.id
+            );
+            if (!updatedCourse) return oldCourse; // Not in new list → keep as is
+
+            if (isCourseChanged(oldCourse, updatedCourse)) {
+              console.log(
+                `🔄 Course updated (ID: ${oldCourse.id}) → ${updatedCourse.courseName}`
+              );
+              return { ...oldCourse, ...updatedCourse };
+            } else {
+              console.log(
+                `⏩ No changes detected for course ID ${oldCourse.id}`
+              );
+              return oldCourse;
+            }
           });
+
+          // ✅ Add new courses not present in IndexedDB
+          const newCourses = incoming.filter(
+            (newCourse: import("@/lib/localDb").CourseRecord) =>
+              !existing.some((oldCourse) => oldCourse.id === newCourse.id)
+          );
+
+          const finalMergedCourses = JSON.parse(
+            JSON.stringify([...mergedCourses, ...newCourses])
+          );
+
+          const merged = {
+            ...existingGroup,
+            branchName: safeEntry.branchName || "",
+            branchAddress: safeEntry.branchAddress || "",
+            contactInfo: safeEntry.contactInfo || "",
+            locationUrl: safeEntry.locationUrl || "",
+            courses: finalMergedCourses,
+          };
+
+          await updateCoursesGroupInDB(merged);
+          console.log(
+            `✅ Updated branch "${safeEntry.branchName || "(unassigned)"}" — ${
+              newCourses.length
+            } new, ${incoming.length - newCourses.length} updated, ${
+              existing.length
+            } kept.`
+          );
+        } else {
+          // 🆕 No existing group → create new
+          const safeCourses = JSON.parse(
+            JSON.stringify(safeEntry.courses || [])
+          );
+          await addCoursesGroupToDB({
+            branchName: safeEntry.branchName || "",
+            branchAddress: safeEntry.branchAddress || "",
+            contactInfo: safeEntry.contactInfo || "",
+            locationUrl: safeEntry.locationUrl || "",
+            courses: safeCourses,
+          });
+          console.log(
+            `🆕 Created new branch "${
+              safeEntry.branchName || "(unassigned)"
+            }" with ${safeEntry.courses.length} course(s).`
+          );
         }
       }
+
+      console.log("💾 All courses saved/updated successfully.");
 
       console.log("💾 All courses saved successfully.");
 
@@ -1361,8 +1718,8 @@ export default function L2DialogBox({
 
             {/* Course items switching */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-wrap">
-                {courses.map((course) => (
+              {/* <div className="flex items-center gap-2 flex-wrap">
+                {courses.map((course, index) => (
                   <div key={course.id} className="flex items-center">
                     <Button
                       type="button"
@@ -1397,7 +1754,46 @@ export default function L2DialogBox({
                     </Button>
                   </div>
                 ))}
+              </div> */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {courses.map((course, index) => (
+                  <div key={course.id} className="flex items-center">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setSelectedCourseId(course.id)}
+                      className={`px-3 py-2 rounded-lg text-sm border transition-colors flex items-center gap-2 ${
+                        selectedCourseId === course.id
+                          ? "bg-blue-50 border-blue-200 text-blue-700"
+                          : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      <span>
+                        {course.courseName ||
+                          (isStudyHall
+                            ? `Hall ${index + 1}`
+                            : isTutionCenter
+                            ? `Tuition ${index + 1}`
+                            : isSubscriptionProgram
+                            ? `Program ${index + 1}`
+                            : `Course ${index + 1}`)}
+                      </span>
+
+                      {courses.length > 1 && (
+                        <MoreVertical
+                          size={14}
+                          className="text-gray-400 hover:text-gray-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteCourse(course.id);
+                          }}
+                        />
+                      )}
+                    </Button>
+                  </div>
+                ))}
               </div>
+
               <Button
                 type="button"
                 onClick={addNewCourse}
@@ -1524,7 +1920,10 @@ export default function L2DialogBox({
               {!isStudyHall && !isTutionCenter && (
                 <div className="grid md:grid-cols-2 gap-6">
                   {uploadFields.map((f) => (
-                    <div key={f.type} className="flex flex-col gap-2">
+                    <div
+                      key={`${f.type}-${currentCourse.id}`}
+                      className="flex flex-col gap-2"
+                    >
                       <label className="font-medium text-[16px]">
                         {f.label} <span className="text-red-500">*</span>
                       </label>
@@ -1548,7 +1947,6 @@ export default function L2DialogBox({
                                   width={100}
                                   height={100}
                                   alt={`${f.label} Preview`}
-                                  // className="object-cover w-full h-full rounded-[12px]"
                                   className="w-[100px] h-[100px] object-cover rounded-md"
                                 />
                               );
@@ -1557,7 +1955,30 @@ export default function L2DialogBox({
                               return (
                                 <div className="flex flex-col items-center justify-center gap-2 p-4 w-full h-full">
                                   <span className="text-sm text-gray-500 truncate">
-                                    {(currentCourse[f.type] as File).name}
+                                    {(() => {
+                                      if (
+                                        currentCourse[f.type] instanceof File
+                                      ) {
+                                        return (currentCourse[f.type] as File)
+                                          .name;
+                                      }
+
+                                      const url = currentCourse[`${f.type}Url`];
+                                      if (url) {
+                                        const rawName = decodeURIComponent(
+                                          url.split("/").pop()?.split("?")[0] ||
+                                            ""
+                                        );
+                                        // 🧹 remove timestamp prefix (e.g. "1762336776327-")
+                                        const cleanName = rawName.replace(
+                                          /^\d+-/,
+                                          ""
+                                        );
+                                        return cleanName;
+                                      }
+
+                                      return "No file selected";
+                                    })()}
                                   </span>
                                 </div>
                               );
@@ -1716,7 +2137,7 @@ export default function L2DialogBox({
 
                 {/* Course items switching */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  {/* <div className="flex items-center gap-2 flex-wrap">
                     {courses.map((course) => (
                       <div key={course.id} className="flex items-center">
                         <Button
@@ -1752,7 +2173,46 @@ export default function L2DialogBox({
                         </Button>
                       </div>
                     ))}
+                  </div> */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {courses.map((course, index) => (
+                      <div key={course.id} className="flex items-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setSelectedCourseId(course.id)}
+                          className={`px-3 py-2 rounded-lg text-sm border transition-colors flex items-center gap-2 ${
+                            selectedCourseId === course.id
+                              ? "bg-blue-50 border-blue-200 text-blue-700"
+                              : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          <span>
+                            {course.courseName ||
+                              (isStudyHall
+                                ? `Hall ${index + 1}`
+                                : isTutionCenter
+                                ? `Tuition ${index + 1}`
+                                : isSubscriptionProgram
+                                ? `Program ${index + 1}`
+                                : `Course ${index + 1}`)}
+                          </span>
+
+                          {courses.length > 1 && (
+                            <MoreVertical
+                              size={14}
+                              className="text-gray-400 hover:text-gray-600"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteCourse(course.id);
+                              }}
+                            />
+                          )}
+                        </Button>
+                      </div>
+                    ))}
                   </div>
+
                   <Button
                     type="button"
                     onClick={addNewCourse}
@@ -1939,7 +2399,35 @@ export default function L2DialogBox({
                                   return (
                                     <div className="flex flex-col items-center justify-center gap-2 p-4 w-full h-full">
                                       <span className="text-sm text-gray-500 truncate">
-                                        {(currentCourse[f.type] as File).name}
+                                        {(() => {
+                                          if (
+                                            currentCourse[f.type] instanceof
+                                            File
+                                          ) {
+                                            return (
+                                              currentCourse[f.type] as File
+                                            ).name;
+                                          }
+
+                                          const url =
+                                            currentCourse[`${f.type}Url`];
+                                          if (url) {
+                                            const rawName = decodeURIComponent(
+                                              url
+                                                .split("/")
+                                                .pop()
+                                                ?.split("?")[0] || ""
+                                            );
+                                            // 🧹 remove timestamp prefix (e.g. "1762336776327-")
+                                            const cleanName = rawName.replace(
+                                              /^\d+-/,
+                                              ""
+                                            );
+                                            return cleanName;
+                                          }
+
+                                          return "No file selected";
+                                        })()}
                                       </span>
                                     </div>
                                   );
