@@ -3,13 +3,14 @@
 
 import React from "react";
 // import { useRouter } from "next/navigation";
-import { withAuth } from "../../lib/auth-context";
+import { withAuth, useAuth } from "../../lib/auth-context";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import DashboardStats from "@/components/dashboard/DashboardStats";
 import AdCard from "@/components/dashboard/AdCard";
 import StudentList, { StudentItem } from "@/components/dashboard/StudentList";
 import CourseReachChart from "@/components/dashboard/CourseReachChart";
+import StudentDashboard from "@/components/student/StudentDashboard";
 // import AdminDashboard from "@/components/dashboard/AdminDashboard";
 // import { getMyInstitution, getInstitutionBranches, getInstitutionCourses } from "@/lib/api";
 // import { authAPI, metricsAPI, enquiriesAPI } from "@/lib/api";
@@ -47,6 +48,14 @@ const itemVariants = {
 };
 
 function DashboardPage() {
+	const { user } = useAuth();
+
+	// If student, render StudentDashboard
+	if (user?.role === "STUDENT") {
+		return <StudentDashboard />;
+	}
+
+	// Otherwise render institute admin dashboard
 	const [stats, setStats] = useState<DashboardStatsData>({
 		courseViews: 0,
 		courseComparisons: 0,

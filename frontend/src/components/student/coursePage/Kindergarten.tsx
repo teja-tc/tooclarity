@@ -35,7 +35,7 @@ interface CoursePageProps {
   onBookDemo?: () => void;
 }
 
-export const CoursePage: React.FC<CoursePageProps> = ({
+export const Kindergarten: React.FC<CoursePageProps> = ({
   course,
   onBack: _onBack,
   onRequestCall,
@@ -344,4 +344,4 @@ export const CoursePage: React.FC<CoursePageProps> = ({
   );
 };
 
-export default CoursePage;
+export default Kindergarten;
