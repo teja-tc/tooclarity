@@ -19,6 +19,8 @@ import {
   validateDateInstant,
   RadioGroup,
 } from "@/components/ui/InputField";
+import { toast } from "react-toastify";
+import Image from "next/image";
 
 const labelCls = "text-[17px] font-semibold text-gray-900";
 const inputBase =
@@ -278,7 +280,7 @@ const StudentonBoarding: React.FC = () => {
       avatarUrl: normalizedAvatar,
     };
 
-    if (user.name && !fullName) {
+    if (user.name) {
       setFullName(user.name);
       const nameError = validateNameInstant(user.name);
       if (nameError) setErrors((prev) => ({ ...prev, fullName: nameError }));
@@ -289,7 +291,7 @@ const StudentonBoarding: React.FC = () => {
       setAvatarFile(null);
     }
     if (user.address) setLocation(user.address);
-    if (user.birthday && !birthday) setBirthday(normalizedBirthday);
+    if (user.birthday) setBirthday(normalizedBirthday);
   }, [user]);
 
   const progressPct = useMemo(() => {
@@ -399,6 +401,14 @@ const StudentonBoarding: React.FC = () => {
           body: JSON.stringify(payload),
         });
         console.log("API response:", res);
+
+        if (!res?.success) {
+          setErrors({
+            submit:
+              res?.message || "Failed to update profile. Please try again.",
+          });
+          return; // stop here — do not move to next step
+        }
 
         initialPersonalDataRef.current = {
           fullName: normalizedName,
@@ -581,8 +591,23 @@ const StudentonBoarding: React.FC = () => {
       let details: Record<string, unknown> = {};
       // let profileTypeToSend = selectedInterest;
 
-      let profileTypeToSend: "KINDERGARTEN" | "SCHOOL" | "INTERMEDIATE" | "GRADUATION" | "COACHING_CENTER" | "STUDY_ABROAD" | "STUDY_HALLS" | "TUITION_CENTER" = selectedInterest as "KINDERGARTEN" | "SCHOOL" | "INTERMEDIATE" | "GRADUATION" | "COACHING_CENTER" | "STUDY_ABROAD" | "STUDY_HALLS" | "TUITION_CENTER";
-
+      let profileTypeToSend:
+        | "KINDERGARTEN"
+        | "SCHOOL"
+        | "INTERMEDIATE"
+        | "GRADUATION"
+        | "COACHING_CENTER"
+        | "STUDY_ABROAD"
+        | "STUDY_HALLS"
+        | "TUITION_CENTER" = selectedInterest as
+        | "KINDERGARTEN"
+        | "SCHOOL"
+        | "INTERMEDIATE"
+        | "GRADUATION"
+        | "COACHING_CENTER"
+        | "STUDY_ABROAD"
+        | "STUDY_HALLS"
+        | "TUITION_CENTER";
 
       switch (selectedInterest) {
         case "KINDERGARTEN":
@@ -687,12 +712,16 @@ const StudentonBoarding: React.FC = () => {
         details,
       });
 
-      await studentOnboardingAPI.updateAcademicProfile({
+      const response = await studentOnboardingAPI.updateAcademicProfile({
         profileType: profileTypeToSend,
         details,
       });
-      setProfileCompleted(true);
-      router.replace("/dashboard");
+
+      if (response.success) {
+        setProfileCompleted(true);
+        toast.success("Onboarding completed successfully!");
+        router.replace("/dashboard");
+      }
     } catch (e) {
       console.error("Error submitting academic profile:", e);
       setErrors((p) => ({
@@ -718,9 +747,11 @@ const StudentonBoarding: React.FC = () => {
     <div className="flex flex-col items-center gap-4 mt-6">
       <div className="relative w-[120px] h-[120px] rounded-full bg-gray-200 overflow-hidden shadow-sm">
         {avatarUrl ? (
-          <img
+          <Image
             src={avatarUrl}
             alt="avatar"
+            width={40}
+            height={40}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -1442,9 +1473,11 @@ const StudentonBoarding: React.FC = () => {
                         : "border-gray-200"
                     }`}
                   >
-                    <img
+                    <Image
                       src={getCountryImageSrc(country)}
                       alt={`${country} flag`}
+                      width={40}
+                      height={40}
                       className="w-[40px] h-[40px] rounded-full object-cover"
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).src =
@@ -1481,9 +1514,11 @@ const StudentonBoarding: React.FC = () => {
                         : "border-gray-200"
                     }`}
                   >
-                    <img
+                    <Image
                       src={getCountryImageSrc(country)}
                       alt={`${country} flag`}
+                      width={40}
+                      height={40}
                       className="w-[36px] h-[36px] rounded-full object-cover"
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).src =
@@ -1567,9 +1602,11 @@ const StudentonBoarding: React.FC = () => {
               : "border-gray-200"
           }`}
         >
-          <img
+          <Image
             src={getCountryImageSrc(name)}
             alt={`${name} flag`}
+            width={40}
+            height={40}
             className={`w-[46px] h-[46px] rounded-full object-cover ${
               selected ? "ring-2 ring-[#0A46E4]" : "ring-0"
             }`}

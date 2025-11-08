@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { authAPI } from "@/lib/api";
 interface StudentOtpScreenProps {
   phoneNumber?: string;
@@ -14,12 +13,9 @@ interface StudentOtpScreenProps {
 
 const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
   phoneNumber = "",
-  _onVerify,
-  onResendOtp,
-  onBack,
   onSuccess,
 }) => {
-  const router = useRouter();
+  // const router = useRouter();
   const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,11 +117,6 @@ const StudentOtpScreen: React.FC<StudentOtpScreenProps> = ({
       console.error("Resend OTP error:", error);
       setError("Failed to resend OTP. Please try again.");
     }
-  };
-
-  const handleBack = () => {
-    if (onBack) onBack();
-    else router.back();
   };
 
   return (
