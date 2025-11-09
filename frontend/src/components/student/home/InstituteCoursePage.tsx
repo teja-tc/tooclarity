@@ -64,7 +64,14 @@ function normalizeType(raw?: string): string {
   return ''; // Unknown -> fallback generic
 }
 
-const componentMap: Record<string, React.FC<any>> = {
+interface CourseComponentProps {
+  course: BaseCourse;
+  onRequestCall: () => void;
+  onBookDemo: () => void;
+  onBack?: () => void;
+}
+
+const componentMap: Record<string, React.FC<CourseComponentProps>> = {
   Kindergarten,
   School,
   Intermediate,

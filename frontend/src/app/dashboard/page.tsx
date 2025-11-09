@@ -50,12 +50,7 @@ const itemVariants = {
 function DashboardPage() {
 	const { user } = useAuth();
 
-	// If student, render StudentDashboard
-	if (user?.role === "STUDENT") {
-		return <StudentDashboard />;
-	}
-
-	// Otherwise render institute admin dashboard
+	// All hooks must be called before any conditional returns
 	const [stats, setStats] = useState<DashboardStatsData>({
 		courseViews: 0,
 		courseComparisons: 0,
@@ -197,6 +192,11 @@ function DashboardPage() {
 		setIsStatsLoading(true);
 		setIsStatsLoading(false);
 	};
+
+	// If student, render StudentDashboard (after all hooks have been called)
+	if (user?.role === "STUDENT") {
+		return <StudentDashboard />;
+	}
 
 	return (
 		<motion.div 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import HomeHeader from "@/components/student/home/HomeHeader";
 import FooterNav from "@/components/student/home/FooterNav";
 import { useAuth } from "@/lib/auth-context";
-import RaiseTicketDialog from "@/components/student/help/RaiseTicketDialog";
+import RaiseTicketDialog, { TicketFormData } from "@/components/student/help/RaiseTicketDialog";
 import styles from "./HelpCentre.module.css";
 
 interface FAQ {
@@ -79,7 +79,7 @@ const HelpCentrePage: React.FC = () => {
     setExpandedFAQ(expandedFAQ === index ? null : index);
   };
 
-  const handleTicketSubmit = async (data: any) => {
+  const handleTicketSubmit = async (data: TicketFormData) => {
     try {
       // TODO: Add API call to submit ticket
       console.log("Ticket submitted:", data);

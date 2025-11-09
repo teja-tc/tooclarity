@@ -142,7 +142,7 @@ export const RaiseTicketDialog: React.FC<RaiseTicketDialogProps> = ({
         <_DialogHeader className={styles.dialogHeader}>
           <_DialogTitle className={styles.title}>Raise a Ticket</_DialogTitle>
           <p className={styles.subtitle}>
-            Tell us about your issue and we'll get back to you soon
+            Tell us about your issue and we&apos;ll get back to you soon
           </p>
         </_DialogHeader>
 
@@ -198,7 +198,7 @@ export const RaiseTicketDialog: React.FC<RaiseTicketDialogProps> = ({
                       : ""
                   } ${styles[`priority${priority}`]}`}
                   onClick={() => {
-                    setFormData((prev) => ({ ...prev, priority: priority as any }));
+                    setFormData((prev) => ({ ...prev, priority: priority as "Low" | "Medium" | "High" }));
                     if (errors.priority) {
                       setErrors((prev) => ({ ...prev, priority: "" }));
                     }
