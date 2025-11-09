@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { CoursePage as GenericCoursePage } from './CoursePage';
 import { Kindergarten } from '../coursePage/Kindergarten';
 import { School } from '../coursePage/School';
@@ -11,6 +11,8 @@ import { StudyHall } from '../coursePage/StudyHall';
 import { ExamPreparation } from '../coursePage/ExamPreparation';
 import { StudyAbroad } from '../coursePage/StudyAbroad';
 import { TuitionCentre } from '../coursePage/TuitionCentre';
+import ScheduleCallbackDialog, { CallbackFormData } from './ScheduleCallbackDialog';
+import BookDemoDialog, { BookDemoFormData } from './BookDemoDialog';
 
 interface BaseCourse {
   id: string;
@@ -81,16 +83,75 @@ export const InstituteCoursePage: React.FC<InstituteCoursePageProps> = ({
   onRequestCall,
   onBookDemo,
 }) => {
-  const key = normalizeType(instituteType) || 'StudyAbroad'; // Default for now
+  const [isCallbackDialogOpen, setIsCallbackDialogOpen] = useState(false);
+  const [isBookDemoDialogOpen, setIsBookDemoDialogOpen] = useState(false);
+
+  const handleRequestCall = () => {
+    setIsCallbackDialogOpen(true);
+  };
+
+  const handleBookDemo = () => {
+    setIsBookDemoDialogOpen(true);
+  };
+
+  const handleCallbackSubmit = async (data: CallbackFormData) => {
+    try {
+      // TODO: Add API call to submit callback request
+      console.log('Callback request submitted:', data);
+      
+      // Call the original onRequestCall if provided
+      if (onRequestCall) {
+        onRequestCall();
+      }
+      
+      // You can add toast notification here
+      // toast.success('Callback request submitted successfully!');
+    } catch (error) {
+      console.error('Error submitting callback request:', error);
+      // toast.error('Failed to submit callback request');
+    }
+  };
+
+  const handleDemoSubmit = async (data: BookDemoFormData) => {
+    try {
+      // TODO: Add API call to submit demo booking
+      console.log('Demo booking submitted:', data);
+      
+      // Call the original onBookDemo if provided
+      if (onBookDemo) {
+        onBookDemo();
+      }
+      
+      // You can add toast notification here
+      // toast.success('Demo booked successfully!');
+    } catch (error) {
+      console.error('Error submitting demo booking:', error);
+      // toast.error('Failed to book demo');
+    }
+  };
+
+  const key = normalizeType(instituteType) || 'StudyHall'; // Default for now
   const Component = componentMap[key] || GenericCoursePage;
 
   return (
-    <Component
-      course={course}
-      onBack={onBack}
-      onRequestCall={onRequestCall}
-      onBookDemo={onBookDemo}
-    />
+    <>
+      <Component
+        course={course}
+        onBack={onBack}
+        onRequestCall={handleRequestCall}
+        onBookDemo={handleBookDemo}
+      />
+      <ScheduleCallbackDialog
+        open={isCallbackDialogOpen}
+        onOpenChange={setIsCallbackDialogOpen}
+        onSubmit={handleCallbackSubmit}
+      />
+      <BookDemoDialog
+        open={isBookDemoDialogOpen}
+        onOpenChange={setIsBookDemoDialogOpen}
+        onSubmit={handleDemoSubmit}
+      />
+    </>
   );
 };
 

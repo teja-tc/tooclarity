@@ -102,6 +102,7 @@ const CourseDetailsPage: React.FC = () => {
           onNotificationClick={handleNotificationClick}
           onWishlistClick={handleWishlistClick}
           onProfileClick={handleProfileClick}
+          showSearchAndFilter={false}
         />
         <div className={styles.loadingContainer}>
           <div className={styles.spinner}></div>
@@ -125,6 +126,7 @@ const CourseDetailsPage: React.FC = () => {
           onNotificationClick={handleNotificationClick}
           onWishlistClick={handleWishlistClick}
           onProfileClick={handleProfileClick}
+          showSearchAndFilter={false}
         />
         <div className={styles.errorContainer}>
           <p className={styles.errorText}>⚠️ {error || "Course not found"}</p>
@@ -152,6 +154,7 @@ const CourseDetailsPage: React.FC = () => {
         onNotificationClick={handleNotificationClick}
         onWishlistClick={handleWishlistClick}
         onProfileClick={handleProfileClick}
+        showSearchAndFilter={false}
       />
       <InstituteCoursePage
         course={{
